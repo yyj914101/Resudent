@@ -1,0 +1,232 @@
+/* governance_petition.css — 综治管理 · 信访维稳详情弹窗与表单加固（ADR-022 v4.0 基线）
+ * 作用域：#detailModal 内 .gp-* 与 #formModal 内 .gp-form-modal，零裸色值，全量引用 tokens.css。
+ * 沿用 .sc-modal 容器，抽屉自恢复 pointer-events:auto，避免 BS5 .modal-dialog 透传锁死。 */
+
+#detailModal .modal-dialog:has(.gp-shell) { width: 960px; max-width: none !important; }
+#detailModal .gp-shell {
+  width: 960px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 88px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Tier 1：单行紧凑头部 ── */
+.gp-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px; border-bottom: 1px solid var(--c-line-3); flex: none;
+}
+.gp-header__main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.gp-header__name {
+  margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--c-ink); flex: none; max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gp-header__chip { flex: none; }
+.gp-header__dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; margin-right: 5px; display: inline-block; }
+.gp-header__sep { width: 1px; height: 14px; background: var(--c-line-3); flex: none; }
+.gp-header__meta {
+  font-size: 12px; color: var(--c-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gp-num { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+.gp-header__actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.gp-header__actions .sc-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.gp-header__actions .sc-btn--primary { padding: 0 12px; }
+.gp-header__vline { width: 1px; height: 16px; background: var(--c-line-3); flex: none; }
+.gp-header__close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: none;
+  border: 0; background: none; color: var(--c-ink-3); cursor: pointer; border-radius: var(--r-ctrl);
+}
+.gp-header__close:hover { color: var(--c-ink); background: var(--c-hover); }
+
+/* ── Tier 3：主体三分区（01 基本与受理 / 02 诉求摘要 / 03 办理记录） ── */
+.gp-body { overflow-y: auto; min-height: 0; }
+.gp-card {
+  margin: 10px 20px 0;
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+}
+.gp-card--last { margin-bottom: 12px; }
+.gp-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; border-bottom: 1px solid var(--c-line-2);
+}
+.gp-card__head--noborder { border-bottom: 0; padding-bottom: 4px; }
+.gp-card__title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gp-card__bar { width: 3px; height: 14px; border-radius: var(--r-full); flex: none; }
+.gp-card__bar--cat1 { background: var(--c-cat-1); }
+.gp-card__bar--cat2 { background: var(--c-cat-2); }
+.gp-card__bar--cat3 { background: var(--c-cat-3); }
+.gp-card__index {
+  font-family: var(--ff-num); font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: var(--r-badge); flex: none;
+}
+.gp-card__index--cat1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.gp-card__index--cat2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+.gp-card__index--cat3 { background: var(--c-cat-3-weak); color: var(--c-cat-3); }
+.gp-card__title-text { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ink); }
+.gp-card__count { font-size: 11px; color: var(--c-muted); flex: none; }
+.gp-card__more {
+  border: 0; background: none; cursor: pointer;
+  padding: 2px 8px; border-radius: var(--r-ctrl);
+  font-size: 12px; font-weight: 500; color: var(--c-ink-5);
+}
+.gp-card__more:hover { background: var(--c-hover); color: var(--c-ink); }
+
+/* 01：全宽 4 列 × 2 行字段矩阵 */
+.gp-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 20px; padding: 10px 14px 12px; }
+.gp-field__label { display: block; margin-bottom: 2px; font-size: 11px; color: var(--c-muted); }
+.gp-field__value { font-size: 13px; line-height: 1.4; color: var(--c-ink); font-weight: 500; word-break: break-word; }
+.gp-field__value--empty { color: var(--c-faint); font-weight: 400; }
+.gp-field__value--strong { font-weight: 600; }
+
+/* 02：诉求内容摘要只读卡槽 */
+.gp-summary { margin: 0 14px 12px; padding: 8px 12px; background: var(--c-side); border: 1px solid var(--c-line-2); border-radius: var(--r-ctrl); }
+.gp-summary__text { margin: 0; font-size: 13px; line-height: 1.5; color: var(--c-ink); white-space: pre-wrap; word-break: break-word; }
+.gp-summary__sub { margin: 6px 0 0; font-size: 12px; line-height: 1.45; color: var(--c-muted); word-break: break-word; }
+
+/* 03：办理记录表（合理分配列宽：日期 112px / 处理人 100px / 措施+结果+计划铺满） */
+.gp-table-wrap { max-height: 140px; overflow-y: auto; }
+.gp-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.gp-table th {
+  padding: 6px 12px; background: var(--c-rail);
+  font-size: 12px; font-weight: 500; color: var(--c-muted); text-align: left;
+  border-bottom: 1px solid var(--c-line-3);
+}
+.gp-table td {
+  padding: 7px 12px; font-size: 12px; color: var(--c-ink);
+  border-bottom: 1px solid var(--c-line-2); vertical-align: top; word-break: break-word;
+}
+.gp-table tr:last-child td { border-bottom: none; }
+.gp-table tbody tr:hover td { background: var(--c-side); }
+.gp-table__date { width: 112px; }
+.gp-table__handler { width: 100px; }
+.gp-empty { padding: 16px 0; text-align: center; }
+.gp-empty__inner { display: inline-flex; align-items: center; gap: 8px; }
+.gp-empty__icon { font-size: 15px; color: var(--c-faint); }
+.gp-empty__text { font-size: 12px; color: var(--c-muted); }
+.gp-empty__link {
+  border: 0; background: none; cursor: pointer; padding: 0;
+  font-size: 12px; font-weight: 500; color: var(--c-ink); text-decoration: underline;
+}
+
+/* ── Tier 4：超薄底部操作栏 ── */
+.gp-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 20px; border-top: 1px solid var(--c-line-3); background: var(--c-side); flex: none;
+}
+.gp-footer__sync { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-faint); }
+.gp-footer__sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-success); }
+.gp-footer .sc-btn { height: 28px; padding: 0 12px; font-size: 12px; }
+
+/* ── 右侧行内抽屉（420px，读写分离） ── */
+.gp-drawer-backdrop {
+  position: absolute; inset: 0; z-index: 30;
+  display: flex; justify-content: flex-end;
+  background: rgba(10, 10, 10, 0.25);
+}
+.gp-drawer-backdrop[hidden] { display: none; }
+.gp-drawer {
+  width: 100%; max-width: 420px; height: 100%;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: var(--c-surface); border-left: 1px solid var(--c-line-3);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
+  pointer-events: auto;
+}
+.gp-drawer__scroll { overflow-y: auto; min-height: 0; }
+.gp-drawer__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--c-line-3);
+}
+.gp-drawer__title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink); }
+.gp-drawer__close {
+  border: 0; background: none; cursor: pointer; padding: 2px 8px; border-radius: var(--r-ctrl);
+  font-size: 12px; color: var(--c-ink-5);
+}
+.gp-drawer__close:hover { background: var(--c-hover); color: var(--c-ink); }
+.gp-drawer__form { padding: 14px 16px; display: grid; gap: 12px; }
+.gp-drawer__tip {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 12px; border-radius: var(--r-ctrl);
+  background: var(--c-warning-bg); border: 1px solid rgba(180, 83, 9, 0.18);
+}
+.gp-drawer__tip i { font-size: 13px; color: var(--c-warning); flex: none; margin-top: 1px; }
+.gp-drawer__tip-text { font-size: 11px; line-height: 1.5; color: var(--c-warning); }
+.gp-drawer__row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.gp-drawer__field-label { display: block; margin-bottom: 4px; font-size: 11px; font-weight: 500; color: var(--c-muted); }
+.gp-drawer__input {
+  width: 100%; height: 30px; padding: 0 10px;
+  background: var(--c-surface); border: 1px solid var(--c-line-3); border-radius: var(--r-ctrl);
+  font-size: 12px; color: var(--c-ink); outline: none;
+}
+.gp-drawer__input:focus { border-color: var(--c-ink-2); }
+textarea.gp-drawer__input { height: auto; padding: 6px 10px; resize: vertical; line-height: 1.45; }
+.gp-drawer__chips-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.gp-drawer__chips-hint { font-size: 10px; color: var(--c-faint); }
+.gp-drawer__chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.gp-drawer__chips .sc-btn { height: 22px; padding: 0 8px; font-size: 11px; }
+.gp-drawer__foot {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: 10px 16px; border-top: 1px solid var(--c-line-3); background: var(--c-side); flex: none;
+}
+.gp-drawer__foot .sc-btn { height: 28px; padding: 0 12px; font-size: 12px; }
+
+/* ── 新增/编辑弹窗（ADR-022 原型 gp-form-shell 紧凑档：760px + 86px 标签列 + 32px 控件） ──
+ * 054-C：app.js 把 select 包成 .custom-select（原生 .cs-native 置 display:none 只管提交值），
+ * 可见外观落在 wrapper/.custom-select__trigger 上——不纳入约束时长选项会冲出弹窗右缘。 */
+.modal-dialog:has(.gp-form-modal) { max-width: 760px; }
+.gp-form-modal { width: 760px; }
+.gp-form-modal .sc-modal__body--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  padding: 16px 20px;
+}
+.gp-form-modal .sc-field { min-width: 0; }
+.gp-form-modal .sc-field__label { flex: 0 0 86px; line-height: 32px; font-size: 12px; }
+.gp-form-modal .sc-input,
+.gp-form-modal .sc-select,
+.gp-form-modal .sc-textarea,
+/* 054-C：wrapper 是菜单的定位父级（菜单 absolute 自 wrapper 底部向下展开至多 280px），
+   height/overflow 一旦落到 wrapper 会把整棵菜单裁没——视觉"点击无反应"、elementFromPoint
+   穿透到下层字段（2026-11-21 人工验收实证；resident_add.css 同款前车之鉴）。
+   限高/省略号只落在 .custom-select__trigger 上 */
+.gp-form-modal .custom-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.gp-form-modal .custom-select__trigger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gp-form-modal .custom-select__menu { font-size: 12.5px; }
+.gp-form-modal .sc-textarea { height: auto; padding: 6px 10px; line-height: 1.45; }
+
+@media (max-width: 767.98px) {
+  .gp-form-modal .sc-modal__body--grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 767.98px) {
+  #detailModal .modal-dialog:has(.gp-shell) { width: 100%; }
+  #detailModal .gp-shell { width: 100%; }
+  .gp-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gp-drawer { max-width: 100%; }
+}
+
+/* ── 变更办理状态抽屉（详情内滑出，ADR-022 原型「就地变化」口径） ──
+ * 复用 .gp-drawer 结构；054-C 会把抽屉内 select 包装成 .custom-select，trigger 高度对齐抽屉控件 30px 档 */
+.gp-drawer .custom-select { width: 100%; }
+.gp-drawer .custom-select__trigger { height: 30px; padding: 0 24px 0 10px; font-size: 12px; }
+.gp-drawer .custom-select__menu { font-size: 12px; }
+#transitionError { margin: 0; }
+#gpTransitionBackdrop .gp-drawer__tip-text strong { color: var(--c-warning); }

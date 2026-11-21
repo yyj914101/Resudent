@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}{{ config.title }}{% endblock %}
+
+{# 062 P3 v4.0：标题由页头承担，顶栏标题留空（同 055/组织架构口径） #}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/governance_shared.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs(config.tab_module or 'governance', category) }}
+
+{# 字段/列真源：docs/design/照单施工-6页字段清单-2026-10-28.md §五（CATEGORY_CONFIG 配置驱动，模板不写死字段） #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">{{ config.title }}</h2>
+        <p class="sc-page-head__meta">{{ config.description }}</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink"><i class="bi bi-file-earmark-excel"></i> 导出台账</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton"><i class="bi bi-plus-circle"></i> 新增记录</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="姓名 / 身份证号 / 电话 / 台账内容" style="width:320px">
+        {# 2026-11-16：工具栏筛选（config.filters，如刑事人员「人员状态」）——与关键字一起提交，列表/导出同口径 #}
+        {% for item in config.filters %}
+        <select class="sc-select" name="{{ item.key }}" style="width:150px">
+            <option value="">全部{{ item.label }}</option>
+            {% for option in item.options %}<option value="{{ option.value }}">{{ option.label }}</option>{% endfor %}
+        </select>
+        {% endfor %}
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    {% for key in config.columns %}
+                    {% for field in config.fields %}{% if field.key == key %}<th class="sc-table__th">{{ field.label }}</th>{% endif %}{% endfor %}
+                    {% endfor %}
+                    <th class="sc-table__th" style="width:140px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 动态字段弹窗（§五：wide 整行、其余两列；必填红星；record_date 新增默认今天由 JS 置值） #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg gs-form-modal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增{{ config.title }}</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    {% for field in config.fields %}
+                    <div class="sc-field{% if field.wide %} sc-field--full{% endif %}{% if field.kind == 'textarea' %} sc-field--top{% endif %}">
+                        <label class="sc-field__label" for="f_{{ field.key }}">{{ field.label }}{% if field.required %}<span class="sc-field__required">*</span>{% endif %}</label>
+                        {% if field.kind == 'textarea' %}
+                        <textarea class="sc-textarea" name="{{ field.key }}" id="f_{{ field.key }}" rows="3" {% if field.required %}required{% endif %}></textarea>
+                        {% elif field.kind == 'select' %}
+                        <select class="sc-select" name="{{ field.key }}" id="f_{{ field.key }}" {% if field.required %}required{% endif %}>
+                            <option value="">请选择</option>
+                            {% for option in field.options %}<option value="{{ option.value }}">{{ option.label }}</option>{% endfor %}
+                        </select>
+                        {% else %}
+                        <input type="{{ field.kind }}" class="sc-input" name="{{ field.key }}" id="f_{{ field.key }}" {% if field.required %}required{% endif %}>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 台账详情弹窗（ADR-022 统一单屏四列架构：fields 配置驱动分区渲染） #}
+<div class="modal fade" id="govDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal gs-shell" role="dialog" aria-modal="true">
+            <header class="gs-header">
+                <div class="gs-header__main">
+                    <h2 class="gs-header__name" id="govDetailTitle">{{ config.title }}详情</h2>
+                    <span class="sc-badge sc-badge--info" id="govDetailBadge" hidden></span>
+                    <span class="gs-header__sep"></span>
+                    <span class="gs-header__meta" id="govDetailMeta"></span>
+                </div>
+                <div class="gs-header__actions">
+                    <span id="govDetailBtns"></span>
+                    <span class="gs-header__vline"></span>
+                    <button type="button" class="gs-header__close" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </header>
+            <div class="gs-body" id="govDetailBody"></div>
+            <footer class="gs-footer">
+                <div class="gs-footer__sync">
+                    <span class="gs-footer__dot"></span>
+                    <span>{{ config.title }} · 只读档案</span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__GOV_CFG__ = { config: {{ config|tojson }}, category: {{ category|tojson }} };
+</script>
+<script src="{{ url_for('static', filename='js/pages/governance_ledger.js') }}"></script>
+{% endblock %}

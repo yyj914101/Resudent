@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}应急管理{% endblock %}
+{# 087：标题由页头承担，顶栏标题留空（062 口径） #}
+{% block page_title %}{% endblock %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block content %}
+
+{# 应急管理页（表 10 门面，菜单树 v4：安全工作 · 应急管理）。
+   三边界不混（动态台账设计 §十.6）：方案→档案 / 队伍·物资→软表名册（095 接入 078 数据层）/ 综合检查→固定结构化闭环。 #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">应急管理</h2>
+        <p class="sc-page-head__meta">工作方案 · 工作队伍 · 储备物资（三类清单）与综合安全检查</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--primary" href="{{ url_for('safety.checks_page') }}">
+            {{ icon('list-checks', 16) }} 综合安全检查
+        </a>
+    </div>
+</header>
+
+<div class="sc-grid sc-grid--6-6">
+    {# ── ① 应急工作方案：走档案树（方案归档位由 m028 守卫种子自动建） ── #}
+    <section class="sc-card">
+        <header class="sc-card__header d-flex justify-content-between align-items-center">
+            <h3 class="sc-card__title">工作方案（档案归档）</h3>
+            <span class="sc-badge sc-badge--success">档案树</span>
+        </header>
+        <div class="sc-card__body">
+            <p class="sc-card__subtitle" style="margin-bottom:var(--sp-3)">
+                应急工作方案在「安全工作」档案树的「应急工作方案」目录下归档与检索，
+                上传/下载/预览与全站档案一致。
+            </p>
+            <a class="sc-btn sc-btn--secondary" href="{{ url_for('safety.index') }}">
+                {{ icon('folder-open', 16) }} 打开安全工作档案
+            </a>
+        </div>
+    </section>
+
+    {# ── ④ 综合安全检查：固定结构化闭环（B-10，不以归档代替） ── #}
+    <section class="sc-card">
+        <header class="sc-card__header d-flex justify-content-between align-items-center">
+            <h3 class="sc-card__title">综合安全检查（闭环台账）</h3>
+            <span class="sc-badge sc-badge--primary" id="emCheckCount">—</span>
+        </header>
+        <div class="sc-card__body">
+            <p class="sc-card__subtitle" style="margin-bottom:var(--sp-3)">
+                「检查—隐患—整改」结构化记录：检查登记 → 隐患整改 → 复核闭环，状态全程可追踪。
+                未闭环隐患 <strong id="emOpenHazards">—</strong> 条 · 已闭环 <strong id="emClosedHazards">—</strong> 条。
+            </p>
+            <a class="sc-btn sc-btn--secondary" href="{{ url_for('safety.checks_page') }}">
+                {{ icon('list-checks', 16) }} 进入检查台账
+            </a>
+        </div>
+    </section>
+
+    {# ── ②③ 工作队伍 / 储备物资：软表名册承载（095 接入：078 dynamic_table 只读，
+          module_key='safety' + group_name='应急管理'，按表名关键词分流；无表空态，不伪造软表） ── #}
+    {% for card_title, badge_icon, items, keyword in [
+        ('工作队伍（名册）', 'users', roster_team, '队伍'),
+        ('储备物资（名册）', 'database', roster_supply, '物资')] %}
+    <section class="sc-card">
+        <header class="sc-card__header d-flex justify-content-between align-items-center">
+            <h3 class="sc-card__title">{{ card_title }}</h3>
+            <span class="sc-badge sc-badge--muted">{{ items|length }} 张名册</span>
+        </header>
+        <div class="sc-card__body">
+            {% if items %}
+            <div class="sc-table-wrap">
+                <table class="sc-table">
+                    <thead>
+                        <tr>
+                            <th class="sc-table__th">名册</th>
+                            <th class="sc-table__th" style="width:80px">记录数</th>
+                            <th class="sc-table__th" style="width:120px">最近更新</th>
+                            <th class="sc-table__th" style="width:80px"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in items %}
+                        <tr>
+                            <td>{{ t.name }}</td>
+                            <td>{{ t.records }}</td>
+                            <td>{{ t.updated or '—' }}</td>
+                            <td><a class="sc-btn sc-btn--text" href="{{ url_for('dynatable.list_page', code=t.code) }}">进入</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="sc-card__subtitle">
+                {{ card_title }}由软表数据层承载（字段随上传 Excel 建），尚未建表：
+                在「软表上传」中模块选「安全工作」、分组填「应急管理」、
+                表名含「{{ keyword }}」字样即可在此出现。
+            </p>
+            {% endif %}
+            <a class="sc-btn sc-btn--secondary" style="margin-top:var(--sp-3)" href="{{ url_for('dynatable.upload_page') }}">
+                {{ icon(badge_icon, 16) }} 新建名册
+            </a>
+        </div>
+    </section>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* 087：应急页概览计数（api_emergency_summary；失败静默保占位符） */
+(function () {
+    $.getJSON({ url: '/safety/api/emergency/summary' })
+        .done(function (resp) {
+            if (!resp.success) return;
+            var d = resp.data || {};
+            $('#emCheckCount').text('检查 ' + (d.total_checks || 0) + ' 次');
+            $('#emOpenHazards').text(d.open_hazards || 0);
+            $('#emClosedHazards').text(d.closed_hazards || 0);
+        });
+})();
+</script>
+{% endblock %}

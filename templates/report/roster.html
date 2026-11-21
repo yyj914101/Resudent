@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs %}
+{% block title %}民政对象花名册 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}民政对象花名册{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{% call page_head('民政对象花名册', '民政对象 · 打印型报表（身份证默认脱敏）') %}
+    <button type="button" class="sc-btn sc-btn--primary" id="btnExportRoster"><i class="bi bi-download me-1"></i>导出 Excel</button>
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnExportPdf"><i class="bi bi-file-earmark-pdf me-1"></i>导出 PDF</button>
+{% endcall %}
+{{ civil_tabs('roster') }}
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <form method="get" action="{{ url_for('report.roster_view') }}" class="sc-toolbar">
+        <select name="category" class="sc-select" style="width:auto;">
+            {% for c in cats %}
+            <option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>
+            {% endfor %}
+        </select>
+        <select name="grid" class="sc-select" style="width:auto;" onchange="this.form.submit()">
+            <option value="">全部网格</option>
+            {% for g in grids %}
+            <option value="{{ g }}" {% if grid == g %}selected{% endif %}>{{ g }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-funnel me-1"></i>筛选</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">两类表头按分类自动切换（居民维度 / 弱势群体维度）</span>
+    </form>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="rosterTable">
+            <thead class="sc-table__head">
+                <tr>
+                    {% for h in headers %}
+                    <th class="sc-table__th">{{ h }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if rows %}
+                {% for r in rows %}
+                <tr>
+                    {% if headers[3] == '出生日期' %}
+                    <td>{{ r.name }}</td><td>{{ r.id_card }}</td><td>{{ r.gender }}</td>
+                    <td>{{ r.birth_date or '' }}</td><td>{{ r.address or '' }}</td>
+                    <td>{{ r.grid }}</td><td>{{ r.category }}</td><td>{{ r.remark or '' }}</td>
+                    {% else %}
+                    <td>{{ r.name }}</td><td>{{ r.id_card }}</td><td>{{ r.gender }}</td>
+                    <td>{{ r.age or '' }}</td><td>{{ r.grid }}</td><td>{{ r.category }}</td>
+                    <td>{{ r.detail or '' }}</td><td>{{ r.remark or '' }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+                {% else %}
+                <tr><td colspan="{{ headers|length }}" class="text-center text-muted">暂无数据</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat">共 {{ total }} 人 · 每页 20 条</span>
+        <ul class="sc-pagination__pager">
+            <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('report.roster_view', category=category, grid=grid or '', page=page-1) }}">«</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">{{ page }}/{{ total_pages }}</span></li>
+            <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('report.roster_view', category=category, grid=grid or '', page=page+1) }}">»</a>
+            </li>
+        </ul>
+    </div>
+</section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__PAGE_CFG__ = {
+    category: {{ category | tojson }},
+    grid: {{ (grid or '') | tojson }},
+    exportExcel: '{{ url_for('report.export_excel') }}',
+    exportPdf: '{{ url_for('report.export_pdf') }}'
+};
+</script>
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/report_roster.js') }}"></script>
+{% endblock %}

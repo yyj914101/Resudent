@@ -1,0 +1,143 @@
+/* governance_shared.css — 社区治理·综治管理全胶囊统一视觉基线（ADR-022 v4.0）
+ * 覆盖：governance/ledger.html（7 个配置驱动台账胶囊）与 mediation/list.html（矛盾纠纷化解）。
+ * 作用域 .gs-*（细节弹窗）与 .gs-form-modal（编辑弹窗防溢出），零裸色值，全量引用 tokens.css。 */
+
+.gs-num { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+.gs-branch-cell { max-width: 220px; }
+
+/* ── 统一详情弹窗：880px 紧凑单屏四列架构 ── */
+.modal-dialog:has(.gs-shell) { width: 880px; max-width: calc(100vw - 32px) !important; }
+.gs-shell {
+  width: 880px;
+  max-width: 100%;
+  max-height: calc(100vh - 88px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gs-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px; border-bottom: 1px solid var(--c-line-3); flex: none;
+}
+.gs-header__main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.gs-header__name {
+  margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--c-ink); flex: none; max-width: 300px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gs-header__sep { width: 1px; height: 14px; background: var(--c-line-3); flex: none; }
+.gs-header__meta {
+  font-size: 12px; color: var(--c-muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gs-header__actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.gs-header__actions .sc-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.gs-header__vline { width: 1px; height: 16px; background: var(--c-line-3); flex: none; }
+.gs-header__close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex: none;
+  border: 0; background: none; color: var(--c-ink-3); cursor: pointer; border-radius: var(--r-ctrl);
+}
+.gs-header__close:hover { color: var(--c-ink); background: var(--c-hover); }
+
+/* ── 主体卡片区 ── */
+.gs-body { overflow-y: auto; min-height: 0; padding: 12px 20px; display: grid; gap: 10px; }
+.gs-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+}
+.gs-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 8px; margin-bottom: 10px; border-bottom: 1px solid var(--c-line-2);
+}
+.gs-card__title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.gs-card__bar { width: 3px; height: 14px; border-radius: var(--r-full); flex: none; }
+.gs-card__bar--1 { background: var(--c-cat-1); }
+.gs-card__bar--2 { background: var(--c-cat-2); }
+.gs-card__bar--3 { background: var(--c-cat-3); }
+.gs-card__index {
+  font-family: var(--ff-num); font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: var(--r-badge); flex: none;
+}
+.gs-card__index--1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.gs-card__index--2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+.gs-card__index--3 { background: var(--c-cat-3-weak); color: var(--c-cat-3); }
+.gs-card__name { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--c-ink); }
+.gs-card__count { font-size: 11px; color: var(--c-muted); flex: none; }
+
+/* 4 列统一字段栅格 */
+.gs-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 18px; }
+.gs-field { display: flex; flex-direction: column; min-width: 0; }
+.gs-field--half { grid-column: span 2; }
+.gs-field--full { grid-column: 1 / -1; }
+.gs-label { display: block; margin-bottom: 2px; font-size: 11px; color: var(--c-muted); }
+.gs-value { font-size: 13px; line-height: 1.45; color: var(--c-ink); font-weight: 500; word-break: break-word; }
+.gs-value--empty { color: var(--c-faint); font-weight: 400; }
+.gs-value--strong { font-weight: 600; }
+
+/* 只读内容槽 */
+.gs-slot {
+  background: var(--c-side); border: 1px solid var(--c-line-2); border-radius: var(--r-ctrl);
+  padding: 8px 12px; font-size: 13px; line-height: 1.55; color: var(--c-ink-2);
+  white-space: pre-wrap; word-break: break-word;
+}
+.gs-slot + .gs-slot { margin-top: 8px; }
+.gs-slot__tag { font-size: 11px; font-weight: 600; color: var(--c-muted); display: block; margin-bottom: 2px; }
+
+/* 底部同步栏 */
+.gs-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 20px; border-top: 1px solid var(--c-line-3); background: var(--c-side); flex: none;
+}
+.gs-footer__sync { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-faint); }
+.gs-footer__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-success); }
+.gs-footer .sc-btn { height: 28px; padding: 0 12px; font-size: 12px; }
+
+/* ── 详情壳视觉档（原型 adr_022_2：12px 圆角 + 深阴影，盖过 .sc-modal 默认 10px/浅阴影） ── */
+.gs-shell { border-radius: 12px; box-shadow: 0 22px 48px rgba(10, 10, 10, 0.18); }
+
+/* ── 编辑/新增弹窗：对齐原型 gs-form-shell 视觉档（720px + 84px 标签列 + 32px 控件） ──
+ * 防溢出加固 ≠ 视觉档：只加 minmax 网格不动控件规格会与原型判若两弹窗（信访维稳同款教训）。
+ * 054-C：app.js 把 select 包成 .custom-select（原生 .cs-native display:none 只管提交值），
+ * 可见外观落在 wrapper/.custom-select__trigger 上，必须一并纳入收缩链。 */
+.modal-dialog:has(.gs-form-modal) { max-width: 720px; }
+.gs-form-modal { width: 720px; }
+.gs-form-modal .sc-modal__body--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  padding: 16px 20px;
+}
+.gs-form-modal .sc-field { min-width: 0; }
+.gs-form-modal .sc-field__label { flex: 0 0 84px; line-height: 32px; font-size: 12px; }
+.gs-form-modal .sc-input,
+.gs-form-modal .sc-select,
+.gs-form-modal .sc-textarea,
+/* 054-C：wrapper 是菜单的定位父级（菜单 absolute 自 wrapper 底部向下展开至多 280px），
+   height/overflow 一旦落到 wrapper 会把整棵菜单裁没——视觉"点击无反应"、elementFromPoint
+   穿透到下层字段（2026-11-21 人工验收实证；resident_add.css 同款前车之鉴）。
+   限高/省略号只落在 .custom-select__trigger 上 */
+.gs-form-modal .custom-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.gs-form-modal .custom-select__trigger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gs-form-modal .custom-select__menu { font-size: 12.5px; }
+.gs-form-modal .sc-textarea { height: auto; padding: 6px 10px; line-height: 1.45; }
+
+@media (max-width: 767.98px) {
+  .gs-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gs-form-modal .sc-modal__body--grid { grid-template-columns: minmax(0, 1fr); }
+}

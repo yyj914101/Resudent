@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}补贴公示{% endblock %}
+{% block page_title %}补贴公示{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/workflow_shared.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+{# 045：内联 style 标签在 content 内（GLB-02 已于 053 修复；保留历史实现）。
+   061 S5 换壳：裸色值全部令牌化。075 RC-16 换壳历史见 git。
+   2026-11-02 按样图定稿重构：移除返回链接；页头右侧状态胶囊+新建钮；
+   工作台=模式页签行/工具行/表格/脚注行四段；记录模式合计行+失焦自动保存+发布/撤回；
+   模板模式脚注=可编辑说明+预览公示表。 #}
+<style>
+.notice-page { color: var(--c-ink-3); }
+.notice-page-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.notice-head-side { display: flex; align-items: center; gap: 10px; padding-top: 6px; }
+.notice-state-pill {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+    border: 1px solid var(--c-line-3); border-radius: 999px; font-size: 12px;
+    color: var(--c-ink-2); background: var(--c-surface); white-space: nowrap;
+}
+.notice-state-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c-muted-2); }
+.notice-state-pill.is-published::before { background: var(--c-success); }
+.notice-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; align-items: start; }
+.notice-sider { padding: 10px; }
+.notice-sider-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 4px 8px; margin-bottom: 4px; border-bottom: 1px solid var(--c-line-2);
+}
+.notice-sider-head strong { font-size: 14px; }
+.notice-sider-count { font-size: 12px; color: var(--c-muted-2); }
+.notice-type-head { font-size: 13px; font-weight: 700; color: var(--c-ink-2); margin: 10px 2px 4px; }
+.notice-type-btn {
+    width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
+    border-radius: var(--r-ctrl); padding: 7px 10px; margin: 2px 0; font-size: 13px; color: var(--c-ink-3);
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.notice-type-btn:hover { background: var(--c-hover); }
+.notice-type-btn.active { border-color: var(--c-ink-2); background: var(--c-ink-2); color: var(--c-surface); font-weight: 600; }
+.notice-type-count { font-size: 12px; font-weight: 400; color: var(--c-muted-2); white-space: nowrap; }
+.notice-type-btn.active .notice-type-count { color: var(--c-surface); }
+.notice-workbench { padding: 0; overflow: hidden; }
+.notice-wb-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--c-line-2);
+}
+.notice-wb-sub { font-size: 13px; font-weight: 500; color: var(--c-ink-2); }
+.notice-toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    padding: 10px 14px; border-bottom: 1px solid var(--c-line-2);
+}
+.notice-toolbar .flex-fill { flex: 1 1 auto; }
+.notice-danger-text { color: var(--c-danger) !important; border-color: transparent !important; background: transparent !important; }
+.notice-danger-text:hover { background: var(--c-badge-danger-bg) !important; }
+.notice-table-wrap { overflow: auto; max-height: 62vh; }
+.notice-table { width: 100%; border-collapse: collapse; }
+.notice-table th, .notice-table td {
+    border: 1px solid var(--c-line-2); padding: 2px; min-width: 70px; background: var(--c-surface);
+}
+.notice-table th .cell-in { font-weight: 700; background: var(--c-rail); }
+.notice-table .cell-in {
+    width: 100%; border: 0; outline: none; padding: 4px 5px; font-size: 13px;
+    background: transparent;
+}
+.notice-table .idx { color: var(--c-muted-2); text-align: center; font-size: 12px; width: 26px; }
+.notice-table tfoot td { background: var(--c-rail); font-weight: 600; font-size: 13px; }
+.notice-footbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    padding: 9px 14px; border-top: 1px solid var(--c-line-2);
+    font-size: 12px; color: var(--c-muted-2);
+}
+.notice-footbar .flex-fill { flex: 1 1 auto; }
+.no-data { color: var(--c-muted-2); font-size: 13px; padding: 8px 2px; }
+@media print {
+    .app-sidebar, .app-header, .sc-page-head, .sc-chips, .notice-sider, .notice-toolbar,
+    .notice-footbar, .notice-wb-head, .no-print { display: none !important; }
+    .app-main, #contentArea { margin: 0 !important; padding: 0 !important; }
+    .notice-layout { display: block; }
+}
+</style>
+<div class="sc-workflow-page">
+{# 2026-11-02 按样图定稿：返回链接移除（实用工具口径）；页头右侧状态胶囊+新建钮；
+   工作台四段式（模式页签行/工具行/表格/脚注行）；记录模式合计行+失焦自动保存+发布/撤回；
+   模板模式脚注=可编辑说明+预览公示表。数据面沿用 notice 模块既有 API。 #}
+<header class="sc-page-head notice-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">补贴公示</h2>
+        <p class="sc-page-head__meta">模板化公示表：先建模板 → 按月生成记录 → 发布公示</p>
+    </div>
+    <div class="notice-head-side">
+        <span class="notice-state-pill" id="statePill">请选择左侧公示类型</span>
+        <button class="sc-btn sc-btn--primary" id="btnHeadNew" type="button">新建模板</button>
+    </div>
+</header>
+<div class="notice-page notice-layout">
+    <aside class="sc-card notice-sider">
+        <div class="notice-sider-head">
+            <strong>公示类型</strong>
+            <span class="notice-sider-count" id="siderCount">共 0 个模板</span>
+        </div>
+        {% set total_types = namespace(n=0) %}
+        {% for group in notice_groups %}{% set total_types.n = total_types.n + (group.types | length) %}{% endfor %}
+        <span class="d-none" id="totalTypes">{{ total_types.n }}</span>
+        {% for group in notice_groups %}
+        <div class="notice-type-head">{{ group.label }}</div>
+        {% for t in group.types %}
+        <button class="notice-type-btn" type="button" data-type="{{ t.key }}" data-type-name="{{ t.name }}">
+            <span>{{ t.name }}</span>
+            <span class="notice-type-count">{{ type_counts.get(t.key, 0) }} 条</span>
+        </button>
+        {% endfor %}
+        {% endfor %}
+    </aside>
+    <section class="sc-card notice-workbench" id="workbench">
+        <div class="notice-wb-head">
+            <nav class="sc-chips" id="noticeModeTabs" aria-label="工作台模式页签">
+                <div class="sc-chips__row">
+                    <button type="button" class="sc-chip nav-link" id="modeTpl" data-mode="template">模板模式</button>
+                    <button type="button" class="sc-chip nav-link active" id="modeRec" data-mode="record">记录模式</button>
+                </div>
+            </nav>
+            <span class="notice-wb-sub" id="wbSub">请选择左侧公示类型</span>
+        </div>
+        <div id="wbBody" class="d-none">
+            <div class="notice-toolbar" id="recToolbar">
+                <button class="sc-btn sc-btn--primary" id="btnGenerate" type="button">生成本月公示</button>
+                <button class="sc-btn sc-btn--secondary" id="btnUpload" type="button">上传 Excel/CSV</button>
+                <input type="file" id="fileUpload" accept=".xlsx,.csv" style="display:none">
+                <button class="sc-btn sc-btn--secondary" id="btnExportRec" type="button">导出 Excel</button>
+                <select class="sc-select d-none" id="recPick" style="max-width:210px" title="历史记录"></select>
+                <span class="flex-fill"></span>
+                <button class="sc-btn sc-btn--secondary" id="btnPrintRec" type="button">打印公示表</button>
+                <button class="sc-btn sc-btn--secondary notice-danger-text" id="btnDelRec" type="button">删除记录</button>
+            </div>
+            <div class="notice-toolbar d-none" id="tplToolbar">
+                <button class="sc-btn sc-btn--primary" id="btnSaveTpl" type="button">保存模板</button>
+                <button class="sc-btn sc-btn--secondary" id="btnAddCol" type="button">新增字段</button>
+                <button class="sc-btn sc-btn--secondary" id="btnAddRow" type="button">＋ 行</button>
+                <button class="sc-btn sc-btn--secondary" id="btnDelRow" type="button">－ 末行</button>
+                <button class="sc-btn sc-btn--secondary" id="btnDelCol" type="button">－ 末列</button>
+                <span class="flex-fill"></span>
+                <button class="sc-btn sc-btn--secondary" id="btnToggleTpl" type="button">停用模板</button>
+                <button class="sc-btn sc-btn--secondary notice-danger-text" id="btnDelTpl" type="button">删除模板</button>
+            </div>
+            <div class="notice-table-wrap">
+                <table class="notice-table" id="noticeTable"></table>
+            </div>
+            <div class="notice-footbar">
+                <span id="footHint">选择左侧公示类型后开始</span>
+                <span class="flex-fill"></span>
+                <button class="sc-btn sc-btn--secondary d-none" id="btnPubRec" type="button">发布公示</button>
+                <button class="sc-btn sc-btn--secondary d-none" id="btnWithdraw" type="button">撤回发布</button>
+                <button class="sc-btn sc-btn--secondary d-none" id="btnPreviewTpl" type="button">预览公示表</button>
+            </div>
+            <input type="hidden" id="nameInput">
+            <input type="hidden" id="titleInput">
+            <input type="month" id="recPeriod" class="d-none">
+        </div>
+    </section>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/notice_list.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}设备管理{% endblock %}
+{% block page_title %}设备管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="list">
+{{ settings_head('设备管理', '机器码准入与解绑') }}
+
+<section class="sc-card">
+    <header class="sc-card__header d-flex align-items-center justify-content-between">
+        <h3 class="sc-card__title">局域网设备准入</h3>
+        <span class="d-flex gap-2">
+            <span class="sc-badge sc-badge--warning" id="pendingBadge">待审批 0</span>
+            <span class="sc-badge sc-badge--success" id="approvedBadge">已准入 0</span>
+            <span class="sc-badge sc-badge--muted" id="revokedBadge">已撤销 0</span>
+        </span>
+    </header>
+    <div class="sc-card__body">
+        <p class="text-muted small" style="margin-bottom:var(--sp-3)">
+            客户机首次打开客户端会自动登记为「待审批」，批准后该设备才能访问本系统。
+            撤销或重新签发会<strong>立即</strong>让该设备当前会话失效。单机版不启用本功能。
+        </p>
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead>
+                    <tr>
+                        <th class="sc-table__th">机器码</th>
+                        <th class="sc-table__th" style="width:90px">类型</th>
+                        <th class="sc-table__th">备注</th>
+                        <th class="sc-table__th" style="width:90px">状态</th>
+                        <th class="sc-table__th d-none d-xl-table-cell" style="width:160px">首次登记</th>
+                        <th class="sc-table__th d-none d-xl-table-cell" style="width:160px">最近握手</th>
+                        <th class="sc-table__th" style="width:250px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="deviceBody">
+                    <tr><td colspan="7" class="text-center text-muted py-4">正在加载…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="credentialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">设备凭证</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <p class="text-muted small">把下面这段凭证复制到该设备的客户端「凭证」框内，然后重新连接。</p>
+                <textarea class="sc-textarea font-monospace" id="credentialText" rows="7" readonly></textarea>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" id="copyCredential">复制凭证</button>
+                <button type="button" class="sc-btn sc-btn--primary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+    var STATUS={pending:['待审批','sc-badge--warning'],approved:['已准入','sc-badge--success'],revoked:['已撤销','sc-badge--muted']};
+    function render(items, counts){
+        $('#pendingBadge').text('待审批 '+(counts.pending||0));
+        $('#approvedBadge').text('已准入 '+(counts.approved||0));
+        $('#revokedBadge').text('已撤销 '+(counts.revoked||0));
+        var body=$('#deviceBody').empty();
+        if(!items.length){ body.append('<tr><td colspan="7" class="text-center text-muted py-4">暂无设备。请在客户端首次连接后刷新本页。</td></tr>'); return; }
+        items.forEach(function(d){
+            var st=STATUS[d.status]||[d.status,'sc-badge--muted'];
+            // R-050-01：大屏行不渲染「批准 / 重新签发」（凭证走大屏管理页），只留撤销 / 删除
+            var ops='<div class="sc-row-actions">';
+            if(d.device_type!=='screen'){
+                ops+='<button type="button" class="sc-btn sc-btn--text is-success" data-act="approve" data-id="'+d.id+'">批准</button>'
+                    + '<button type="button" class="sc-btn sc-btn--text" data-act="reissue" data-id="'+d.id+'">重新签发</button>';
+            }
+            ops+='<button type="button" class="sc-btn sc-btn--text" data-act="revoke" data-id="'+d.id+'">撤销</button>'
+                + '<button type="button" class="sc-btn sc-btn--text is-danger" data-act="delete" data-id="'+d.id+'">删除</button>'
+                + '</div>';
+            body.append('<tr><td class="font-monospace">'+$('<div>').text(d.machine_code).html()+'</td>'
+                +'<td>'+(d.device_type==='screen'?'大屏':'客户机')+'</td>'
+                +'<td>'+$('<div>').text(d.label||'—').html()+'</td>'
+                +'<td><span class="sc-badge '+st[1]+'">'+st[0]+'</span></td>'
+                // GLB-40：两个时间列 ≥1200px 才显示，1093px 级视口消除横向滚动
+                +'<td class="small text-muted d-none d-xl-table-cell">'+(d.first_seen||'—')+'</td>'
+                +'<td class="small text-muted d-none d-xl-table-cell">'+(d.last_seen||'—')+'</td>'
+                +'<td>'+ops+'</td></tr>');
+        });
+    }
+    function load(){
+        $.get('/device-mgmt/api/list', function(r){
+            if(r.success) render(r.data.items, r.data.counts);
+            else showToast(r.msg||'读取失败','danger');
+        }).fail(function(){ showToast('读取失败','danger'); });
+    }
+    var TIPS={approve:'确定批准该设备访问本系统吗？',revoke:'撤销后该设备当前会话立即失效，确定继续吗？',reissue:'重新签发后旧凭证立即失效，需把新凭证发给该设备。确定继续吗？',delete:'删除后该设备将重新进入待审批，确定删除吗？'};
+    $('#deviceBody').on('click','button[data-act]',function(){
+        var act=$(this).data('act'), id=$(this).data('id');
+        if(!confirm(TIPS[act]||'确定继续吗？')) return;
+        var url='/device-mgmt/api/'+id, opt={type:'POST'};
+        if(act==='delete'){ url='/device-mgmt/api/'+id; opt={type:'DELETE'}; }
+        else { url=url+'/'+act; }
+        $.ajax(Object.assign({url:url,dataType:'json'},opt)).done(function(r){
+            if(!r.success){ showToast(r.msg||'操作失败','danger'); return; }
+            showToast(r.msg||'操作成功','success');
+            if(act==='reissue'&&r.data&&r.data.credential){
+                $('#credentialText').val(JSON.stringify(r.data.credential,null,2));
+                new bootstrap.Modal(document.getElementById('credentialModal')).show();
+            }
+            load();
+        }).fail(function(){ showToast('操作失败','danger'); });
+    });
+    $('#copyCredential').on('click',function(){
+        var t=document.getElementById('credentialText'); t.select();
+        try{ document.execCommand('copy'); showToast('凭证已复制','success'); }catch(e){ showToast('请手工复制','warning'); }
+    });
+    load();
+})();
+</script>
+{% endblock %}

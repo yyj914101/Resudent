@@ -1,0 +1,38 @@
+{# 设置中心页壳（060/068）—— 返回链接 + 页头（可选页头主按钮）
+   依据：页面 handoff §4.1「设置中心特殊页型 C」+ 组件 handoff §2.2/§2.11。
+   只服务设置中心 13 页（1 hub + 12 内容页）；样式在 components.css（068 起，禁页面级 extra_css）。 #}
+
+{% macro settings_head(title, subtitle='', primary_label='', primary_onclick='') %}
+<a class="sc-backlink" href="{{ url_for('settings.center') }}">← 返回设置中心</a>
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">{{ title }}</h2>
+    {% if subtitle %}<p class="sc-page-head__meta">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if primary_label %}
+  <div class="sc-page-head__actions">
+    <button type="button" class="sc-btn sc-btn--primary" onclick="{{ primary_onclick }}">{{ primary_label }}</button>
+  </div>
+  {% endif %}
+</header>
+{% endmacro %}
+
+{% macro settings_head_actions(title, subtitle='') %}
+<a class="sc-backlink" href="{{ url_for('settings.center') }}">← 返回设置中心</a>
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">{{ title }}</h2>
+    {% if subtitle %}<p class="sc-page-head__meta">{{ subtitle }}</p>{% endif %}
+  </div>
+  <div class="sc-page-head__actions">{{ caller() }}</div>
+</header>
+{% endmacro %}
+
+{% macro page_head(title, subtitle='') %}
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">{{ title }}</h2>
+    {% if subtitle %}<p class="sc-page-head__meta">{{ subtitle }}</p>{% endif %}
+  </div>
+</header>
+{% endmacro %}

@@ -1,0 +1,19 @@
+        :root { --gov-blue: var(--color-primary); --gov-blue-dark: #0e45c0; }
+        body { background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 100%); min-height: 100vh; }
+        .recovery-card { max-width: 560px; margin: 8vh auto; border: none; border-radius: 14px; box-shadow: 0 10px 40px rgba(22, 93, 255, .12); }
+        .btn-unlock { background: var(--gov-blue); border: none; border-radius: 6px; padding: 11px; font-weight: 600; color: var(--color-surface); width: 100%; }
+        .btn-unlock:hover { background: var(--gov-blue-dark); }
+        .backup-item { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+        .backup-item.selected { border-color: var(--gov-blue); background: #eff4ff; }
+        .alert { font-size: 14px; }
+    
+
+        /* 077 存量回灌：.form-control/.badge/.btn-outline-secondary → 页面专有类
+           （独立壳页不加载 components.css，不伪造 sc- 名；bootstrap 承重基座/形态随改名补入） */
+        .auth-input { display: block; width: 100%; font-weight: 400; line-height: 1.5; color: var(--bs-body-color); background-color: var(--bs-body-bg); background-clip: padding-box; appearance: none; transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out; border-radius: 6px; padding: 10px 13px; border: 1px solid #cfd8e3; font-size: 14px; }
+        .auth-input::placeholder { color: var(--bs-secondary-color); opacity: 1; }
+        .auth-input:focus { border-color: var(--gov-blue); box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.12); outline: 0; }
+        .recovery-chip { display: inline-block; padding: .35em .65em; font-size: .75em; font-weight: 700; line-height: 1; text-align: center; white-space: nowrap; vertical-align: baseline; border-radius: 50rem; background-color: rgba(248, 249, 250, 1); color: var(--bs-secondary-color); }
+        .btn-back { color: var(--bs-secondary-color); border: var(--bs-border-width) solid #6c757d; }
+        .btn-back:hover { color: #fff; background-color: #6c757d; border-color: #6c757d; }
+        .recovery-body { flex: 1 1 auto; }  /* 077：card-body → 专有类；padding 由 p-4/p-md-5 工具类承载，.card 基座保留 */

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}大屏管理{% endblock %}
+{% block page_title %}大屏管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="special">
+{{ settings_head('大屏管理', '大厅投屏的内容配置与设备凭证') }}
+
+<div class="sc-grid">
+    <div class="sc-grid__main">
+        <section class="sc-card h-100">
+            <header class="sc-card__header d-flex align-items-center justify-content-between">
+                <h3 class="sc-card__title">大屏展示配置</h3>
+                <span class="sc-badge sc-badge--muted" id="screenState">读取中</span>
+            </header>
+            <div class="sc-card__body">
+                <form id="screenConfigForm">
+                    <div class="form-check form-switch" style="margin-bottom:var(--sp-3)">
+                        <input class="form-check-input" type="checkbox" id="screenEnabled" name="enabled">
+                        <label class="form-check-label fw-semibold" for="screenEnabled">启用大厅数据大屏</label>
+                    </div>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="sc-field" style="flex:1 1 220px"><label class="sc-field__label" for="villageName">展示村名</label><input class="sc-input" name="village_name" id="villageName" placeholder="例如：融水镇三合村"></div>
+                        <div class="sc-field" style="flex:1 1 220px"><label class="sc-field__label" for="screenTitle">大屏标题</label><input class="sc-input" name="title" id="screenTitle"></div>
+                        <div class="sc-field" style="flex:1 1 150px"><label class="sc-field__label" for="refreshSeconds" style="flex:0 0 56px">刷新间隔</label><input class="sc-input" type="number" min="30" max="3600" name="refresh_seconds" id="refreshSeconds"></div>
+                        <div class="sc-field" style="flex:1 1 150px"><label class="sc-field__label" for="workStart" style="flex:0 0 56px">工作开始</label><input class="sc-input" type="time" name="work_start" id="workStart"></div>
+                        <div class="sc-field" style="flex:1 1 150px"><label class="sc-field__label" for="workEnd" style="flex:0 0 56px">工作结束</label><input class="sc-input" type="time" name="work_end" id="workEnd"></div>
+                    </div>
+                    <div class="sc-modal__divider" style="margin:var(--sp-3) 0"></div>
+                    <div class="form-check form-switch" style="margin-bottom:var(--sp-2)"><input class="form-check-input" type="checkbox" id="showDeath" name="show_death_count"><label class="form-check-label" for="showDeath">显示本月死亡人数</label></div>
+                    <div class="text-muted small" style="margin-bottom:var(--sp-3)">大屏只展示汇总数据，不显示姓名、身份证号、电话和住址。工作时间内按设定间隔自动刷新。</div>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存配置</button>
+                    <a class="sc-btn sc-btn--secondary" id="previewButton" href="{{ screen_url }}" target="_blank" style="margin-left:var(--sp-2)">打开默认大屏</a>
+                </form>
+            </div>
+        </section>
+    </div>
+    <div class="sc-grid__side">
+        <section class="sc-card" style="margin-bottom:var(--sp-4)">
+            <header class="sc-card__header"><h3 class="sc-card__title">新增一块大屏</h3></header>
+            <div class="sc-card__body">
+                <label class="sc-field__label" for="newScreenName" style="display:block;line-height:20px;margin-bottom:var(--sp-2)">每块大屏一个独立凭证，可单独轮换或撤销</label>
+                <div class="d-flex gap-2">
+                    <input class="sc-input" id="newScreenName" placeholder="例如：一楼大厅 / 二楼会议室" maxlength="100">
+                    <button class="sc-btn sc-btn--secondary" type="button" id="addScreen" style="flex:none">新增</button>
+                </div>
+            </div>
+        </section>
+        <section class="sc-card">
+            <header class="sc-card__header"><h3 class="sc-card__title">使用说明</h3></header>
+            <div class="sc-card__body text-muted small">
+                <p style="margin-bottom:var(--sp-2)">在安卓盒子浏览器中打开对应大屏地址即可投屏。服务端与盒子需在同一局域网，建议给服务端设置固定 IP。</p>
+                <p style="margin-bottom:0">轮换/撤销后<strong>旧地址立即失效</strong>，请把新地址重新配置到对应设备。</p>
+            </div>
+        </section>
+    </div>
+
+    <div class="col-12">
+        <section class="sc-card">
+            <header class="sc-card__header d-flex align-items-center justify-content-between">
+                <h3 class="sc-card__title">大屏列表</h3>
+                <span class="sc-card__meta">共 <span id="screenTotal">0</span> 块</span>
+            </header>
+            <div class="sc-table-wrap">
+                <table class="sc-table">
+                    <thead>
+                        <tr>
+                            <th class="sc-table__th">名称</th>
+                            <th class="sc-table__th">访问地址</th>
+                            <th class="sc-table__th" style="width:100px">状态</th>
+                            <th class="sc-table__th" style="width:180px">最近访问</th>
+                            <th class="sc-table__th" style="width:280px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="screenBody">
+                        <tr><td colspan="5" class="text-center text-muted py-4">正在加载…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+    var STATUS={approved:['有效','sc-badge--success'],revoked:['已撤销','sc-badge--muted'],missing:['凭证缺失','sc-badge--danger']};
+    // GLB-37：AJAX 路径统一挂 script_root，避免子路径部署时绝对路径失效
+    var API_ROOT={{ request.script_root|tojson }};
+    function esc(v){ return $('<div>').text(v==null?'':v).html(); }
+    function maskToken(t){ return t ? (t.slice(0,8)+'…'+t.slice(-4)) : '—'; }
+    function renderScreens(items){
+        var body=$('#screenBody').empty();
+        $('#screenTotal').text(items.length);
+        if(!items.length){ body.append('<tr><td colspan="5" class="text-center text-muted py-4">暂无大屏，请在右上角新增。</td></tr>'); return; }
+        items.forEach(function(d){
+            var st=STATUS[d.status]||[d.status,'sc-badge--muted'];
+            var ops='<div class="sc-row-actions">'
+                  + '<a class="sc-btn sc-btn--text" href="'+esc(d.url)+'" target="_blank">打开</a>'
+                  + '<button type="button" class="sc-btn sc-btn--text" data-act="copy" data-id="'+d.id+'">复制地址</button>'
+                  + '<button type="button" class="sc-btn sc-btn--text" data-act="rotate" data-id="'+d.id+'">轮换</button>'
+                  + '<button type="button" class="sc-btn sc-btn--text" data-act="revoke" data-id="'+d.id+'">撤销</button>'
+                  + '<button type="button" class="sc-btn sc-btn--text is-danger" data-act="delete" data-id="'+d.id+'">删除</button>'
+                  + '</div>';
+            body.append('<tr><td>'+esc(d.name)+'</td>'
+                +'<td><code class="small">'+esc(maskToken(d.token))+'</code></td>'
+                +'<td><span class="sc-badge '+st[1]+'">'+st[0]+'</span></td>'
+                +'<td class="small text-muted">'+esc(d.last_seen||'尚未访问')+'</td>'
+                +'<td>'+ops+'</td></tr>');
+        });
+        window.__screens=items;
+    }
+    function loadConfig(){
+        $.get(API_ROOT+'/screen-admin/api/config', function(r){
+            if(!r.success) return;
+            var c=r.data.config;
+            $('#screenEnabled').prop('checked', !!c.enabled); $('#villageName').val(c.village_name || ''); $('#screenTitle').val(c.title || '');
+            $('#refreshSeconds').val(c.refresh_seconds || 60); $('#workStart').val(c.work_start || '08:00'); $('#workEnd').val(c.work_end || '18:00'); $('#showDeath').prop('checked', !!c.show_death_count);
+            $('#screenState').removeClass('sc-badge--success sc-badge--muted').addClass(c.enabled ? 'sc-badge--success' : 'sc-badge--muted').text(c.enabled ? '已启用' : '未启用');
+            if(r.data.screen_url) $('#previewButton').attr('href', r.data.screen_url);
+            renderScreens(r.data.screens || []);
+        });
+    }
+    function loadScreens(){
+        $.get(API_ROOT+'/screen-admin/api/screens', function(r){ if(r.success) renderScreens(r.data.items || []); });
+    }
+    $('#screenConfigForm').on('submit', function(e){ e.preventDefault(); $.post(API_ROOT+'/screen-admin/api/config/save', $(this).serialize(), function(r){ if(r.success){ showToast('大屏配置已保存','success'); loadConfig(); } else showToast(r.msg || '保存失败','danger'); }).fail(function(){ showToast('保存失败','danger'); }); });
+    $('#addScreen').on('click', function(){
+        var name=$('#newScreenName').val().trim();
+        $.post(API_ROOT+'/screen-admin/api/screens', {name:name}, function(r){
+            if(!r.success){ showToast(r.msg||'新增失败','danger'); return; }
+            $('#newScreenName').val(''); showToast('已新增，请把地址配置到对应设备','success'); loadScreens();
+        }).fail(function(){ showToast('新增失败','danger'); });
+    });
+    var TIPS={rotate:'轮换后该大屏的旧地址立即失效，确定继续吗？',revoke:'撤销后该大屏立即无法投屏，确定继续吗？',delete:'删除后该地址永久失效，确定删除吗？'};
+    $('#screenBody').on('click','button[data-act]',function(){
+        var act=$(this).data('act'), id=$(this).data('id');
+        var item=(window.__screens||[]).filter(function(d){ return String(d.id)===String(id); })[0] || {};
+        if(act==='copy'){
+            var text=item.url||'';
+            if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ showToast('地址已复制','success'); }, function(){ showToast('请手工复制','warning'); }); }
+            else { var t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select(); try{ document.execCommand('copy'); showToast('地址已复制','success'); }catch(e){ showToast('请手工复制','warning'); } t.remove(); }
+            return;
+        }
+        if(!confirm(TIPS[act]||'确定继续吗？')) return;
+        var opt={type:'POST'}, url=API_ROOT+'/screen-admin/api/screens/'+id+'/'+act;
+        if(act==='delete'){ opt={type:'DELETE'}; url=API_ROOT+'/screen-admin/api/screens/'+id; }
+        $.ajax(Object.assign({url:url,dataType:'json'},opt)).done(function(r){
+            if(!r.success){ showToast(r.msg||'操作失败','danger'); return; }
+            showToast(r.msg||'操作成功','success'); loadScreens();
+        }).fail(function(){ showToast('操作失败','danger'); });
+    });
+    loadConfig();
+})();
+</script>
+{% endblock %}

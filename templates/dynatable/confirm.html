@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}建表确认{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">建表确认</h2>
+        <p class="sc-page-head__meta">推断结果仅供参考，必须逐列核对后再建表；枚举列必须指定字典分类（选项运行时读字典，不在本表存副本）。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/upload"><i class="bi bi-arrow-left"></i> 重新上传</a>
+    </div>
+</header>
+
+<section class="sc-card">
+    <p class="sc-field__hint" id="sourceLine">正在读取解析结果…</p>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="fieldTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th" style="width:200px">列名</th>
+                    <th class="sc-table__th" style="width:120px">字段标识</th>
+                    <th class="sc-table__th" style="width:120px">类型</th>
+                    <th class="sc-table__th" style="width:130px">敏感级别</th>
+                    <th class="sc-table__th" style="width:170px">字典分类</th>
+                    <th class="sc-table__th" style="width:70px">必填</th>
+                    <th class="sc-table__th">推断提示</th>
+                </tr>
+            </thead>
+            <tbody id="fieldBody"></tbody>
+        </table>
+    </div>
+</section>
+
+<section class="sc-card" id="previewCard">
+    <h3 class="sc-page-head__name" style="font-size:15px;margin-bottom:8px">前 5 行预览</h3>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="previewTable">
+            <thead class="sc-table__head"><tr id="previewHead"></tr></thead>
+            <tbody id="previewBody"></tbody>
+        </table>
+    </div>
+</section>
+
+<section class="sc-card">
+    <div class="sc-row-actions">
+        <label class="sc-check"><input type="checkbox" id="skipErrorRows"> 跳过不合规行，仅导入合法行</label>
+    </div>
+    <div class="sc-row-actions" style="margin-top:12px">
+        <button type="button" class="sc-btn sc-btn--primary" id="createBtn"><i class="bi bi-check2-circle"></i> 确认无误，建表并导入</button>
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/">取消</a>
+    </div>
+    <p class="sc-field__hint" id="createMsg" style="margin-top:10px"></p>
+    <div id="errorList"></div>
+</section>
+
+<section class="sc-card d-none" id="asyncCard">
+    <h3 class="sc-page-head__name" style="font-size:15px;margin-bottom:8px">后台分批导入进度</h3>
+    <div class="progress" style="height:18px">
+        <div class="progress-bar" id="asyncBar" role="progressbar" aria-valuemin="0"
+             aria-valuemax="100" aria-valuenow="0" style="width:0%">0%</div>
+    </div>
+    <p class="sc-field__hint" id="asyncMsg" style="margin-top:8px">已提交后台分批导入：不合规行自动跳过，完成后可在此查看报告与导出失败行。</p>
+    <div id="asyncReport"></div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dynatable_confirm.js') }}"></script>
+{% endblock %}

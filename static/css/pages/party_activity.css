@@ -1,0 +1,195 @@
+/* party_activity.css — 机构管理 · 党务活动台账与弹窗（ADR-022 视觉基线）
+ * 作用域 .pa-*，全部颜色/圆角/间距引用 tokens.css，零裸色值。 */
+
+/* ── 主页面纵向节奏与指标条 ── */
+.pa-stack { display: grid; gap: var(--sp-4); }
+
+.pa-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.pa-kpi {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.pa-kpi__label { font-size: 12px; color: var(--c-muted); font-weight: 500; }
+.pa-kpi__val {
+  font-family: var(--ff-num);
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--c-ink);
+  line-height: 1.2;
+}
+.pa-kpi__unit { font-size: 12px; font-weight: 400; color: var(--c-muted); margin-left: 3px; }
+
+.pa-num { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+.pa-branch-cell { max-width: 240px; }
+.pa-review-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-top: var(--sp-3);
+  margin-top: var(--sp-2);
+  border-top: 1px solid var(--c-line-2);
+}
+
+/* ── 活动详情弹窗：840px 单屏紧凑架构 ── */
+.modal-dialog:has(.pa-detail) { max-width: 840px; }
+.pa-detail { width: 840px; max-width: 100%; }
+
+.pa-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  min-height: 0;
+}
+.pa-header__id { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.pa-header__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+.pa-vline { background: var(--c-line-3); flex: none; width: 1px; height: 14px; }
+.pa-header__meta {
+  font-size: 12px;
+  color: var(--c-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pa-header__ops { display: flex; align-items: center; gap: 8px; flex: none; }
+.pa-btn-sm { padding: 5px 12px; font-size: 12px; }
+.pa-close { width: 28px; height: 28px; margin: 0; }
+
+.pa-body { padding: 14px 20px; display: grid; gap: 12px; }
+.pa-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+}
+.pa-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--c-line-2);
+}
+.pa-card__title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pa-card__name { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink); letter-spacing: .02em; }
+.pa-catbar { width: 3px; height: 14px; border-radius: var(--r-full); flex: none; }
+.pa-catbar--1 { background: var(--c-cat-1); }
+.pa-catbar--2 { background: var(--c-cat-2); }
+.pa-catindex {
+  font-family: var(--ff-num);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-badge);
+  flex: none;
+}
+.pa-catindex--1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.pa-catindex--2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+
+.pa-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 20px; }
+.pa-field { display: flex; flex-direction: column; min-width: 0; }
+.pa-field--half { grid-column: span 2; }
+.pa-label { font-size: 11px; color: var(--c-muted); margin-bottom: 3px; }
+.pa-value { font-size: 13px; color: var(--c-ink); line-height: 1.45; word-break: break-word; }
+.pa-value--strong { font-weight: 600; }
+.pa-unset {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: var(--r-badge);
+  background: var(--c-hover);
+  color: var(--c-faint);
+  font-size: 11px;
+  width: fit-content;
+}
+
+.pa-content-slot {
+  background: var(--c-side);
+  border: 1px solid var(--c-line-2);
+  border-radius: var(--r-ctrl);
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--c-ink-2);
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.pa-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--c-side);
+  border-top: 1px solid var(--c-line-2);
+}
+.pa-footer__hint { font-size: 12px; color: var(--c-muted); }
+
+/* ── 新增/编辑活动弹窗：修复所在党支部 select 溢出边界缺陷 ──
+ * 054-C：app.js 会把 select 包成 .custom-select（原生 select 被 .cs-native 置
+ * display:none 只管提交值），可见外观落在 wrapper/.custom-select__trigger 上——
+ * 仅约束 .sc-select 压不住 wrapper，长支部名仍会冲出弹窗右缘（实测 trigger
+ * right 1049 > modal right 980），故 wrapper 同列纳入 minmax(0,1fr) 收缩链。 */
+.modal-dialog:has(.pa-form-modal) { max-width: 760px; }
+.pa-form-modal { width: 760px; }
+.pa-form-modal .sc-modal__body--grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  padding: 16px 20px;
+}
+.pa-form-modal .sc-field { min-width: 0; }
+.pa-form-modal .sc-field__label { flex: 0 0 82px; line-height: 34px; }
+.pa-form-modal .sc-input,
+.pa-form-modal .sc-select,
+.pa-form-modal .sc-textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 054-C：wrapper 是菜单的定位父级（菜单 absolute 自 wrapper 底部展开至多 280px），
+   height/overflow 落到 wrapper 会把整棵菜单裁没——视觉"点击无反应"（2026-11-21 人工验收实证，
+   resident_add.css 同款前车之鉴）；限高/省略号只落在 .custom-select__trigger 上 */
+.pa-form-modal .custom-select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.pa-form-modal .custom-select__trigger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .pa-kpi-strip { grid-template-columns: 1fr; }
+  .pa-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pa-form-modal .sc-modal__body--grid { grid-template-columns: minmax(0, 1fr); }
+  .pa-header__name { max-width: 180px; }
+}

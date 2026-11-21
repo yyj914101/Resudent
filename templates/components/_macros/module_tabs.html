@@ -1,0 +1,146 @@
+{# 页内分组胶囊（065）—— Wave 2 五路公共地基
+ *
+ * 接口（只有两个参数）：
+ *   module_tabs(module_key, active_key='')
+ *     module_key ∈ {civil, resident, social, org, governance, visitcare, death}
+ *     active_key = 当前项 key；不传 / 未命中 → 0 个激活（不报错）
+ *
+ * 2026-11-16：撤除 tools 组（证明开具 / 死亡上报 / 导入批次）。后两者按主理人指示移出
+ * 证明开具页，升为侧栏入口（死亡上报 → 社区治理组；导入批次 → 数据管理组，与台账建表并列），
+ * 因此本页不再有跨页胶囊；单枚胶囊无导航意义，故整组删除而非留一项。
+ *
+ * 配置即真源：标签文案、顺序、URL、权限位全部在 MODULE_TABS 里。
+ * 调用方（059 / 061 / 062）只调用，不得复制一份 tabs 列表 —— 同组标签跨页重复，复制必漂移。
+ *
+ * 🔴 取值一律用下标 it['key'] / row['items']：
+ *   Jinja 里 row.items 会解析成 dict.items 方法（057a 已踩过，'builtin_function_or_method' not iterable）。
+ *
+ * 形态由配置结构决定，不给调用方开关：
+ *   多行 + 行标签 = civil（2 行）、governance（3 行）；单行无标签 = 其余五组。
+ * href 一律 url_for(...) + '#tab=<key>'（D-18 hash 承载，065 任务书验收 3）；
+ *   首屏激活态由 active_key 服务端渲染，hash 切换后的激活态由调用页 JS 维护。
+ #}
+
+{# 2026-11-16 第二轮派单（综治分类重排 + 走访分出独立入口）：
+ *   1. governance 按「人员管理 / 场所与行业 / 矛盾调处」三类重排，行标签即分类维度；
+ *   2. 撤「社区矫正」「社区戒毒康复」两枚胶囊（入口/路由/数据/代码一并下线），
+ *      「刑满释放帮教」改名「刑事人员」（category 键同步 resettlement → criminal，
+ *      服刑人员与刑满释放人员用页面「人员状态」筛选区分）；
+ *   3. 特困人员走访 / 走访计划 / 走访记录 从综治管理移出，另立 visitcare 组，
+ *      宿主页 = 走访计划（侧栏一级入口「走访关爱」）。
+ *   注意：Jinja 表达式内不允许注释，故本块说明集中在此、配置体内不写注释。 #}
+{% set MODULE_TABS = {
+  'civil': [
+    {'label': '对象查询', 'items': [
+      {'key': 'dibao', 'label': '低保查询', 'title': '低保人员查询', 'endpoint': 'dibao.dibao_list'},
+      {'key': 'disabled', 'label': '残疾查询', 'title': '残疾人查询', 'endpoint': 'disabled.disabled_list'},
+      {'key': 'care', 'label': '关爱对象', 'title': '关爱对象', 'endpoint': 'care.care_list'},
+      {'key': 'welfare', 'label': '公益岗查询', 'title': '公益岗查询', 'endpoint': 'welfare.page_list'},
+      {'key': 'vulnerable', 'label': '弱势群体查询', 'title': '弱势群体台账', 'endpoint': 'resident.vulnerable_page'},
+      {'key': 'youshu', 'label': '优抚对象', 'title': '优抚对象（因伤病残涉核退役军人优待补贴）', 'endpoint': 'youshu.list_page'}
+    ]},
+    {'label': '报表', 'items': [
+      {'key': 'stats', 'label': '一老一小统计表', 'title': '一老一小统计表', 'endpoint': 'report.stats_table'},
+      {'key': 'roster', 'label': '民政对象总花名册', 'title': '民政对象花名册', 'endpoint': 'report.roster_view'}
+    ]}
+  ],
+  'resident': [
+    {'label': None, 'items': [
+      {'key': 'query', 'label': '居民查询', 'title': '居民查询', 'endpoint': 'resident.list'},
+      {'key': 'add', 'label': '新增居民', 'title': '新增居民', 'endpoint': 'resident.add'},
+      {'key': 'shop', 'label': '店铺信息', 'title': '店铺信息', 'endpoint': 'shop.list_page'},
+      {'key': 'shop-facility', 'label': '设施分布', 'title': '基础设施分布', 'endpoint': 'shop.facility_page'}
+    ]}
+  ],
+  'social': [
+    {'label': None, 'items': [
+      {'key': 'medical-insurance', 'label': '医保参保管理', 'title': '医保参保管理', 'endpoint': 'medical_insurance.list'},
+      {'key': 'pension', 'label': '养老保险', 'title': '养老保险', 'endpoint': 'pension.index'},
+      {'key': 'employment', 'label': '就业服务', 'title': '就业服务', 'endpoint': 'welfare.employment_page'}
+    ]}
+  ],
+  'org': [
+    {'label': None, 'items': [
+      {'key': 'structure', 'label': '组织架构', 'title': '组织架构', 'endpoint': 'organization.list'},
+      {'key': 'party', 'label': '党员管理', 'title': '党员管理', 'endpoint': 'party.party_list'},
+      {'key': 'party-development', 'label': '党员发展', 'title': '党员发展', 'endpoint': 'party.development_page'},
+      {'key': 'party-activity', 'label': '党务活动', 'title': '党务活动台账', 'endpoint': 'party.activity_page'},
+      {'key': 'dues', 'label': '党费缴纳', 'title': '党费缴纳', 'endpoint': 'party.dues_list'}
+    ]}
+  ],
+  'governance': [
+    {'label': '人员管理', 'items': [
+      {'key': 'mental-health', 'label': '严重精神障碍', 'title': '严重精神障碍患者台账', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'mental-health'}},
+      {'key': 'security-committee', 'label': '治保委员会', 'title': '治保委员会花名册', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'security-committee'}},
+      {'key': 'criminal', 'label': '刑事人员', 'title': '刑事人员台账（服刑人员 / 刑满释放人员）', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'criminal'}}
+    ]},
+    {'label': '场所与行业', 'items': [
+      {'key': 'road-hazard', 'label': '道交隐患', 'title': '道路交通安全隐患台账', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'road-hazard'}},
+      {'key': 'key-vehicle', 'label': '重点车辆', 'title': '重点车辆驾驶人名册', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'key-vehicle'}},
+      {'key': 'guide-station', 'label': '劝导站', 'title': '交通安全劝导站台账', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'guide-station'}}
+    ]},
+    {'label': '矛盾调处', 'items': [
+      {'key': 'mediation', 'label': '矛盾纠纷化解', 'title': '矛盾纠纷化解', 'endpoint': 'mediation.list'},
+      {'key': 'stability-risk', 'label': '社会稳定风险', 'title': '社会稳定风险排查化解记录', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'stability-risk'}},
+      {'key': 'petition', 'label': '信访维稳', 'title': '信访维稳', 'endpoint': 'governance.petition_page'}
+    ]}
+  ],
+  'visitcare': [
+    {'label': None, 'items': [
+      {'key': 'special-visit', 'label': '特困人员走访', 'title': '特困人员走访记录', 'endpoint': 'governance.ledger', 'kwargs': {'category': 'special-visit'}},
+      {'key': 'visit-plan', 'label': '走访计划', 'title': '走访计划', 'endpoint': 'visit.list_page'},
+      {'key': 'visit-log', 'label': '走访记录', 'title': '走访记录', 'endpoint': 'visit.history'}
+    ]}
+  ],
+  'death': [
+    {'label': None, 'items': [
+      {'key': 'death', 'label': '死亡上报', 'title': '死亡上报', 'endpoint': 'death_report.list'},
+      {'key': 'reconcile', 'label': '死亡名单对账', 'title': '死亡名单对账', 'endpoint': 'reconcile.index'}
+    ]}
+  ]
+} %}
+
+
+{% macro module_tabs(module_key, active_key='') -%}
+{% set rows = MODULE_TABS.get(module_key) %}
+{% if rows %}
+{#- 2026-11 修订：多行导航（civil 6+5）改共享栅格——label 与全部胶囊平铺进单个
+    .sc-chips__grid（grid-template-columns: 72px repeat(max(N), max-content)，N=权限过滤后每行胶囊数；
+    各行不要求等数，短行末列留空），列宽=该列跨行最大文案宽 → 上下左右对齐且胶囊不拉伸。
+    单行组（居民/组织/综治/工具）保持逐行 flex 原样。 -#}
+  {%- set counts = [] -%}
+  {%- for row in rows -%}
+    {%- set ns = namespace(n=0) -%}
+    {%- for it in row['items'] -%}{%- if not it.get('perm') or has_perm(it['perm']) -%}{%- set ns.n = ns.n + 1 -%}{%- endif -%}{%- endfor -%}
+    {%- set _ = counts.append(ns.n) -%}
+  {%- endfor -%}
+  {%- set flat_grid = rows|length > 1
+        and counts | max > 0
+        and rows | selectattr('label') | list | length == rows|length -%}
+<nav class="sc-chips{{ ' sc-chips--grid' if flat_grid }}" aria-label="模块内导航">
+  {%- if flat_grid %}
+  <div class="sc-chips__grid" style="grid-template-columns: 72px repeat({{ counts | max }}, max-content);">
+    {%- for row in rows %}
+    {%- if row['label'] %}<span class="sc-chips__label">{{ row['label'] }}</span>{% endif -%}
+    {%- for it in row['items'] %}
+    {%- if not it.get('perm') or has_perm(it['perm']) %}
+    <a class="sc-chip{{ ' is-active' if it['key'] == active_key }}" href="{{ url_for(it['endpoint'], **(it.get('kwargs') or {})) }}#tab={{ it['key'] }}" title="{{ it.get('title') or it['label'] }}">{{ it['label'] }}</a>
+    {%- endif %}
+    {%- endfor %}
+    {%- endfor %}
+  </div>
+  {%- else %}
+    {%- for row in rows %}
+  <div class="sc-chips__row">
+    {%- if row['label'] %}<span class="sc-chips__label">{{ row['label'] }}</span>{% endif -%}
+    {%- for it in row['items'] %}
+    {%- if not it.get('perm') or has_perm(it['perm']) %}
+    <a class="sc-chip{{ ' is-active' if it['key'] == active_key }}" href="{{ url_for(it['endpoint'], **(it.get('kwargs') or {})) }}#tab={{ it['key'] }}" title="{{ it.get('title') or it['label'] }}">{{ it['label'] }}</a>
+    {%- endif %}
+    {%- endfor %}
+  </div>
+    {%- endfor %}
+  {%- endif %}
+</nav>
+{% endif %}
+{%- endmacro %}

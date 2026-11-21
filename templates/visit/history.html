@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block title %}走访记录{% endblock %}
+{% block page_title %}走访记录{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{{ page_head('走访记录', '走访关爱 · 走访记录（按居民/计划/时间/走访人筛选）') }}
+{# 2026-11-16：走访计划/走访记录/特困人员走访 由综治管理移出，归入新一级入口「走访关爱」 #}
+{{ module_tabs('visitcare', 'visit-log') }}
+
+<div class="sc-stat-strip" id="statCards">
+    <div class="sc-stat">
+        <div class="sc-stat__label label">应访对象（<span id="statScope">全局</span>）</div>
+        <div class="sc-stat__value" id="statTotal">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label label">已访对象（去重）</div>
+        <div class="sc-stat__value" id="statVisited">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label label">走访覆盖率（G2 ≥90%）</div>
+        <div class="sc-stat__value" id="statCoverage">0%</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label label">补录率（K4 ≥90%）</div>
+        <div class="sc-stat__value" id="statCompletion">0%</div>
+    </div>
+</div>
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <select class="sc-select" name="plan_id" id="planSelect" style="width:160px">
+            <option value="">全部计划</option>
+        </select>
+        <input type="text" class="sc-input" name="keyword" placeholder="居民姓名/区域" style="width:160px">
+        <input type="date" class="sc-input" name="start_date" title="开始日期" style="width:150px">
+        <input type="date" class="sc-input" name="end_date" title="结束日期" style="width:150px">
+        <select class="sc-select" name="visit_type" style="width:130px">
+            <option value="">全部方式</option>
+            {% for t in visit_types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select class="sc-select" name="visitor_id" style="width:140px">
+            <option value="">全部走访人</option>
+            {% for v in visitors %}
+            <option value="{{ v.id }}">{{ v.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+    </form>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:50px">序号</th>
+                    <th class="sc-table__th">走访日期</th>
+                    <th class="sc-table__th">居民</th>
+                    <th class="sc-table__th">计划</th>
+                    <th class="sc-table__th">方式</th>
+                    <th class="sc-table__th">内容</th>
+                    <th class="sc-table__th">需求</th>
+                    <th class="sc-table__th">照片</th>
+                    <th class="sc-table__th">走访人</th>
+                    <th class="sc-table__th" style="width:80px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- 时间线详情 Modal -->
+<div class="modal fade" id="timelineModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="timelineTitle">走访历史时间线</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="timelineBody"></div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/visit_history.js') }}"></script>
+{% endblock %}

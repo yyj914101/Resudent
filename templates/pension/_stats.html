@@ -1,0 +1,10 @@
+{# 养老保险指标卡（088）：取数唯一入口 GET /pension/api/stats → MetricsEngine.query
+   （与统一统计入口 /api/stats/query、看板三处同值，页面不做二次计算，pension.js 只负责回填）。
+   2026-11-16：台账并入 /pension/ 后，本片段同时服务「已建册台账页」与「未建册门面页」，
+   避免两处各写一份四卡标记（单一真源）。样式见 static/css/pages/pension.css。 #}
+<div class="row" id="pensionStats">
+    <div class="col-md-3"><div class="mini-stat"><div class="num text-primary" id="pensionCoverageRate">-</div><div>参保率</div></div></div>
+    <div class="col-md-3"><div class="mini-stat"><div class="num text-success" id="pensionInsured">-</div><div>正常参保人数</div></div></div>
+    <div class="col-md-3"><div class="mini-stat"><div class="num text-info" id="pensionCertRate">-</div><div>待遇认证完成率</div></div></div>
+    <div class="col-md-3"><div class="mini-stat"><div class="num text-warning" id="pensionRosterTotal">-</div><div>名册总人数</div></div></div>
+</div>

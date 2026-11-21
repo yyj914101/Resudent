@@ -1,0 +1,10 @@
+/* 101：店铺页页头 8 操作钮（含年度缴费三钮）——1024 视口超出内容宽度，
+   操作区整体换行到标题下方并允许内部换行（同 067-FIX medical 先例）；1440 不触发。 */
+@media (max-width: 1199.98px) {
+  .shop-page-head { flex-wrap: wrap; }
+  .shop-page-head .sc-page-head__actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+  }
+}

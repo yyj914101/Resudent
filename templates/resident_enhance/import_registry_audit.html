@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}字段注册审批 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}字段注册审批{% endblock %}
+{# 036 F5：admin 专属；审批动作调用既有 approve_registry_field()/reject_registry_field()。 #}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="list">
+{{ settings_head('字段注册审批', '导入扩展字段的准入') }}
+
+<section class="sc-card">
+    <form class="sc-toolbar" method="get" action="{{ url_for('resident_enhance.import_registry') }}">
+        <select class="sc-select" name="status" style="width:180px">
+            <option value="" {{ 'selected' if not status }}>全部状态</option>
+            <option value="draft" {{ 'selected' if status == 'draft' }}>待审批（draft）</option>
+            <option value="approved" {{ 'selected' if status == 'approved' }}>已通过（approved）</option>
+            <option value="rejected" {{ 'selected' if status == 'rejected' }}>已否决（rejected）</option>
+            <option value="active" {{ 'selected' if status == 'active' }}>启用（active）</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 筛选</button>
+        <span class="sc-card__meta" style="margin-left:auto">draft 字段审批通过后进入统计口径</span>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense">
+            <thead>
+                <tr>
+                    <th class="sc-table__th">字段编码</th>
+                    <th class="sc-table__th">显示名</th>
+                    <th class="sc-table__th" style="width:80px">类型</th>
+                    <th class="sc-table__th" style="width:120px">来源批次</th>
+                    <th class="sc-table__th">口径说明</th>
+                    <th class="sc-table__th" style="width:90px">状态</th>
+                    <th class="sc-table__th" style="width:100px">审批人</th>
+                    <th class="sc-table__th" style="width:140px">审批时间</th>
+                    <th class="sc-table__th" style="width:140px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>{{ row.rec.code }}</td>
+                    <td>{{ row.rec.display_name or '—' }}</td>
+                    <td>{{ row.rec.data_type or '—' }}</td>
+                    <td>{{ row.rec.source_batch or '—' }}</td>
+                    <td>
+                        {{ row.definition or '—' }}
+                        {% if row.rec.status in ('draft', 'approved') and current_user and current_user.role_id == 1 %}
+                        {# R-036-11：口径说明/统计用途填写（非必填；approved 行为补录）。
+                           input 用 form 属性挂到操作列的 approve 表单，避免 form 跨单元格。 #}
+                        <input form="registry-approve-{{ row.rec.code }}" type="text"
+                               class="sc-input" style="height:28px;margin-top:var(--sp-1)" name="definition_note"
+                               placeholder="口径说明（选填）" maxlength="200" value="{{ row.note }}">
+                        <input form="registry-approve-{{ row.rec.code }}" type="text"
+                               class="sc-input" style="height:28px;margin-top:var(--sp-1)" name="definition_usage"
+                               placeholder="统计用途（选填）" maxlength="200" value="{{ row.usage }}">
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set tone = {'draft': 'warning', 'approved': 'success',
+                                       'rejected': 'danger', 'active': 'primary'} %}
+                        <span class="sc-badge sc-badge--{{ tone.get(row.rec.status, 'muted') }}">{{ row.rec.status }}</span>
+                    </td>
+                    <td>{{ row.approved_by_name or '—' }}</td>
+                    <td>{{ row.rec.approved_at.strftime('%Y-%m-%d %H:%M') if row.rec.approved_at else '—' }}</td>
+                    <td>
+                        {% if current_user and current_user.role_id == 1 %}
+                        <div class="sc-row-actions">
+                        {% if row.rec.status == 'draft' %}
+                        <form method="post" id="registry-approve-{{ row.rec.code }}"
+                              action="{{ url_for('resident_enhance.import_registry_approve', code=row.rec.code) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="sc-btn sc-btn--text is-success">通过</button>
+                        </form>
+                        <form method="post"
+                              action="{{ url_for('resident_enhance.import_registry_reject', code=row.rec.code) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="sc-btn sc-btn--text is-danger">否决</button>
+                        </form>
+                        {% elif row.rec.status == 'approved' %}
+                        <form method="post" id="registry-approve-{{ row.rec.code }}"
+                              action="{{ url_for('resident_enhance.import_registry_approve', code=row.rec.code) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="sc-btn sc-btn--text"
+                                    title="只补录口径说明/统计用途，不改变审批状态">补录</button>
+                        </form>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                        </div>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">暂无注册字段</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+</div>
+{% endblock %}

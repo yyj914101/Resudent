@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}死亡上报{% endblock %}
+
+{# 062 P5 v4.0：标题由页头承担（同 P1–P4 口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{# 2026-11-16：死亡上报与死亡名单对账成组（death 组）——对账入口由民政对象迁入本页。 #}
+{{ module_tabs('death', 'death') }}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">死亡上报</h2>
+        <p class="sc-page-head__meta">按年月汇总已标记死亡的居民，生成可编辑死亡名单并导出/打印。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="addRow()"><i class="bi bi-plus-lg"></i> 添加行</button>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="exportExcel()"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</button>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="printTable()"><i class="bi bi-printer"></i> 打印</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <div class="sc-field">
+            <label class="sc-field__label" for="reportYear">年份</label>
+            <input type="number" class="sc-input" id="reportYear" value="{{ now().year }}" min="2000" max="2099" style="width:90px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="reportMonth">月份</label>
+            <select class="sc-select" id="reportMonth" style="width:90px">
+                <option value="">全年</option>
+                {% for m in range(1,13) %}
+                <option value="{{ '%02d' % m }}" {% if now().month == m %}selected{% endif %}>{{ m }}月</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="reportUnit">填报单位</label>
+            <input type="text" class="sc-input" id="reportUnit" list="reportUnitHistory" autocomplete="off" style="width:180px">
+            <datalist id="reportUnitHistory"></datalist>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="villageName">乡镇/村</label>
+            <input type="text" class="sc-input" id="villageName" list="villageNameHistory" placeholder="如：XX乡镇XX村（社区）" autocomplete="off" style="width:190px">
+            <datalist id="villageNameHistory"></datalist>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="reporter">填报人</label>
+            <input type="text" class="sc-input" id="reporter" style="width:100px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="responsiblePerson">负责人</label>
+            <input type="text" class="sc-input" id="responsiblePerson" style="width:100px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="reportDate">填报日期</label>
+            <input type="date" class="sc-input" id="reportDate" value="{{ now().strftime('%Y-%m-%d') }}" style="width:140px">
+        </div>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="queryDeceased()"><i class="bi bi-search"></i> 查询</button>
+    </div>
+
+    <div class="sc-pagination" style="min-height:44px">
+        <span class="sc-pagination__stat">共 <strong id="rowCount">0</strong> 条记录</span>
+    </div>
+
+    {# 10 列可编辑名单：标题行 colspan=10；填报信息行 3+1+1+5=10；列序被 updateRow 位置契约冻结 #}
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense" id="templateTable" style="min-width:1000px">
+            <thead>
+                <tr>
+                    <th colspan="10" class="sc-table__th" id="titleCell" style="height:40px;text-align:center;font-size:14px;">
+                        <span id="titleVillage">XX乡镇XX村（社区）</span>    <span id="titleYear">{{ now().year }}</span>年<span id="titleMonth">{{ '%02d' % now().month }}</span>月份死亡名单
+                    </th>
+                </tr>
+                <tr>
+                    <th colspan="3" class="sc-table__th" style="font-weight:400;font-size:12px;">填报单位：<span id="headerUnit"></span>（盖章）</th>
+                    <th class="sc-table__th" style="font-weight:400;font-size:12px;">填报人：<span id="headerReporter"></span></th>
+                    <th class="sc-table__th" style="font-weight:400;font-size:12px;">负责人：<span id="headerResponsible"></span></th>
+                    <th colspan="5" class="sc-table__th" style="font-weight:400;font-size:12px;">填报日期：<span id="headerDate">{{ now().strftime('%Y年%m月%d日') }}</span></th>
+                </tr>
+                <tr>
+                    <th class="sc-table__th" style="width:45px;text-align:center;">编号</th>
+                    <th class="sc-table__th" style="width:85px;">姓名</th>
+                    <th class="sc-table__th">户籍地址</th>
+                    <th class="sc-table__th" style="width:65px;">所在组</th>
+                    <th class="sc-table__th" style="width:60px;">性别</th>
+                    <th class="sc-table__th" style="width:155px;">身份证号码</th>
+                    <th class="sc-table__th" style="width:100px;">死亡时间</th>
+                    <th class="sc-table__th" style="width:80px;">对象类型</th>
+                    <th class="sc-table__th">备注</th>
+                    <th class="sc-table__th" style="width:150px;text-align:center;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="templateBody">
+                <tr id="noDataRow">
+                    <td colspan="10" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox" style="font-size:1.5rem;"></i><br>
+                        请选择年月后点击「查询」加载已标记死亡的居民信息
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/death_list.js') }}"></script>
+{% endblock %}

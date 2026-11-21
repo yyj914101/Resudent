@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}台账建表{% endblock %}
+
+{# 页头承担标题（对齐 055/062 口径），顶栏留空
+   2026-11-16：菜单入口命名「台账建表」，页内标题同步改名（原「动态台账」，
+   与侧栏「数据管理 → 台账建表」保持同一口径）。 #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">台账建表</h2>
+        <p class="sc-page-head__meta">上传上级 Excel 自动建表并导入数据；字段随口径变化随时调整，台账数据不新增物理数据表。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--primary" id="uploadEntry" href="/dynatable/upload"><i class="bi bi-upload"></i> 上传 Excel 建表</a>
+    </div>
+</header>
+
+<section class="sc-card">
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="tableList">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">台账名称</th>
+                    <th class="sc-table__th" style="width:180px">表标识</th>
+                    <th class="sc-table__th" style="width:130px">菜单归属</th>
+                    <th class="sc-table__th" style="width:76px">字段</th>
+                    <th class="sc-table__th" style="width:76px">记录</th>
+                    <th class="sc-table__th" style="width:150px">更新时间</th>
+                    <th class="sc-table__th" style="width:170px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dynatable_index.js') }}"></script>
+{% endblock %}

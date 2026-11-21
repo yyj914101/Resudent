@@ -1,0 +1,284 @@
+/* medical_insurance.css — 医保缴费页（061 S3 换壳重写，原 054-B 一行式全量迁移）
+ * 依据：组件 handoff §2.1 卡片 / §1.2 KPI 卡（页面 handoff §1.2 主 KPI 值 24/700）
+ *       + 视觉基线 v4.0（056 令牌）。
+ * 067 收口：表格层已迁 components.css（sc-table/sc-toolbar/sc-pagination/sc-badge），
+ * 本文件删除被替代的 btn/form/工具行/分页跳转规则；保留页级功能件：
+ * 紧凑表格（名单 20+ 列）与 6 统计卡（JS 渲染 .mini-stat）。
+ * 加载方式：extra_css（GLB-02 已由 spa.js 注入，SPA 导航不丢）。
+ * 约束：只 var() 引用令牌，零裸色值。
+ */
+
+.medical-page { font-size: 12.5px; }
+
+/* 067-FIX P1-01：1024 视口页头 7 个操作钮超出内容宽度（titleW=0、actionsRight>视口），
+   操作区整体换行到标题下方并允许内部换行；1440 不触发，保持原单行形态。 */
+@media (max-width: 1199.98px) {
+  .medical-page .sc-page-head { flex-wrap: wrap; }
+  .medical-page .sc-page-head__actions {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
+/* 紧凑表格（名单页 20+ 列，功能清单 §12；>14 列不降字号，走列选择器 + 横滚） */
+.medical-page th { white-space: nowrap; }
+.medical-page td,
+.medical-page th { padding: 4px 6px; vertical-align: middle; }
+
+/* 6 统计卡：JS 渲染 .mini-stat（§12「缴费比例/已缴/未缴/国家代缴/核减/最高组比例」），
+   v4.0 KPI 形态——白底圆角 10 / 1px 描边 / 零阴影 / 数值 24-700 中性黑（text-* 彩色工具类被本规则覆盖） */
+.medical-page .mini-stat {
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  padding: var(--sp-4);
+  background: var(--c-surface);
+}
+.medical-page .mini-stat .num {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+/* 2026-11-02 对齐样图：工具动作行、组合关键字搜索、批量已缴钮黑色化 */
+/* 2026-11-16：三分类页签移除后本行只承载右侧 4 个工具钮（.mi-tabs-row → .mi-actions-row） */
+.mi-actions-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; margin-bottom: 10px; }
+.mi-tabs-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mi-keyword { position: relative; display: inline-flex; align-items: center; }
+.mi-keyword .bi-search { position: absolute; left: 10px; color: var(--c-muted); pointer-events: none; }
+.mi-keyword .sc-input { padding-left: 30px; }
+.medical-page .btn-warning,
+.medical-page .sc-btn.btn-warning,
+.medical-page button.btn-warning {
+    background: var(--c-ink-2) !important; border-color: var(--c-ink-2) !important; color: var(--c-surface) !important;
+}
+
+/* ── 2026-11-02 规范版（v7 代码真源）：1132 画布口径逐条落地 ──
+   令牌：主钮/标题 #0A0A0A · 正文/表格 #404040 · 标签/表头 #737373 · 描边/分割 #E5E5E5 ·
+   表头/面板底 #FAFAFA · 已缴 #0F7B3F · 未缴 var(--c-danger) · 待核对/未关联 #B26A00
+   字体：标题 24 Bold · 区块题 13 Medium · 数值 22 Inter Medium · 正文/表格 13 · 标签/表头 12
+   尺寸：卡片圆角10 · 控件8 · 胶囊999 · 输入/下拉34 · 次钮32 · 主钮36 ·
+   区块距16 · 卡距12 · 控件距10 · 面板内14/12 · 表头40 · 行48 · 批量条31 · 分页50 */
+.medical-page .sc-page-head__name { font-size: 24px; font-weight: 700; color: #0A0A0A; }
+.medical-page .sc-page-head__meta { font-size: 13px; color: #737373; }
+.medical-page .sc-page-head { margin-bottom: 16px; }
+.medical-page .sc-page-head__actions { gap: 10px; }
+.medical-page .sc-page-head__actions .sc-select { height: 32px; border-radius: 999px; padding: 0 14px; }
+.medical-page .sc-page-head__actions .sc-btn--primary { height: 36px; }
+.medical-page .sc-page-head__actions .sc-btn--secondary { height: 32px; }
+
+/* ② 工具行：右侧 4 描边钮 32 高间距 8（分类页签已取消，险种改由筛选区下拉承担） */
+.medical-page .mi-actions-row { margin-bottom: 16px; }
+.medical-page .mi-tabs-actions { gap: 8px; }
+.medical-page .mi-tabs-actions .sc-btn--secondary,
+.medical-page .mi-tabs-actions .sc-btn { height: 32px; }
+
+/* ③ 统计卡行：常显 6 等分 · 高 78 · 内边距 16/14 · 数值 22 Inter Medium · 标签 12 */
+.medical-page #medicalStats { display: grid !important; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 0 0 16px !important; }
+.medical-page #medicalStats > [class*="col-"] { width: auto; }   /* Bootstrap col 固定宽在 grid 轨道内误缩，中和 */
+.medical-page .mini-stat {
+    height: 78px; padding: 14px 16px; margin: 0;
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+    border: 1px solid #E5E5E5; border-radius: 10px; background: var(--c-surface); box-shadow: none;
+}
+.medical-page .mini-stat .num { font-size: 22px; font-weight: 500; font-family: Inter, "Noto Sans SC", sans-serif; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.medical-page .mini-stat > div:last-child, .medical-page .mini-stat .small { font-size: 12px; color: #737373; }
+
+/* ④ 筛选区：#FAFAFA 面板 圆角10 内边距14/12 · 控件高34 间距10 · 关键词200 下拉108 */
+.medical-page #searchForm {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    background: #FAFAFA; border: 1px solid #E5E5E5; border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 16px !important;
+}
+.medical-page #searchForm .sc-select, .medical-page #searchForm .sc-input { height: 34px; border-radius: 8px; border-color: #E5E5E5; color: #404040; }
+.medical-page #searchKeyword { width: 200px !important; padding-left: 30px; }
+.medical-page #searchForm .sc-select { width: 108px !important; }
+/* 2026-11-16：险种筛选下拉（全部险种/居民/职工/其他）文案较长，单独放宽 */
+.medical-page #searchForm #insuranceTypeInput { width: 122px !important; }
+.medical-page #searchForm .sc-btn--primary { height: 34px; }
+.medical-page #searchForm .sc-btn--secondary { border: 0; background: transparent; color: var(--c-muted); height: 34px; }
+
+/* ⑤ 参保名册卡：批量条顶部 31（未选隐藏由 crud 自理）· 表头 40 #FAFAFA · 行 48 · 分页 50 */
+.medical-page .sc-table th { height: 40px; background: var(--c-side); color: var(--c-muted); font-weight: 500; font-size: 12px; }
+/* 48px 行高为 13 列宽表紧凑档（细节收口 F-06 主理人拍板 b 案：保留密度、颜色令牌化） */
+.medical-page .sc-table td { height: 48px; color: var(--c-ink-3); font-size: 13px; }
+.medical-page .sc-pagination { min-height: 50px; }
+/* 列宽（2026-11-16 单表列序）：合并后共 13 列（+选择列），沿用第二节的固定像素列宽会在
+   ≤1360 视口把「姓名/参保情况」压成逐字竖排（fixed 布局对无宽度列不给下限）。
+   改为自适应列宽 + nowrap（components.css R-062 口径），超宽交给 .sc-table-wrap 横向滚动；
+   同时给整表最小宽度，避免收窄时列被挤成多行。 */
+.medical-page table[data-mi-type="all"] { table-layout: auto; min-width: 1040px; }
+
+.medical-page .crud-bar {
+    position: static !important; transform: none !important; box-shadow: none !important;
+    min-height: 31px; padding: 4px 12px !important; margin: 10px 14px 0 !important;
+    background: #FAFAFA; border: 1px solid #E5E5E5; border-radius: 8px;
+    font-size: 12px; gap: 10px;
+}
+.medical-page .crud-bar .btn { height: 24px; padding: 0 10px; font-size: 12px; }
+
+/* ── 2026-11-02 编辑弹窗规范（980×739 圆角14；头部85 内距28/24/20/16 标题18；
+      表单区双栏 454/栏距16；分组卡 #FAFAFA 圆角10 内距18/14 标题13；
+      字段 标签12 #737373 距4 控件34 圆角8 描边 #E5E5E5；跨列 418；备注 54 顶部对齐；
+      底部 65 取消62×35 保存66×35 圆角8 间距10；只读浅灰；错误 var(--c-danger)） ── */
+.medical-page .mi-fmodal { width: 980px; border-radius: var(--r-card); }
+.modal-dialog:has(.mi-fmodal) { max-width: 996px; }
+.medical-page .mi-fmodal .sc-dheader { min-height: 85px; padding: 20px 28px 16px; align-items: flex-start; }
+.medical-page .mi-fmodal .sc-dheader__name { font-size: 18px; }
+.medical-page .mi-fmodal .sc-fmodal__meta { margin-top: 5px; font-size: 12px; color: var(--c-muted); }
+.medical-page .mi-fmodal .sc-dheader__close { width: 28px; height: 28px; font-size: 14px; }
+.medical-page .mi-fmodal .sc-modal__body { display: block; padding: 18px 28px 4px; }
+.medical-page .mi-fmodal .sc-fgroups { gap: 16px; }
+.medical-page .mi-fmodal .sc-fgroups__col { gap: 14px; }
+.medical-page .mi-fmodal .sc-fgroup { background: var(--c-side); border: 0; border-radius: var(--r-card); padding: 14px 18px 18px; }
+.medical-page .mi-fmodal .sc-fgroup__title { font-size: 13px; font-weight: 500; color: var(--c-ink); margin: 0 0 10px; }
+.medical-page .mi-fmodal .sc-fgroup__title::before { display: none; }
+.medical-page .mi-fmodal .sc-fgroup__fields { gap: 10px 12px; }
+.medical-page .mi-fmodal .sc-field { display: block; }
+.medical-page .mi-fmodal .sc-field__label {
+    display: block; width: auto; flex: none; margin: 0 0 4px; line-height: 1.4;
+    font-size: 12px; color: var(--c-muted);
+}
+.medical-page .mi-fmodal .sc-input, .medical-page .mi-fmodal .sc-select {
+    height: 34px; padding: 0 12px; border-radius: var(--r-ctrl);
+    border-color: var(--c-line-3); background: var(--c-surface); color: var(--c-ink-3); font-size: 13px;
+}
+.medical-page .mi-fmodal .sc-input::placeholder { color: var(--c-faint); }
+.medical-page .mi-fmodal .sc-input:focus, .medical-page .mi-fmodal .sc-select:focus,
+.medical-page .mi-fmodal .sc-textarea:focus { border-color: var(--c-ink); box-shadow: none; }
+.medical-page .mi-fmodal .sc-textarea { min-height: 54px; border-radius: var(--r-ctrl); border-color: var(--c-line-3); padding: 8px 12px; }
+.medical-page .mi-fmodal .sc-field--full, .medical-page .mi-fmodal .sc-field.mi-full { grid-column: 1 / -1; }
+.medical-page .mi-fmodal .mi-readonly .sc-input, .medical-page .mi-fmodal .mi-readonly .sc-select {
+    background: var(--c-side); color: var(--c-faint);
+}
+.medical-page .mi-fmodal .sc-modal__footer { min-height: 65px; padding: 14px 28px; }
+.medical-page .mi-fmodal .sc-modal__footer .sc-btn { height: 35px; border-radius: var(--r-ctrl); }
+.medical-page .mi-fmodal .sc-btn--primary { min-width: 66px; }
+/* 必填校验（联动 + 提交时描边转 var(--c-danger) + 12 号错误文案） */
+.medical-page .mi-fmodal .mi-req > label::after { content: ' *'; color: var(--c-danger); }
+.medical-page .mi-fmodal .mi-error .sc-input, .medical-page .mi-fmodal .mi-error .sc-select,
+.medical-page .mi-fmodal .mi-error .sc-textarea { border-color: var(--c-danger) !important; }
+.medical-page .mi-fmodal .mi-err-text { display: block; margin-top: 3px; font-size: 12px; color: var(--c-danger); }
+
+/* ═══ 2026-11-11 居民医保编辑弹窗重设计（ui.md 全宽四列统一栅格 + 三段式 + 只读降噪） ═══
+    依据：D:/Desktop/ui.md + code_artifact.html 原型（图一）。蓝语义色 #2563EB 仅作用于本弹窗。
+    职工/其他两 tab 仍走上方 2026-11-02 分组卡样式，二者共用同一弹窗壳。 */
+.medical-page .mi-fmodal { width: 1026px; max-width: none; border-radius: var(--r-card); }  /* max-width:none 压过 .sc-modal 基类视口钳制；+2px 补偿边框，内容盒精确 1024（规范 §2.2） */
+/* 规范 §2.2 容器几何固定：1024 = 左右内边距48 + 列间距60 + 4×单列229（双列478）。
+   弹窗宽度不随视口收缩，窄窗口横向滚动（§1 目标屏 1366×768+）。 */
+.modal-dialog:has(.mi-fmodal) { width: 1026px; max-width: none !important; margin-left: auto; margin-right: auto; }
+.modal:has(.mi-fmodal) { overflow-x: auto; }
+/* mi2-grid 四列在此容器内即 4×229px（1fr 随固定容器精确成立） */
+
+/* Tier 1 标题 + 身份胶囊组 */
+.mi2-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-line-3); }
+.mi2-header__main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mi2-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-ink-2); letter-spacing: -0.2px; }
+.mi2-header__sep { width: 1px; height: 16px; background: var(--c-line-3); flex: none; }
+.mi2-pills { display: flex; align-items: center; gap: 8px; font-size: 12px; min-width: 0; flex-wrap: wrap; }
+.mi2-pill { padding: 2px 8px; border-radius: var(--r-badge); background: var(--c-rail); color: var(--c-ink-3); font-weight: 500; white-space: nowrap; }
+.mi2-pill--primary { background: var(--c-badge-primary-bg); color: var(--c-badge-primary-fg); font-weight: 600; border: 1px solid var(--c-line-3); }
+.mi2-pill--mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--c-muted); }
+.mi2-close { border: 0; background: none; width: 32px; height: 32px; padding: 6px; border-radius: var(--r-ctrl);
+    color: var(--c-faint); cursor: pointer; flex: none; }
+.mi2-close:hover { color: var(--c-ink-3); background: var(--c-rail); }
+/* 2026-11-16：新增态「险种」下拉（编辑态由 JS 隐藏，改由胶囊显示不可变险种） */
+.mi2-typepick { display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.mi2-typepick__label { font-size: 12px; color: var(--c-muted); }
+.mi2-typepick .sc-select { height: 30px; min-width: 104px; border-radius: var(--r-ctrl); border-color: var(--c-line-3);
+    color: var(--c-ink-2); font-size: 12px; padding: 0 8px; }
+
+/* Tier 2 只读元数据条 */
+.mi2-metabar { display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 24px; background: var(--c-side); border-bottom: 1px solid var(--c-line-3);
+    font-size: 12px; color: var(--c-muted); }
+.mi2-meta__list { display: flex; align-items: center; gap: 24px; min-width: 0; flex-wrap: wrap; }
+.mi2-meta__item { display: flex; align-items: center; gap: 6px; }
+.mi2-metadot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+.mi2-metadot--slate { background: var(--c-faint); }
+.mi2-metadot--emerald { background: var(--c-success); }
+.mi2-metadot--amber { background: var(--c-cat-4); }
+.mi2-meta__val { font-weight: 500; color: var(--c-ink-3); }
+.mi2-meta__val--mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: var(--c-ink-3); }
+.mi2-meta__legend { font-size: 11px; color: var(--c-faint); flex: none; }
+.mi2-meta__legend .mi2-star { color: var(--c-danger); font-weight: 700; }
+
+/* Tier 3 表单主体：三段式 + 统一四列栅格 */
+.mi2-body { padding: 20px 24px 8px !important; }
+.mi2-section { margin-bottom: 20px; }
+.mi2-section:last-child { margin-bottom: 12px; }
+.mi2-sechead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.mi2-sechead__bar { width: 4px; height: 14px; border-radius: 99px; background: var(--c-ink-2); flex: none; }
+.mi2-sechead__title { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink-3); letter-spacing: 0.5px; }
+.mi2-sechead__line { flex: 1; height: 1px; background: var(--c-rail); margin-left: 8px; }
+.mi2-sechead__note { font-size: 11px; color: var(--c-faint); margin-left: auto; }
+.mi2-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 20px; }
+.mi2-grid--end { align-items: end; }
+.mi2-span2 { grid-column: span 2; }
+
+.mi2-field .sc-field__label { display: flex; align-items: center; justify-content: space-between;
+    width: auto; margin: 0 0 4px; line-height: 16px; font-size: 12px; font-weight: 500; color: var(--c-ink-3); }
+/* 基类 .sc-input 的 flex:1 仅在 flex 容器生效，而 .mi-fmodal .sc-field 为 block（2026-11-02 块）
+   ——不补 width:100% 时输入框回落浏览器默认 ~190px，四列等宽观感被破坏（2026-11-11 leader 指出） */
+.medical-page .mi-fmodal .mi2-field .sc-input,
+.medical-page .mi-fmodal .mi2-field .sc-select,
+.medical-page .mi-fmodal .mi2-field .sc-textarea,
+.medical-page .mi-fmodal .mi2-field .custom-select { width: 100%; flex: none; }
+.medical-page .mi-fmodal .mi2-field .sc-field__required { margin-left: 2px; color: var(--c-danger); }
+.mi2-field .sc-field__required { color: var(--c-danger); }
+.medical-page .mi-fmodal .mi2-field .sc-input, .medical-page .mi-fmodal .mi2-field .sc-select {
+    height: 32px; padding: 0 10px; border-radius: var(--r-ctrl); border-color: var(--c-line-3);
+    background: var(--c-surface); color: var(--c-ink-2); font-size: 12px;
+}
+.medical-page .mi-fmodal .mi2-field .sc-input::placeholder { color: var(--c-faint); }
+.medical-page .mi-fmodal .mi2-field .sc-input[name="id_card"],
+.medical-page .mi-fmodal .mi2-field .sc-input[name="mobile_phone"] {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.medical-page .mi-fmodal .mi2-field .sc-input:focus, .medical-page .mi-fmodal .mi2-field .sc-select:focus,
+.medical-page .mi-fmodal .mi2-field .sc-textarea:focus {
+    border-color: var(--c-muted-2); box-shadow: none; outline: none;
+}
+.medical-page .mi-fmodal .mi2-field .sc-input[disabled], .medical-page .mi-fmodal .mi2-field .sc-select[disabled] {
+    background: var(--c-rail); border-color: var(--c-line-3); color: var(--c-faint); cursor: not-allowed;
+}
+.medical-page .mi-fmodal .mi2-field .sc-textarea { min-height: 32px; padding: 6px 10px; border-radius: var(--r-ctrl);
+    border-color: var(--c-line-3); font-size: 12px; color: var(--c-ink-2); }
+.medical-page .mi-fmodal .mi2-field .sc-input[disabled] ~ * , .mi2-locked-ui { color: var(--c-faint); }
+
+/* 联动角标（国家代缴身份/核减原因 右上角） */
+.mi2-badge { font-size: 10px; font-weight: 400; color: var(--c-faint); }
+.mi2-badge--on { color: var(--c-badge-primary-fg); font-weight: 500; }
+
+/* 动态业务逻辑状态摘要框（区块三 Row2 第 3-4 列，与输入框底边对齐） */
+.mi2-summary { height: 32px; background: var(--c-badge-primary-bg); border: 1px solid var(--c-badge-primary-bg);
+    border-radius: var(--r-ctrl); padding: 0 12px; display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--c-ink-3); overflow: hidden; }
+.mi2-summary__left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mi2-summary__text { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mi2-summary__tag { font-size: 11px; color: var(--c-badge-primary-fg); font-weight: 500; flex: none; margin-left: 8px; }
+.mi2-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.mi2-dot--rose { background: var(--c-danger); }
+.mi2-dot--emerald { background: var(--c-success); }
+.mi2-dot--amber { background: var(--c-cat-4); }
+
+/* Tier 4 底部操作栏 */
+.mi2-footer { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; background: var(--c-side); border-top: 1px solid var(--c-line-3); }
+.mi2-reset { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none;
+    padding: 4px 8px; border-radius: var(--r-ctrl); font-size: 12px; color: var(--c-muted); cursor: pointer; }
+.mi2-reset:hover { color: var(--c-ink-2); background: var(--c-hover); }
+.mi2-footer__btns { display: flex; align-items: center; gap: 12px; }
+.mi2-btn { height: 30px; padding: 0 16px; border-radius: var(--r-ctrl); font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: background .15s, border-color .15s, color .15s, transform .1s ease; }
+.mi2-btn--cancel { background: var(--c-surface); border: 1px solid var(--c-line-3); color: var(--c-ink-3); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.mi2-btn--cancel:hover { background: var(--c-side); }
+.mi2-btn--save { background: var(--c-ink-2); border: 1px solid transparent; color: var(--c-surface);
+    display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; }
+.mi2-btn--save:hover { background: var(--c-ink); }
+.mi2-btn--save .bi { font-size: 12px; }
+/* 联动锁定态下 custom-select 触发框随原生 disabled 联动 */
+.medical-page .mi-fmodal .mi2-field .custom-select__trigger[disabled] {
+    background: var(--c-rail); border-color: var(--c-line-3); color: var(--c-faint); cursor: not-allowed;
+}

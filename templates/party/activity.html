@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}党务活动台账{% endblock %}
+{% block page_title %}党务活动台账{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/party_activity.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{# 083A 党务活动台账：org 组独立页（三类活动固定单表多类型 + 民主评议逐人）
+   - 2026-11-20 UI 改造：ADR-022 视觉基线（KPI 汇总条 + 呼吸间距 + 紧凑单屏详情弹窗 + 修复表单 select 溢出）。
+   - 字段真源：models/party_activity.py，序列化键见 routes/party.py::_activity_to_dict。
+   - 统计经 /api/stats/query?metric_key=party_activity（MetricsEngine 单一取数入口）。 #}
+{{ module_tabs('org', 'party-activity') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">党务活动台账</h2>
+        <p class="sc-page-head__meta">党员教育 · 组织生活 · 党风廉政 · 民主评议逐人</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink" href="#"><i class="bi bi-download"></i> 导出台账</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton"><i class="bi bi-plus-circle"></i> 新增活动</button>
+    </div>
+</header>
+
+<div class="pa-kpi-strip" aria-label="活动统计汇总">
+    <div class="pa-kpi">
+        <span class="pa-kpi__label">本库活动场次</span>
+        <span class="pa-kpi__val"><span id="kpiSession">0</span><span class="pa-kpi__unit">场</span></span>
+    </div>
+    <div class="pa-kpi">
+        <span class="pa-kpi__label">应到党员合计</span>
+        <span class="pa-kpi__val"><span id="kpiExpected">0</span><span class="pa-kpi__unit">人次</span></span>
+    </div>
+    <div class="pa-kpi">
+        <span class="pa-kpi__label">实到党员合计</span>
+        <span class="pa-kpi__val"><span id="kpiActual">0</span><span class="pa-kpi__unit">人次</span></span>
+    </div>
+</div>
+
+<div class="pa-stack">
+    <section class="sc-card">
+        <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+            <input type="number" class="sc-input" name="year" placeholder="年度" min="2000" max="2100" style="width:104px">
+            <select class="sc-select" name="activity_type" id="filterType" style="width:150px">
+                <option value="">全部活动类型</option>
+            </select>
+            <select class="sc-select" name="branch" id="filterBranch" style="width:190px">
+                <option value="">全部支部</option>
+            </select>
+            <input type="text" class="sc-input" name="keyword" placeholder="活动主题关键字" style="width:200px">
+            <button type="submit" class="sc-btn sc-btn--primary">{{ icon('search', 16) }} 查询</button>
+            <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+            <span class="sc-field__hint" id="statLine" style="width:auto;margin-left:auto"></span>
+        </form>
+
+        <div class="sc-table-wrap">
+            <table class="sc-table" id="dataTable">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th" style="width:56px">序号</th>
+                        <th class="sc-table__th" style="width:110px">活动类型</th>
+                        <th class="sc-table__th">活动主题</th>
+                        <th class="sc-table__th" style="width:112px">活动日期</th>
+                        <th class="sc-table__th" style="width:96px">主持人</th>
+                        <th class="sc-table__th" style="width:68px">应到</th>
+                        <th class="sc-table__th" style="width:68px">实到</th>
+                        <th class="sc-table__th">所在党支部</th>
+                        <th class="sc-table__th" style="width:140px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="sc-pagination">
+            <span class="sc-pagination__stat" id="pageStat"></span>
+            <ul class="sc-pagination__pager" id="pagination"></ul>
+        </div>
+    </section>
+
+    {# ══════════ 民主评议批量录入区（逐人等次，(年度, 党员) 唯一 upsert） ══════════ #}
+    <section class="sc-card" id="reviewCard">
+        <header class="sc-page-head" style="margin-bottom:12px">
+            <div class="sc-page-head__title">
+                <h3 class="sc-page-head__name" style="font-size:1.05rem">民主评议（逐人等次）</h3>
+                <p class="sc-page-head__meta">按年度录入在册党员等次；等次分布 = 逐人记录求和</p>
+            </div>
+            <div class="sc-page-head__actions">
+                <input type="number" class="sc-input" id="reviewYear" min="2000" max="2100" style="width:104px"
+                       placeholder="评议年度">
+                <button type="button" class="sc-btn sc-btn--secondary" id="reviewLoadButton">载入年度记录</button>
+            </div>
+        </header>
+
+        <form class="sc-toolbar" id="reviewAddForm" onsubmit="return false;">
+            <select class="sc-select" id="reviewMember" style="width:220px">
+                <option value="">选择党员（在册名单）</option>
+            </select>
+            <select class="sc-select" id="reviewGrade" style="width:150px">
+                <option value="">评议等次</option>
+            </select>
+            <input type="date" class="sc-input" id="reviewDate" style="width:160px">
+            <button type="button" class="sc-btn sc-btn--secondary" id="reviewStageButton"><i class="bi bi-plus-lg"></i> 加入清单</button>
+        </form>
+
+        <div class="sc-table-wrap">
+            <table class="sc-table" id="reviewTable">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th">党员</th>
+                        <th class="sc-table__th" style="width:140px">等次</th>
+                        <th class="sc-table__th" style="width:140px">评议日期</th>
+                        <th class="sc-table__th" style="width:88px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="reviewBody">
+                    <tr><td colspan="4" class="text-center text-muted py-3">选择年度后「载入年度记录」，或在上方加入待保存清单</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pa-review-foot">
+            <span class="sc-field__hint" id="reviewDistribution" style="width:auto"></span>
+            <button type="button" class="sc-btn sc-btn--primary" id="reviewSaveButton">保存清单</button>
+        </div>
+    </section>
+</div>
+
+{# ══════════ 新增 / 编辑活动（修复 select 溢出） ══════════ #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg pa-form-modal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增党务活动</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_activity_type">活动类型<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="activity_type" id="f_activity_type">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_activity_date">活动日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="activity_date" id="f_activity_date" required>
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_title">活动主题<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="title" id="f_title" placeholder="请输入活动主题" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_host">主持人</label>
+                        <input type="text" class="sc-input" name="host" id="f_host" placeholder="请输入主持人姓名">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_branch">所在党支部</label>
+                        <select class="sc-select" name="branch" id="f_branch">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_expected_count">应到人数</label>
+                        <input type="number" class="sc-input" name="expected_count" id="f_expected_count" min="0" step="1" value="0">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_actual_count">实到人数</label>
+                        <input type="number" class="sc-input" name="actual_count" id="f_actual_count" min="0" step="1" value="0">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_content">活动内容</label>
+                        <textarea class="sc-textarea" name="content" id="f_content" rows="3" placeholder="简述活动议程、讨论重点或形成决议"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="f_remark" rows="2" placeholder="可选补充说明"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">附件由「模板与附件」（092）统一承载，此处不开放上传</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 党务活动详情弹窗（ADR-022 紧凑单屏四列栅格） ══════════ #}
+<div class="modal fade" id="actDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pa-detail" role="dialog" aria-modal="true">
+            <header class="sc-modal__header pa-header">
+                <div class="pa-header__id">
+                    <span class="pa-header__name" id="actDetailTitle">党务活动详情</span>
+                    <span class="sc-badge" id="actDetailBadge" hidden></span>
+                    <span class="pa-vline" id="actDetailVline" hidden></span>
+                    <span class="pa-header__meta" id="actDetailMeta"></span>
+                </div>
+                <div class="pa-header__ops">
+                    <span id="actDetailBtns"></span>
+                    <button type="button" class="sc-icon-btn pa-close" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="pa-body" id="actDetailBody"></div>
+            <footer class="pa-footer">
+                <span class="pa-footer__hint">单屏只读档案 · 点击右上角「编辑」可修改活动记录</span>
+                <button type="button" class="sc-btn sc-btn--secondary pa-btn-sm" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/party_activity.js') }}"></script>
+{% endblock %}

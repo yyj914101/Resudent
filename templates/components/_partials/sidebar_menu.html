@@ -1,0 +1,248 @@
+{% from 'components/_macros/icon.html' import icon %}
+{# 壳层侧栏（057a 建壳 / 073 扁平化 / 102 五组 IA）——v4.0 视觉基线 §4.1 / 组件 handoff §1.1 / A 方案 §一
+   D-22 回退开关：SIDEBAR_LAYOUT = 'flat'（v5 五组 16 入口 + 底部设置，菜单真源 utils/nav_spec.py）
+                  | 'twolayer'（五组 IA 的两层形态，保留一词回退）。
+   结构不变量（spa.js 依赖，改动前务必读 static/js/spa.js 与
+   docs/design/073-侧栏扁平化-spa.js依赖评估-2026-11-02.md）：
+     ① 容器必须保留 .sidebar-menu（点击委托 a.nav-link[href]）
+     ② 菜单根必须保留 id="menu"（权限过滤 / 高亮 / 标签记录）
+     ③ 每个链接必须包在 <li> 内（applyRoleMenuPermissions 用 closest('li').remove()）
+     ④ 两层态：折叠容器 .collapse 的 id 与触发器 a[href="#id"] 的 li 必须成对 #}
+{% set SIDEBAR_LAYOUT = 'flat' %}
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo">{{ icon('landmark', 20) }}</span>
+        <span class="sc-sidebar__title" id="systemTitle">{{ system_title }}</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+{% if SIDEBAR_LAYOUT == 'flat' %}
+            {# ── 扁平 v4 六组 14 入口（单一真源 utils/nav_spec.py，权限过滤在 app.py）── #}
+            {% for group in nav_groups %}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">{{ group.label }}</h4>
+                <ul class="nav flex-column">
+                    {% for item in group['items'] %}
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for(item.endpoint) }}">
+                            {{ icon(item.icon, 18) }}<span>{{ item.label }}</span>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+{% else %}
+            {# ── D-22 回退态：五组 IA 的两层形态（102 重排；保留一词回退）── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('dashboard.index') }}">
+                            {{ icon('house', 18) }}<span>首页</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('todo.list') }}">
+                            {{ icon('list-todo', 18) }}<span>待办提醒</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            {# ── 党建工作 ── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" data-bs-toggle="collapse" href="#menuOrg"
+                           role="button" aria-expanded="false" aria-controls="menuOrg">
+                            {{ icon('building-2', 18) }}<span>机构管理</span>{{ icon('chevron-down', 14, 'sc-nav-item__chevron') }}
+                        </a>
+                        <div class="collapse" id="menuOrg">
+                            <ul class="nav flex-column sc-subnav">
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('organization.list') }}">组织架构</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('party.party_list') }}">党员管理</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('party.dues_list') }}">党费缴纳</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('election.index') }}">
+                            {{ icon('check2-square', 18) }}<span>选举管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('civilization.index') }}">
+                            {{ icon('landmark', 18) }}<span>文明实践站</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            {# ── 民生保障 ── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('medical_insurance.list') }}">
+                            {{ icon('heart-pulse', 18) }}<span>社会保障</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" data-bs-toggle="collapse" href="#menuCivil"
+                           role="button" aria-expanded="false" aria-controls="menuCivil">
+                            {{ icon('heart-handshake', 18) }}<span>民政对象管理</span>{{ icon('chevron-down', 14, 'sc-nav-item__chevron') }}
+                        </a>
+                        <div class="collapse" id="menuCivil">
+                            <ul class="nav flex-column sc-subnav">
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('dibao.dibao_list') }}">低保人员查询</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('disabled.disabled_list') }}">残疾人查询</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('care.care_list') }}">关爱对象</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('welfare.page_list') }}">公益岗查询</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('resident.vulnerable_page') }}">弱势群体台账</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('report.stats_table') }}">一老一小统计表</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('report.roster_view') }}">民政对象花名册</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('reconcile.index') }}">死亡名单对账</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            {# ── 社区治理 ── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" data-bs-toggle="collapse" href="#menuResident"
+                           role="button" aria-expanded="false" aria-controls="menuResident">
+                            {{ icon('users', 18) }}<span>居民管理</span>{{ icon('chevron-down', 14, 'sc-nav-item__chevron') }}
+                        </a>
+                        <div class="collapse" id="menuResident">
+                            <ul class="nav flex-column sc-subnav">
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('resident.list') }}">居民查询</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('resident.add') }}">新增居民</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('shop.list_page') }}">店铺信息</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" data-bs-toggle="collapse" href="#menuGovernance"
+                           role="button" aria-expanded="false" aria-controls="menuGovernance">
+                            {{ icon('messages-square', 18) }}<span>综治管理</span>{{ icon('chevron-down', 14, 'sc-nav-item__chevron') }}
+                        </a>
+                        <div class="collapse" id="menuGovernance">
+                            <ul class="nav flex-column sc-subnav">
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('mediation.list') }}">矛盾纠纷化解</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='stability-risk') }}">社会稳定风险</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='mental-health') }}">严重精神障碍</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='security-committee') }}">治保委员会</a></li>
+                                {# 2026-11-16：原「刑满释放帮教」改名「刑事人员」——服刑人员与刑满释放人员同表，页内按人员状态筛选 #}
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='criminal') }}">刑事人员</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='road-hazard') }}">道交隐患</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='key-vehicle') }}">重点车辆</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.ledger', category='guide-station') }}">劝导站</a></li>
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('governance.petition_page') }}">信访维稳</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li>
+                        {# 2026-11-16：走访关爱升为一级入口（宿主页 = 走访计划，页内三枚胶囊） #}
+                        <a class="nav-link sc-nav-item" href="{{ url_for('visit.list_page') }}">
+                            {{ icon('heart-handshake', 18) }}<span>走访关爱</span>
+                        </a>
+                    </li>
+                    <li>
+                        {# 087：安全工作直链；综合检查经应急页入口卡进入，不占侧栏 #}
+                        <a class="nav-link sc-nav-item" href="{{ url_for('safety.index') }}">
+                            {{ icon('folder-open', 18) }}<span>安全工作</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('safety.emergency') }}">
+                            {{ icon('list-checks', 18) }}<span>应急管理</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('sanitation.index') }}">
+                            {{ icon('wrench', 18) }}<span>环卫工作</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            {# ── 便民服务 ── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" data-bs-toggle="collapse" href="#menuVeteran"
+                           role="button" aria-expanded="false" aria-controls="menuVeteran">
+                            {{ icon('shield-check', 18) }}<span>退役军人服务</span>{{ icon('chevron-down', 14, 'sc-nav-item__chevron') }}
+                        </a>
+                        <div class="collapse" id="menuVeteran">
+                            <ul class="nav flex-column sc-subnav">
+                                <li><a class="nav-link sc-subnav__item" href="{{ url_for('veteran.page_list') }}">人员档案管理</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('certificate.list') }}">
+                            {{ icon('scroll-text', 18) }}<span>证明开具</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('demand.demand_page') }}">
+                            {{ icon('inbox', 18) }}<span>民生诉求</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('notice.list_page') }}">
+                            {{ icon('megaphone', 18) }}<span>补贴公示</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            {# ── 数据管理（2026-11-16 随扁平态同步：台账建表 + 导入批次）── #}
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('dynatable.index') }}">
+                            {{ icon('database', 18) }}<span>台账建表</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link sc-nav-item" href="{{ url_for('resident_enhance.import_batches_page') }}">
+                            {{ icon('database-zap', 18) }}<span>导入批次</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+{% endif %}
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        {% if current_user.role_id == 1 %}
+        <a class="nav-link sc-nav-item{{ ' active' if request.endpoint == nav_settings.endpoint else '' }}"
+           href="{{ url_for(nav_settings.endpoint) }}">
+            {{ icon(nav_settings.icon, 18) }}<span>{{ nav_settings.label }}</span>
+        </a>
+        {% endif %}
+        <div class="sc-user-card">
+            <span class="sc-avatar">{{ (current_user.real_name or current_user.username)[:1] }}</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">{{ current_user.real_name or current_user.username }}</span>
+                <span class="sc-user-card__role">{{ current_user.role.name if current_user.role else '' }}</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="{{ url_for('auth.logout') }}" aria-label="退出登录">
+                {{ icon('log-out', 16) }}
+            </a>
+        </div>
+    </div>
+</aside>

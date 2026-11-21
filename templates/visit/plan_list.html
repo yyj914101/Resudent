@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block title %}走访计划{% endblock %}
+{% block page_title %}走访计划{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{% call page_head('走访计划', '走访关爱 · 走访计划（8 列）') %}
+    <button type="button" class="sc-btn sc-btn--primary" onclick="openAddModal()"><i class="bi bi-plus-lg"></i> 新增计划</button>
+{% endcall %}
+{# 2026-11-16：走访计划/走访记录/特困人员走访 由综治管理移出，归入新一级入口「走访关爱」（本页为宿主页） #}
+{{ module_tabs('visitcare', 'visit-plan') }}
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="plan_name" placeholder="计划名称" style="width:170px">
+        <select class="sc-select" name="plan_type" style="width:140px">
+            <option value="">全部类型</option>
+            {% for t in plan_types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select class="sc-select" name="status" style="width:130px">
+            <option value="">全部状态</option>
+            {% for s in plan_statuses %}
+            <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">完成率三档：≥90 绿 / &gt;0 黄 / 0 灰</span>
+    </form>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:50px">序号</th>
+                    <th class="sc-table__th">计划名称</th>
+                    <th class="sc-table__th">类型</th>
+                    <th class="sc-table__th">应访对象数</th>
+                    <th class="sc-table__th">已访/补录率</th>
+                    <th class="sc-table__th">状态</th>
+                    <th class="sc-table__th">创建时间</th>
+                    <th class="sc-table__th" style="width:200px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- Add/Edit Modal（067 换壳：sc-modal + sc-field；scope 面板为动态子表单，name/id 契约零改动） -->
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="editId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formModalTitle">新增走访计划</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label">计划名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="plan_name" maxlength="100" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">计划类型<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="plan_type" required onchange="syncScopeFields()">
+                            <option value="">请选择</option>
+                            {% for t in plan_types %}
+                            <option value="{{ t }}">{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">状态<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="status" required>
+                            {% for s in plan_statuses %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">应访对象数</label>
+                        <input type="text" class="sc-input" id="targetCountPreview" placeholder="保存后自动计算" disabled>
+                    </div>
+
+                    <!-- scope: 按区域 -->
+                    <div class="sc-field--full scope-group scope-panel" id="scope-按区域" style="display:none">
+                        <div class="d-flex flex-wrap gap-3">
+                            <div style="flex:0 0 220px">
+                                <label class="sc-field__label d-block">区域字段</label>
+                                <select class="sc-select" name="area_field">
+                                    <option value="village_group">所在组（村组）</option>
+                                    <option value="grid">所在网格</option>
+                                </select>
+                            </div>
+                            <div style="flex:1 1 260px; min-width:0">
+                                <label class="sc-field__label d-block">区域值（逗号分隔，如：思榜,旧寨）<span class="sc-field__required">*</span></label>
+                                <input type="text" class="sc-input" name="area_values" placeholder="思榜,旧寨">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- scope: 按对象类型 -->
+                    <div class="sc-field--full scope-group scope-panel" id="scope-按对象类型" style="display:none">
+                        <label class="sc-field__label d-block">对象类型（多选）<span class="sc-field__required">*</span></label>
+                        {% for g, labels in object_type_groups.items() %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="obj_type" value="{{ g }}" id="objtype-{{ g }}">
+                            <label class="form-check-label" for="objtype-{{ g }}">{{ g }}（{{ labels|join('、') }}）</label>
+                        </div>
+                        {% endfor %}
+                        <div class="sc-field__hint">老人=困难老人/独居老人/高龄老人；儿童=留守儿童/困境儿童；其他=低保/残疾/特困供养/脱贫户/监测户/五保户</div>
+                    </div>
+
+                    <!-- scope: 按标签 -->
+                    <div class="sc-field--full scope-group scope-panel" id="scope-按标签" style="display:none">
+                        <label class="sc-field__label d-block">政策性标签（多选）<span class="sc-field__required">*</span></label>
+                        {% for t in policy_tags %}
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="tag_item" value="{{ t }}" id="tag-{{ t }}">
+                            <label class="form-check-label" for="tag-{{ t }}">{{ t }}</label>
+                        </div>
+                        {% endfor %}
+                        <div class="sc-field__hint">留空保存时按全部政策性标签处理。</div>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/visit_plan_list.js') }}"></script>
+{% endblock %}

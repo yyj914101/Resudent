@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/workflow_shared.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/medical_insurance.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}&#x533B;&#x4FDD;&#x7F34;&#x8D39;{% endblock %}
+{% block page_title %}&#x533B;&#x4FDD;&#x7F34;&#x8D39;{% endblock %}
+{% block content %}
+<div class="medical-page sc-workflow-page">
+{# 102：社会保障页内胶囊（医保参保管理 / 养老保险），宿主为本页 #}
+{{ module_tabs('social', 'medical-insurance') }}
+{# 2026-11-02：返回链接移除（075 RC-17 作废该处补链）；页头收敛为 年度+导出+新增参保人；
+   查看年度看板/下载模板/批量导入/居民库补充 在原分类页签行右侧（页签取消后只留工具行，见下）。
+   2026-11-16：三分类页签取消——居民/职工/其他合并为同一张名单表，险种改为筛选条件
+   （#insuranceTypeInput，name=insurance_type，随 #searchForm 序列化下发到 /api/list 与 /api/export）。 #}
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">医保缴费</h2>
+    <p class="sc-page-head__meta">居民 / 职工 / 其他三类汇总名单，可按险种筛选，按年度核对缴费状态</p>
+  </div>
+  <div class="sc-page-head__actions">
+    <select class="sc-select" id="statsYear" style="width:110px"></select>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="exportMedical()"><i class="bi bi-download"></i> 导出</button>
+    <button type="button" class="sc-btn sc-btn--primary" onclick="openAddMedical()"><i class="bi bi-plus-lg"></i> 新增参保人</button>
+  </div>
+</header>
+  <div class="mi-actions-row">
+    <div class="mi-tabs-actions">
+      <button type="button" class="sc-btn sc-btn--secondary" id="btnStatsToggle"><i class="bi bi-bar-chart"></i> 查看年度看板</button>
+      <a class="sc-btn sc-btn--secondary" id="templateLink" href="/medical-insurance/api/template?insurance_type=resident"><i class="bi bi-file-earmark-spreadsheet"></i> 下载模板</a>
+      <button type="button" class="sc-btn sc-btn--secondary" onclick="openImportMedical()"><i class="bi bi-upload"></i> 批量导入</button>
+      <button type="button" class="sc-btn sc-btn--secondary" onclick="generateFromResidents()"><i class="bi bi-people"></i> 居民库补充</button>
+    </div>
+  </div>
+  <div class="row g-2" id="medicalStats"></div>
+  {# 067 表格层换壳：sc-card 单卡（sc-toolbar + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+  <form class="sc-toolbar" id="searchForm">
+    <input type="hidden" name="payment_year" id="searchYear">
+    <div class="mi-keyword">
+      <i class="bi bi-search"></i>
+      <input class="sc-input" name="keyword" id="searchKeyword" placeholder="姓名 / 身份证号" style="width:190px">
+    </div>
+    <select class="sc-select" name="insurance_type" id="insuranceTypeInput" style="width:120px" aria-label="险种筛选">
+      <option value="">全部险种</option>
+      <option value="resident">居民医保</option>
+      <option value="employee">职工医保</option>
+      <option value="other">其他人员</option>
+    </select>
+    <select class="sc-select" name="is_paid" style="width:110px"><option value="">缴费状态</option><option value="是">已缴</option><option value="否">未缴</option></select>
+    <select class="sc-select" name="verify_status" id="searchVerify" style="width:110px"><option value="">核对状态</option></select>
+    <select class="sc-select" name="benefit_cert_status" id="searchBenefitCert" style="width:130px"><option value="">待遇认证状态</option></select>
+    <select class="sc-select" name="link_status" id="searchLink" style="width:120px"><option value="">关联状态</option></select>
+    <select class="sc-select" name="village_group" id="searchGroup" style="width:110px"><option value="">所在组</option></select>
+    <select class="sc-select" name="data_source" id="searchSource" style="width:120px"><option value="">数据来源</option></select>
+    <button class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+    <button class="sc-btn sc-btn--secondary" type="button" id="btnResetFilters">重置</button>
+  </form>
+  <section class="sc-card">
+    <div id="batchHost"></div>
+    <div class="sc-table-wrap">
+      <table class="sc-table">
+        <thead class="sc-table__head"><tr id="tableHead"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="sc-pagination" id="pagerBar">
+      <span class="sc-pagination__stat" id="pageStat"></span>
+      <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+  </section>
+
+<!-- R-3（2026-11-09）：弹窗移入 .medical-page 内——原先挂在包裹层外，导致
+     medical_insurance.css 中 .medical-page .mi-fmodal 前缀规则（必填红星/
+     mi-error 描边/mi-readonly 灰底/聚焦描边）全部失配 -->
+<!-- 2026-11-11 v2 重设计（ui.md 四层结构）：T1 标题+身份胶囊组 / T2 只读元数据条 /
+     T3 #formFields（JS 渲染：居民=四列栅格三段式，职工·其他=原分组卡） / T4 重置+取消+保存 -->
+<div class="modal fade" id="formModal" tabindex="-1"><div class="modal-dialog modal-xl"><div class="sc-modal sc-fmodal mi-fmodal" role="dialog" aria-modal="true">
+  <header class="mi2-header">
+    <div class="mi2-header__main">
+      <span class="mi2-title" id="formTitle">新增参保人</span>
+      <span class="mi2-header__sep"></span>
+      <div class="mi2-pills" id="formPills"></div>
+      {# 2026-11-16：三分类页签取消后，新增时的险种由弹窗头部选择（编辑态隐藏、险种不可改） #}
+      <label class="mi2-typepick" id="formTypeWrap" title="参保险种决定表单字段集合">
+        <span class="mi2-typepick__label">险种</span>
+        <select class="sc-select" id="formTypeSel" aria-label="参保险种">
+          <option value="resident">居民医保</option>
+          <option value="employee">职工医保</option>
+          <option value="other">其他人员</option>
+        </select>
+      </label>
+    </div>
+    <button type="button" class="mi2-close" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+  </header>
+  <div class="mi2-metabar" id="formMetaBar"></div>
+  <form id="saveForm" novalidate><input type="hidden" name="id" id="editId" value="0"><input type="hidden" name="insurance_type" id="formInsuranceType" value="resident">
+  <div class="sc-modal__body sc-fmodal__body" id="formFields"></div>
+  <footer class="mi2-footer">
+    <button type="button" class="mi2-reset" id="miResetBtn" title="恢复到打开弹窗时的字段状态"><i class="bi bi-arrow-counterclockwise"></i> 重置为初始状态</button>
+    <div class="mi2-footer__btns">
+      <button type="button" class="mi2-btn mi2-btn--cancel" data-bs-dismiss="modal">取消</button>
+      <button type="submit" class="mi2-btn mi2-btn--save"><i class="bi bi-check-lg"></i> 保存修改</button>
+    </div>
+  </footer></form>
+</div></div></div>
+</div>
+
+{# 2026-11-19：批量导入弹窗按 ADR-022 v4.0 导入弹窗组件换壳（对齐党员管理 impModal，
+   样式共享 css/pages/import_modal_v2.css）。JS 契约 id 全保留：importForm/importType/
+   importBatchInput 不变，file input 改 id=miImportFile（name=file 不变，仍随 FormData 提交），
+   投放区交互见 medical_insurance.js。契约诚实口径：后端 openpyxl 仅解析 .xlsx。 #}
+<div class="modal fade" id="importModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered"><div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+  <header class="sc-modal__header">
+    <div>
+      <h3 class="sc-modal__title" id="importModalTitle">批量导入医保名单</h3>
+      <p class="pw-modal__sub">建议先下载模板，导入后系统按身份证自动关联居民信息</p>
+    </div>
+    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+  </header>
+  <div class="sc-modal__divider"></div>
+  <form id="importForm">
+    <div class="sc-modal__body">
+      <div class="pw-tplbar">
+        <div class="pw-tplbar__info">
+          <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+          <span class="pw-tplbar__name">医保参保导入模板</span>
+          <span class="pw-tplbar__ver" id="miImpTplType">居民医保</span>
+        </div>
+        <a class="sc-btn sc-btn--secondary" id="modalTemplateLink" href="/medical-insurance/api/template?insurance_type=resident"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+      </div>
+      <div class="sc-field"><label class="sc-field__label">参保险种</label>
+        <select class="sc-select" id="importType" aria-label="导入险种">
+          <option value="resident">居民医保</option>
+          <option value="employee">职工医保</option>
+          <option value="other">其他人员</option>
+        </select></div>
+      <div class="sc-field"><label class="sc-field__label">导入批次</label><input class="sc-input" name="import_batch" id="importBatchInput"></div>
+      <div>
+        <div class="pw-file-head">
+          <span class="pw-file-head__label" id="miImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+        </div>
+        <input type="file" name="file" id="miImportFile" accept=".xlsx" class="d-none">
+        <div class="pw-drop" id="miImpDrop" role="button" tabindex="0" aria-labelledby="miImpFileLabel">
+          <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+          <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+          <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+        </div>
+        <div class="pw-staged d-none" id="miImpStaged">
+          <div class="pw-staged__file">
+            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+            <div class="pw-staged__info">
+              <div class="pw-staged__name" id="miImpStagedName"></div>
+              <div class="pw-staged__meta"><span id="miImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+            </div>
+          </div>
+          <div class="pw-staged__ops">
+            <button type="button" class="sc-btn sc-btn--secondary" id="miImpReselect">重新选择</button>
+            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="miImpRemove">移除</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sc-modal__divider"></div>
+    <footer class="sc-modal__footer">
+      <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+      <button type="submit" class="sc-btn sc-btn--primary" id="miImportSubmit" disabled>开始导入</button>
+    </footer>
+  </form>
+</div></div></div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/medical_insurance.js') }}"></script>
+{% endblock %}

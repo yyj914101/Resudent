@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% from 'components/_macros/icon.html' import icon %}
+
+{% block title %}首页 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}首页{% endblock %}
+{% block content %}
+<div id="emptyGuide" class="alert alert-info d-none" role="alert">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div>
+            <h6 class="mb-1"><i class="bi bi-magic me-1"></i>尚未导入居民名单</h6>
+            <span class="text-muted">系统检测到空库，请先导入居民名单开始使用。</span>
+        </div>
+        <div class="ms-auto d-flex gap-2">
+            <a href="{{ url_for('resident.add', tab='custom') }}" class="sc-btn sc-btn--primary">
+                <i class="bi bi-upload"></i> 点击此处导入居民名单
+            </a>
+            <a href="{{ url_for('subsidy.record_page') }}" class="sc-btn sc-btn--secondary">补贴登记</a>
+            <a href="{{ url_for('death_report.list') }}" class="sc-btn sc-btn--secondary">死亡登记</a>
+        </div>
+    </div>
+</div>
+
+{# 070 页头：标题 / 品牌副标题 / 四个快捷操作（权限过滤，空库引导保留） #}
+<div id="dashboardLoadError" class="sc-error-banner d-none" role="alert">
+    <i class="bi bi-exclamation-triangle"></i> 首页数据加载失败，请稍后刷新重试。
+</div>
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">首页</h2>
+        <p class="sc-page-head__meta">
+            {# 075 RC-02（Q1 裁定）：村名走 village_name 设置项；未配置回退不带村名口径 #}
+            {% if village_name %}
+            {{ village_name }} · {{ data_date_cn or '—' }} ·
+            {% else %}
+            数据更新至 {{ data_date_cn or '—' }} ·
+            {% endif %}
+            <span id="pageMetaCounts">在册 — 人 / — 户</span>
+        </p>
+    </div>
+    <div class="sc-page-head__actions">
+        {% if has_perm('resident.add') %}
+        <a class="sc-btn sc-btn--primary" href="{{ url_for('resident.add', tab='custom') }}"><i class="bi bi-upload"></i> 导入居民名单</a>
+        {% endif %}
+        {% if has_perm('subsidy.view') %}
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('subsidy.record_page') }}"><i class="bi bi-receipt"></i> 补贴登记</a>
+        {% endif %}
+        {% if has_perm('death_report.view') %}
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('death_report.list') }}"><i class="bi bi-file-earmark-medical"></i> 死亡上报</a>
+        {% endif %}
+        {% if has_perm('certificate.view') %}
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('certificate.list') }}"><i class="bi bi-file-text"></i> 证明开具</a>
+        {% endif %}
+    </div>
+</header>
+
+<div id="statsCards" class="sc-dashboard-stats">
+    <div class="sc-kpi-grid">
+        <div class="sc-kpi">
+            <div class="sc-kpi__head">
+                <span class="sc-kpi__label">总人口</span>
+                <span class="sc-kpi__icon sc-kpi__icon--1">{{ icon('users', 18) }}</span>
+            </div>
+            <span class="sc-kpi__value" id="statPopulation">0</span>
+        </div>
+        <div class="sc-kpi">
+            <div class="sc-kpi__head">
+                <span class="sc-kpi__label">总户数</span>
+                <span class="sc-kpi__icon sc-kpi__icon--2">{{ icon('house', 18) }}</span>
+            </div>
+            <span class="sc-kpi__value" id="statHouseholds">0</span>
+        </div>
+        <div class="sc-kpi">
+            <div class="sc-kpi__head">
+                <span class="sc-kpi__label">党员人数</span>
+                <span class="sc-kpi__icon sc-kpi__icon--3">{{ icon('landmark', 18) }}</span>
+            </div>
+            <span class="sc-kpi__value" id="statParty">0</span>
+        </div>
+        <div class="sc-kpi">
+            <div class="sc-kpi__head">
+                <span class="sc-kpi__label">困境儿童</span>
+                <span class="sc-kpi__icon sc-kpi__icon--4">{{ icon('heart-handshake', 18) }}</span>
+            </div>
+            <span class="sc-kpi__value" id="statDistressed">0</span>
+        </div>
+    </div>
+    <div class="sc-stat-strip">
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statDibao">0</span>
+            <span class="sc-stat__label">低保对象</span>
+        </div>
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statWelfare">0</span>
+            <span class="sc-stat__label">公益岗位</span>
+        </div>
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statHardElderly">0</span>
+            <span class="sc-stat__label">困难老人</span>
+        </div>
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statDisabled">0</span>
+            <span class="sc-stat__label">残疾人员</span>
+        </div>
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statVeteran">0</span>
+            <span class="sc-stat__label">退役军人</span>
+        </div>
+        <div class="sc-stat">
+            <span class="sc-stat__value" id="statElderly">0</span>
+            <span class="sc-stat__label">高龄老人</span>
+        </div>
+    </div>
+</div>
+
+{# 070 页面级 8/4 栅格：左 8 = 人口结构 + 户属性；右 4 = 人口构成 + 待办 + 医保 #}
+<div class="sc-grid sc-dashboard-grid">
+    <div class="sc-grid__main">
+        <section class="sc-card">
+            <header class="sc-card__header sc-dashboard-card-head">
+                <div>
+                    <h3 class="sc-card__title">分所在组人口</h3>
+                    <p class="sc-card__subtitle">按村民小组统计在册人口</p>
+                </div>
+                <a class="sc-btn sc-btn--text" href="{{ url_for('resident.list') }}">居民管理 →</a>
+            </header>
+            <div class="sc-table-wrap">
+                <table class="sc-table">
+                    <thead class="sc-table__head">
+                        <tr>
+                            <th class="sc-table__th">所在组</th>
+                            <th class="sc-table__th sc-table__th--num">人口数</th>
+                            <th class="sc-table__th sc-table__th--num">户数</th>
+                            <th class="sc-table__th sc-table__th--num">男性</th>
+                            <th class="sc-table__th sc-table__th--num">女性</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupStatsBody"></tbody>
+                    <tfoot id="groupStatsFoot"></tfoot>
+                </table>
+            </div>
+        </section>
+
+        <section class="sc-card">
+            <header class="sc-card__header sc-dashboard-card-head">
+                <div>
+                    <h3 class="sc-card__title">人口结构</h3>
+                    <p class="sc-card__subtitle">按年龄 / 户口类型 / 民族分布</p>
+                </div>
+                <div class="sc-dashboard-tabs" id="structureTabs">
+                    <button type="button" class="sc-dashboard-tab is-active" data-structure-tab="age">年龄结构</button>
+                    <button type="button" class="sc-dashboard-tab" data-structure-tab="household">户口类型</button>
+                    <button type="button" class="sc-dashboard-tab" data-structure-tab="nation">民族分布</button>
+                </div>
+            </header>
+            <div class="sc-card__body">
+                <div class="sc-structure-legend" id="structureLegend"></div>
+                <div class="sc-chart-box"><canvas id="structureChart"></canvas></div>
+            </div>
+        </section>
+
+        <section class="sc-card">
+            <header class="sc-card__header sc-dashboard-card-head">
+                <div>
+                    <h3 class="sc-card__title">户属性结构</h3>
+                    <p class="sc-card__subtitle">共 <span id="housePropTotal">0</span> 户</p>
+                </div>
+            </header>
+            <div class="sc-card__body">
+                <div class="sc-chart-box sc-chart-box--short"><canvas id="housePropChart"></canvas></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="sc-grid__side">
+        <section class="sc-card">
+            <header class="sc-card__header sc-dashboard-card-head">
+                <div>
+                    <h3 class="sc-card__title">人口构成</h3>
+                    <p class="sc-card__subtitle"><span id="compositionMeta">重点对象 0 人 / 0 户</span></p>
+                </div>
+            </header>
+            <div class="sc-card__body">
+                <div class="sc-composition">
+                    <div class="sc-ring sc-ring--sm">
+                        <canvas id="compositionChart"></canvas>
+                        <div class="sc-ring__center" id="compositionCenter">0</div>
+                    </div>
+                    <ul class="sc-legend" id="compositionLegend"></ul>
+                </div>
+                <div class="sc-gender">
+                    <div class="sc-gender__head">
+                        <span>性别分布</span>
+                        <span><b id="statMale">0</b> 男 / <b id="statFemale">0</b> 女</span>
+                    </div>
+                    <div class="sc-gender__bar">
+                        <span class="sc-gender__male" id="maleBar"></span>
+                        <span class="sc-gender__female" id="femaleBar"></span>
+                    </div>
+                </div>
+                <div class="sc-review" id="reviewProgress"></div>
+            </div>
+        </section>
+
+        {% if has_perm('todo.view') %}
+        <section class="sc-card" id="dashboardTodoCard">
+            <header class="sc-card__header sc-dashboard-card-head">
+                {# 076 RC-03（Q2 裁定）：去掉头部计数（「N 项将于 7 天内到期」与列表口径双标），
+                   回样图形态「待办提醒 + 全部→」；7 天口径仍由顶栏提示条（shell_banner）承载 #}
+                <h3 class="sc-card__title">待办提醒</h3>
+                <a class="sc-btn sc-btn--text" href="{{ url_for('todo.list') }}">全部 →</a>
+            </header>
+            <div class="sc-table-wrap">
+                <table class="sc-table sc-table--dense sc-todo-table">
+                    <tbody id="dashboardTodoList">
+                        <tr><td class="text-muted">加载中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="sc-card">
+            <header class="sc-card__header sc-dashboard-card-head">
+                <div>
+                    <h3 class="sc-card__title">医保缴费率</h3>
+                    <p class="sc-card__subtitle"><span id="medicalYear">—</span> 年度参保口径</p>
+                </div>
+            </header>
+            <div class="sc-card__body sc-card__body--center">
+                <div class="sc-ring sc-ring--sm">
+                    <canvas id="medicalRateChart"></canvas>
+                    <div class="sc-ring__center" id="medicalRateText">0%</div>
+                </div>
+                <p class="sc-rate-meta" id="medicalRateMeta">已缴 0 / 应缴 0 人</p>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- chart.umd 收敛到 dashboard 局部引入（008：全站唯一 Chart 使用方，不再全局加载） -->
+<script src="{{ url_for('static', filename='lib/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='lib/chartjs-plugin-datalabels.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/dashboard.js') }}"></script>
+{% endblock %}

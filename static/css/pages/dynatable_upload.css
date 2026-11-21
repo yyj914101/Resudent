@@ -1,0 +1,211 @@
+/* ==========================================================================
+ * dynatable_upload.css — 台账建表 · 上传 Excel 建表页（2026-11-16 按 ADR-022 设计稿改造）
+ * 依据：docs 设计规范「现代化卡片式单列表单」+ 视觉基线 v4.0 令牌
+ * 作用域：.dt-upload（仅本页），不覆盖 components.css 的通用件
+ * 约定：颜色/圆角/间距只走令牌，零裸色值、零阴影（全站口径）
+ * ========================================================================== */
+
+/* ── 容器：定宽 768 居中（视线收拢，保障表单最佳阅读行长） ── */
+.dt-upload {
+    max-width: 768px;
+    margin: 0 auto;
+}
+
+/* ── 页头右侧返回：幽灵文字链（无底色，hover 变深） ── */
+.dt-upload .dt-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    padding-bottom: 2px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--c-muted);
+    text-decoration: none;
+    transition: color .15s ease;
+}
+.dt-upload .dt-back:hover { color: var(--c-ink); }
+
+/* ── 表单主卡片：白底 + 1px 描边 + 大圆角 + 32 内边距 ── */
+.dt-upload .dt-card {
+    padding: 32px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-card);
+}
+
+/* ── 字段组：顶对齐标签，组间距 24、标签与控件 6 ── */
+.dt-upload .dt-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 24px;
+}
+.dt-upload .dt-field:last-of-type { margin-bottom: 0; }
+
+.dt-upload .dt-label {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--c-muted);
+    line-height: 1.4;
+}
+.dt-upload .dt-req { color: var(--c-danger); }
+
+/* 辅助说明外置到控件下方（不用 placeholder 承载规则） */
+.dt-upload .dt-hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--c-faint);
+    line-height: 1.5;
+}
+
+/* ── 控件：复用 .sc-input/.sc-select/.sc-textarea，仅调本页焦点态与下拉箭头 ── */
+.dt-upload .dt-input,
+.dt-upload .dt-textarea { width: 100%; flex: none; }
+
+.dt-upload .dt-textarea { min-height: 80px; resize: vertical; }
+
+/* 焦点态：纯黑描边 + 2px 浅灰光环（令牌取值，替代设计稿的 10% 黑光环） */
+.dt-upload .sc-input:focus,
+.dt-upload .sc-select:focus,
+.dt-upload .sc-textarea:focus {
+    border-color: var(--c-ink-2);
+    box-shadow: 0 0 0 2px var(--c-hover);
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+/* 表标识用等宽字，便于核对 code 形态 */
+.dt-upload .dt-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* 下拉框：实际控件是 app.js 包出的纯 DOM 自定义下拉（原生 select 被 .cs-native 置为
+   display:none，只负责提交值），因此外观必须落在 .custom-select__trigger 上——
+   与本页 .sc-input 统一描边/圆角/焦点态，否则同列控件会差一档圆角（6px vs 8px）。 */
+.dt-upload .custom-select { width: 100%; }
+.dt-upload .custom-select__trigger {
+    border-color: var(--c-line);
+    border-radius: var(--r-ctrl);
+    background-color: var(--c-surface);
+    color: var(--c-ink-2);
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+.dt-upload .custom-select__trigger.is-open,
+.dt-upload .custom-select__trigger:focus {
+    border-color: var(--c-ink-2);
+    box-shadow: 0 0 0 2px var(--c-hover);
+    outline: none;
+}
+
+
+/* ── 双列：菜单归属 / 菜单分组（≤640 堆叠） ── */
+.dt-upload .dt-grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+.dt-upload .dt-grid2 .dt-field { margin-bottom: 0; }
+@media (max-width: 640px) {
+    .dt-upload .dt-grid2 { grid-template-columns: 1fr; gap: 24px; }
+}
+
+/* ── 拖拽上传区 ──
+   🔴 原生 file 域以 absolute 铺满整块并 opacity:0 承担点击/聚焦（禁止给容器或该域设
+   pointer-events:none，否则会复现「看着能点、点了没反应」的第十六节踩坑）；
+   容器仅负责外观与 hover/drag 态。 */
+/* File Drop Zone 标准件对齐（细节收口 F-07）：底/虚线/圆角/is-drag 与 rw-drop/pw-drop 同规 */
+.dt-upload .dt-drop {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 32px;
+    background: var(--c-side);
+    border: 1.5px dashed var(--c-line-3);
+    border-radius: var(--r-card);
+    text-align: center;
+    transition: border-color .2s ease, background-color .2s ease;
+}
+.dt-upload .dt-drop:hover {
+    border-color: var(--c-ink-4);
+    background: var(--c-hover);
+}
+.dt-upload .dt-drop.is-drag {
+    border-style: solid;
+    border-color: var(--c-ink-2);
+    background: var(--c-hover);
+}
+.dt-upload .dt-drop__icon {
+    font-size: 32px;
+    line-height: 1;
+    color: var(--c-faint);
+    margin-bottom: 12px;
+    transition: color .2s ease;
+}
+.dt-upload .dt-drop:hover .dt-drop__icon,
+.dt-upload .dt-drop.is-drag .dt-drop__icon { color: var(--c-ink-3); }
+
+.dt-upload .dt-drop__title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--c-ink);
+}
+.dt-upload .dt-drop__hint { font-size: 12px; color: var(--c-faint); }
+
+/* 已选文件名：选完文件后替换提示行，给不可见的原生域一个可见反馈 */
+.dt-upload .dt-drop__file {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-ink-2);
+    word-break: break-all;
+}
+/* [hidden] 的 UA 样式会被上面的 display:inline-flex 覆盖，须显式还原 */
+.dt-upload .dt-drop__file[hidden] { display: none; }
+/* 已选中：虚线转实线 + 白底，状态可见 */
+.dt-upload .dt-drop.has-file {
+    border-style: solid;
+    border-color: var(--c-ink-3);
+    background: var(--c-surface);
+}
+
+/* 透明原生文件域：铺满容器，负责唤起资源管理器 */
+.dt-upload .dt-drop__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+/* 键盘聚焦（Tab 进入透明域）时整块显示焦点环，避免「看不见焦点」 */
+.dt-upload .dt-drop:focus-within {
+    border-color: var(--c-ink-3);
+    box-shadow: 0 0 0 2px var(--c-hover);
+}
+
+/* ── 底栏：分割线 + 20 上内距；主/次按钮沿用 .sc-btn 通用件 ── */
+.dt-upload .dt-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+    padding-top: 20px;
+    border-top: 1px solid var(--c-line-2);
+}
+/* 操作反馈落在底栏上方，保持可见 */
+.dt-upload #uploadMsg { margin: 12px 0 0; }
+.dt-upload #uploadMsg:empty { display: none; }
+
+/* ── 窄屏：卡片与上传区内边距收一档 ── */
+@media (max-width: 640px) {
+    .dt-upload .dt-card { padding: 24px; }
+    .dt-upload .dt-drop { padding: 24px; }
+}

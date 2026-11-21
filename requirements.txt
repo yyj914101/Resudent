@@ -1,0 +1,14 @@
+Flask==3.1.2
+Flask-SQLAlchemy==3.1.1
+Werkzeug==3.1.5
+waitress==3.0.2
+openpyxl==3.1.5
+# 105 选民批量导入契约扩展（2026-11-19）：.xls（97-2003）解析依赖 xlrd（2.x 仅支持 .xls，
+# 与 openpyxl 分工互补：xlsx 归 openpyxl、xls 归 xlrd）；.csv 走标准库无需依赖
+xlrd==2.0.2
+python-docx==1.1.2
+# T21-2（R10 花名册 PDF）：reportlab 版本锁定，兼容 Python 3.11+（含 3.12，M6.0 C2 条件）
+reportlab==4.4.9
+# R12 字段级 Fernet 加密 / PBKDF2 启动口令 / 授权非对称签名 / .wbak 加密备份（utils/crypto.py、utils/license.py、utils/backup_crypto.py 顶层依赖）
+# P0-3 整改：此前缺失，全新环境 pip install 后 ImportError 无法启动
+cryptography==45.0.7

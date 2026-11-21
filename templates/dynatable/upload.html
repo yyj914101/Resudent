@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}上传 Excel 建表{% endblock %}
+{% block page_title %}{% endblock %}
+
+{# 2026-11-16 按 ADR-022 设计稿改造：定宽 768 单列表单 + 顶对齐标签 + 拖拽上传区。
+   JS 承重墙 id 全部保留（f_file / f_name / f_code / f_module / f_group / f_desc /
+   submitBtn / resetBtn / uploadMsg），dynatable_upload.js 无需改选择器即可工作。 #}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/dynatable_upload.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="dt-upload">
+    <header class="sc-page-head">
+        <div class="sc-page-head__title">
+            <h2 class="sc-page-head__name">上传 Excel 建表</h2>
+            <p class="sc-page-head__meta">选择文件后系统只做「解析 + 类型推断」，建表前必须在确认页逐列核对，不会自动落库。</p>
+        </div>
+        <div class="sc-page-head__actions">
+            <a class="dt-back" href="{{ url_for('dynatable.index') }}"><i class="bi bi-arrow-left"></i> 返回台账列表</a>
+        </div>
+    </header>
+
+    <section class="sc-card dt-card">
+        <form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+            <div class="dt-field">
+                <label class="dt-label" for="f_file">数据文件<span class="dt-req">*</span></label>
+                {# 原生 file 域以 absolute 铺满并透明化承担点击；容器只做外观，勿加 pointer-events:none #}
+                <div class="dt-drop" id="dropZone">
+                    <i class="bi bi-file-earmark-plus dt-drop__icon" aria-hidden="true"></i>
+                    <span class="dt-drop__title">点击或拖拽 Excel 文件到此处</span>
+                    <span class="dt-drop__hint">支持 .xlsx / .csv，≤20MB；首行为字段名，列顺序即台账列顺序。</span>
+                    <span class="dt-drop__file" id="fileName" hidden></span>
+                    <input type="file" class="dt-drop__input" name="file" id="f_file" accept=".xlsx,.csv" required>
+                </div>
+            </div>
+
+            <div class="dt-field">
+                <label class="dt-label" for="f_name">台账名称<span class="dt-req">*</span></label>
+                <input type="text" class="sc-input dt-input" name="name" id="f_name" placeholder="例如：养老保险参保台账" required>
+            </div>
+
+            <div class="dt-field">
+                <label class="dt-label" for="f_code">表标识<span class="dt-req">*</span></label>
+                <input type="text" class="sc-input dt-input dt-mono" name="code" id="f_code" placeholder="例如：pension_record" required>
+                <p class="dt-hint">小写字母开头，仅小写字母/数字/下划线，全库唯一。</p>
+            </div>
+
+            <div class="dt-grid2">
+                <div class="dt-field">
+                    <label class="dt-label" for="f_module">菜单归属</label>
+                    {# 值=英文键（提交给后端校验），显示=中文（一线人员读中文；映射真源 utils/dynatable_modules.py） #}
+                    <select class="sc-select" name="module_key" id="f_module">
+                        {% for opt in module_options %}
+                        <option value="{{ opt['value'] }}">{{ opt['label'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="dt-field">
+                    <label class="dt-label" for="f_group">菜单分组</label>
+                    <select class="sc-select" name="group_name" id="f_group">
+                        <option value="">（不指定）</option>
+                        {% for name in group_names %}
+                        <option value="{{ name }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="dt-field">
+                <label class="dt-label" for="f_desc">用途说明</label>
+                <textarea class="sc-textarea dt-textarea" name="description" id="f_desc" rows="3" placeholder="选填"></textarea>
+            </div>
+
+            <p class="dt-hint" id="uploadMsg"></p>
+
+            <div class="dt-foot">
+                <button type="submit" class="sc-btn sc-btn--primary" id="submitBtn"><i class="bi bi-arrow-right"></i> 解析并进入确认页</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="resetBtn">重置</button>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dynatable_upload.js') }}"></script>
+{% endblock %}

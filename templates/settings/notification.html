@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}通知配置{% endblock %}
+{% block page_title %}通知配置{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="form">
+{{ settings_head('通知配置', '提醒渠道与开关') }}
+
+<section class="sc-card">
+    <header class="sc-card__header"><h3 class="sc-card__title">通知渠道</h3></header>
+    <div class="sc-card__body">
+        <form id="notifForm">
+            <div class="d-flex align-items-center justify-content-between" style="margin-bottom:var(--sp-3)">
+                <div>
+                    <div class="sc-card__title" style="font-size:14px">生日提醒</div>
+                    <p class="text-muted small mb-0">居民生日当天自动生成待办事项提醒</p>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" name="enable_birthday_reminder" id="enableBirthday" value="1">
+                </div>
+            </div>
+            <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                <label class="sc-field__label" for="sendTime">提醒发送时间</label>
+                <input type="time" class="sc-input" name="send_time" id="sendTime" style="max-width:150px">
+            </div>
+
+            <div class="sc-modal__divider" style="margin:var(--sp-3) 0"></div>
+            <h3 class="sc-card__title" style="font-size:14px">年龄到期提醒（提前 N 天自动生成待办事项）</h3>
+            <p class="text-muted small">启用后，系统会在居民到达指定年龄前 N 天，在待办事项中自动生成提醒。</p>
+            <div id="ageSettings"></div>
+
+            <button type="submit" class="sc-btn sc-btn--primary" style="margin-top:var(--sp-4)">保存</button>
+        </form>
+    </div>
+</section>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/settings_notification.js') }}"></script>
+{% endblock %}

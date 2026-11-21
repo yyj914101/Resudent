@@ -1,0 +1,184 @@
+/* workflow_shared.css — 复杂工作流 5 页公共壳（061）
+ * 服务范围：安全工作 / 医保缴费 / 补贴公示 / 证明开具 / 新增居民（061 S2~S6 逐页接入）。
+ * 依据：060 已验收范式（settings_shared.css 同款手法）——不重写 Bootstrap DOM（各页 JS
+ *       以 id/class 直接依赖），仅在 .sc-workflow-page 作用域内套 v4.0 令牌。
+ * 依据：组件 handoff §2.1 卡片 / §2.2 按钮 / §2.5 表格 / §2.8 弹窗 / §2.9 表单
+ *       + 页面 handoff §1.1 页头。
+ * 加载方式：各页 {% block extra_css %}（GLB-02 已由 spa.js 注入，SPA 导航不丢）。
+ * 约束：只 var() 引用令牌，零裸色值；不改全局层（app.css / shell.css 属 leader 领地）。
+ *       sc-page-head 已上移 components.css（062 收口），本文件不再定义。
+ */
+
+/* ── 页头已上移 components.css（062 收口），本段删除 ── */
+
+/* ── 卡片（§2.1）：白底 / 圆角 10 / 1px 描边 / 零阴影 ──
+   app.css 的 .card 是圆角 12 + 投影 + hover 阴影；本域按 v4.0 覆盖。 */
+.sc-workflow-page .card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  box-shadow: none;
+}
+.sc-workflow-page .card:hover { box-shadow: none; }
+.sc-workflow-page .card-header {
+  padding: var(--sp-4);
+  background: transparent;
+  border-bottom: 1px solid var(--c-line-3);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+.sc-workflow-page .card-body { padding: var(--sp-4); }
+
+/* ── 表格（§2.5）：表头 --c-rail，行线 --c-line-2 ── */
+.sc-workflow-page .table th {
+  background: var(--c-rail);
+  color: var(--c-ink-3);
+  font-size: 13px;
+  font-weight: 500;
+  border-color: var(--c-line-2);
+}
+.sc-workflow-page .table td {
+  color: var(--c-ink-3);
+  font-size: 13px;
+  border-color: var(--c-line-2);
+}
+
+/* ── 按钮（§2.2）：主按钮中性黑，次/描边按钮白底 1px 描边 ── */
+.sc-workflow-page .btn { border-radius: var(--r-ctrl); font-size: 14px; }
+.sc-workflow-page .btn-primary,
+.sc-workflow-page .btn-primary:focus {
+  background: var(--c-ink-2);
+  border-color: var(--c-ink-2);
+  color: var(--c-surface);
+}
+.sc-workflow-page .btn-primary:hover { background: var(--c-ink); border-color: var(--c-ink); }
+.sc-workflow-page .btn-outline-primary,
+.sc-workflow-page .btn-outline-secondary,
+.sc-workflow-page .btn-outline-success,
+.sc-workflow-page .btn-outline-info {
+  color: var(--c-ink-2);
+  border-color: var(--c-line-3);
+}
+.sc-workflow-page .btn-outline-primary:hover,
+.sc-workflow-page .btn-outline-primary:focus,
+.sc-workflow-page .btn-outline-secondary:hover,
+.sc-workflow-page .btn-outline-secondary:focus,
+.sc-workflow-page .btn-outline-success:hover,
+.sc-workflow-page .btn-outline-success:focus,
+.sc-workflow-page .btn-outline-info:hover,
+.sc-workflow-page .btn-outline-info:focus {
+  background: var(--c-hover);
+  color: var(--c-ink);
+  border-color: var(--c-line-3);
+}
+/* 取消/次要实体按钮：白底描边（v4.0 中性，无灰阶实体钮） */
+.sc-workflow-page .btn-secondary,
+.sc-workflow-page .btn-secondary:focus {
+  background: var(--c-surface);
+  border-color: var(--c-line-3);
+  color: var(--c-ink-2);
+}
+.sc-workflow-page .btn-secondary:hover { background: var(--c-hover); color: var(--c-ink); }
+/* 视图切换当前态（§2.3 胶囊激活同语义：#171717 底白字） */
+.sc-workflow-page .btn-group .btn-outline-primary.active {
+  background: var(--c-ink-2);
+  border-color: var(--c-ink-2);
+  color: var(--c-surface);
+}
+/* 上传文件原为 btn-success（绿色主按钮）；v4.0 中性色无多彩主按钮，
+   降为次按钮形态（白底描边）保住「每屏唯一主按钮」——纯 CSS 重映射，DOM/JS 不动。 */
+.sc-workflow-page .btn-success,
+.sc-workflow-page .btn-success:focus {
+  background: var(--c-surface);
+  border-color: var(--c-line-3);
+  color: var(--c-ink-2);
+}
+.sc-workflow-page .btn-success:hover { background: var(--c-hover); color: var(--c-ink); }
+.sc-workflow-page .btn-danger {
+  background: var(--c-danger);
+  border-color: var(--c-danger);
+  color: var(--c-surface);
+}
+.sc-workflow-page .btn-outline-danger { color: var(--c-danger); border-color: var(--c-line-3); }
+.sc-workflow-page .btn-outline-danger:hover {
+  background: var(--c-hover);
+  color: var(--c-danger);
+  border-color: var(--c-line-3);
+}
+.sc-workflow-page .btn-link { color: var(--c-muted); text-decoration: none; }
+.sc-workflow-page .btn-link:hover { color: var(--c-ink); }
+
+/* ── 表单（§2.9）：1px 描边 + 圆角 8，焦点只换描边不发光 ── */
+.sc-workflow-page .form-control,
+.sc-workflow-page .form-select {
+  border-color: var(--c-line-3);
+  border-radius: var(--r-ctrl);
+}
+.sc-workflow-page .form-control:focus,
+.sc-workflow-page .form-select:focus {
+  border-color: var(--c-ink-4);
+  box-shadow: none;
+}
+
+/* ── 分页（§2.7）── */
+.sc-workflow-page .pagination .page-link { color: var(--c-ink-3); border-color: var(--c-line-3); }
+.sc-workflow-page .pagination .page-item.active .page-link {
+  background: var(--c-ink-2);
+  border-color: var(--c-ink-2);
+  color: var(--c-surface);
+}
+
+/* ── 弹窗（§2.8）：圆角 10 / 1px 描边；浮层阴影保留 Bootstrap 默认（无阴影令牌，不造裸值）── */
+.sc-workflow-page .modal-content {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+}
+.sc-workflow-page .modal-content.border-danger { border-color: var(--c-danger); }
+.sc-workflow-page .modal-header { padding: var(--sp-4); border-bottom-color: var(--c-line-2); }
+.sc-workflow-page .modal-title { font-size: 16px; font-weight: 600; color: var(--c-ink); }
+.sc-workflow-page .modal-body { padding: var(--sp-4); }
+.sc-workflow-page .modal-footer { padding: var(--sp-3) var(--sp-4); border-top-color: var(--c-line-2); }
+/* 灯箱保持暗底看图（bg-dark 语义），仅换中性黑令牌 */
+.sc-workflow-page .modal-content.bg-dark {
+  background: var(--c-ink);
+  border: 0;
+}
+
+/* ── 工具件：批量条 / 拖放区 / 面包屑，对齐令牌描边 ── */
+.sc-workflow-page .batch-bar,
+.sc-workflow-page #dropzone { border-color: var(--c-line-3) !important; }
+.sc-workflow-page .breadcrumb { font-size: 13px; }
+.sc-workflow-page .breadcrumb-item a { color: var(--c-muted); text-decoration: none; }
+.sc-workflow-page .breadcrumb-item a:hover { color: var(--c-ink); }
+.sc-workflow-page .breadcrumb-item.active { color: var(--c-ink); }
+
+/* ── 页内节奏：卡片行之间 16 ── */
+.sc-workflow-page > .row { margin-bottom: var(--sp-4); }
+.sc-workflow-page > .row:last-child { margin-bottom: 0; }
+
+/* 2026-11-16 新增居民：录入方式胶囊独立成行（.add-mode-bar 块级包装器强制换行，见 add.html）。
+   两行间距取 16（样图约 12；模块胶囊自带 24 的下外边距，此处回拉 8 对齐站内节奏）。 */
+.add-mode-bar { margin-top: calc(var(--sp-2) * -1); }
+
+/* ── 页内页签（sc-chips 形态 + nav-link 类共存）：061 S3/S4。
+   JS 切 active 类 / Bootstrap tab 插件切激活 → 对齐 065 宏 is-active 激活语义；
+   触发器是 <button> 时补边框归零（宏产物是 <a>，无此问题）。 ── */
+.sc-workflow-page .sc-chip { border: 0; }
+.sc-workflow-page .sc-chip.active {
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+  font-weight: 500;
+}
+
+/* ── 四步向导步骤条（app.css .step-tab 属 leader 领地，本域仅调色为中性；
+   R-061-C3：步骤条无 handoff 规格，按 sc-chips 变体取值，RESULT 已声明） ── */
+.sc-workflow-page .step-tab { background: var(--c-active); color: var(--c-ink-3); }
+.sc-workflow-page .step-tab.active { background: var(--c-ink-2); color: var(--c-surface); }
+.sc-workflow-page .step-tab.done { background: var(--c-line-3); color: var(--c-ink-2); }
+
+/* 分区标题（户主信息/居民信息 h6）：v4.0 中性，压掉 text-* 彩色工具类 */
+.sc-workflow-page .card-body h6 { color: var(--c-ink); }
+
+

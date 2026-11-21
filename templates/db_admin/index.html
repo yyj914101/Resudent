@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}数据库管理面板 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}数据库管理面板{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/db_admin.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="special">
+{{ settings_head('数据库管理面板', '在线 DDL 与体检') }}
+
+<!-- 常驻警示条（风险提醒第一层之一） -->
+<div class="alert alert-warning d-flex align-items-center" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div>
+        此面板可修改数据库结构。所有<span class="sc-badge sc-badge--warning">黄级</span>操作执行前都会<span class="fw-bold">先自动生成加密备份（.wbak）</span>；
+        应用表（系统代码使用的表）在面板内<span class="fw-bold">一律只读</span>，结构变更请走轨 A 迁移脚本。
+        如不熟悉 SQL，请仅使用<span class="sc-badge sc-badge--success">绿级</span>功能。
+    </div>
+</div>
+
+<!-- 总览 -->
+<div class="db-stat-grid">
+    <div><section class="sc-card stat-card"><div class="sc-card__body"><div class="stat-label">数据库体积</div><div class="stat-value" id="ovSize">-</div></div></section></div>
+    <div><section class="sc-card stat-card"><div class="sc-card__body"><div class="stat-label">表数量 / 总行数</div><div class="stat-value" id="ovTables">-</div></div></section></div>
+    <div><section class="sc-card stat-card"><div class="sc-card__body"><div class="stat-label">页统计 / 碎片页</div><div class="stat-value" id="ovPages">-</div></div></section></div>
+    <div><section class="sc-card stat-card"><div class="sc-card__body"><div class="stat-label">最近备份（.wbak）</div><div class="stat-value" id="ovBackup">-</div></div></section></div>
+</div>
+
+<!-- 表清单 -->
+<section class="sc-card">
+    <header class="sc-card__header d-flex justify-content-between align-items-center">
+        <h3 class="sc-card__title">表清单 <span class="sc-badge sc-badge--success">绿级 · 只读</span></h3>
+        <div class="d-flex gap-2">
+            <button class="sc-btn sc-btn--secondary" id="btnCheck">完整性检查</button>
+            <button class="sc-btn sc-btn--secondary" id="btnReconcile">Schema 对账</button>
+            <button class="sc-btn sc-btn--secondary" id="btnAudit">审计台账</button>
+        </div>
+    </header>
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th class="sc-table__th">表名</th><th class="sc-table__th">分类</th>
+                    <th class="sc-table__th sc-table__th--num">行数</th><th class="sc-table__th sc-table__th--num">字段</th>
+                    <th class="sc-table__th sc-table__th--num">索引</th><th class="sc-table__th sc-table__th--num">体积</th>
+                    <th class="sc-table__th" style="width:80px"></th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</section>
+
+<!-- 完整性检查 / 对账 / 审计 结果区 -->
+<section class="sc-card d-none" id="reportCard">
+    <header class="sc-card__header"><h3 class="sc-card__title" id="reportTitle">报告</h3></header>
+    <div class="sc-card__body"><pre class="report-pre mb-0" id="reportBody"></pre></div>
+</section>
+
+<!-- 黄级操作 -->
+<section class="sc-card">
+    <header class="sc-card__header">
+        <h3 class="sc-card__title">低风险结构操作 <span class="sc-badge sc-badge--warning">黄级 · 执行前自动备份</span></h3>
+        <p class="sc-card__subtitle">仅对非应用表开放</p>
+    </header>
+    <div class="sc-card__body">
+        <div class="db-btn-grid db-btn-grid--3">
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnCreateTable">建表</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnAddColumn">加字段</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnCreateIndex">建索引</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnDropIndex">删索引</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnCopyTable">复制表</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnRenameTable">表重命名</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnAnalyze">ANALYZE（全库统计）</button></div>
+            <div><button class="sc-btn sc-btn--warning" style="width:100%" id="btnVacuum">VACUUM（整理碎片）</button></div>
+        </div>
+    </div>
+</section>
+
+<!-- 红级操作（026） -->
+<section class="sc-card">
+    <header class="sc-card__header">
+        <h3 class="sc-card__title">高风险结构操作 <span class="sc-badge sc-badge--danger">红级 · 不可逆 · 三重闸</span></h3>
+        <p class="sc-card__subtitle">仅非应用表；执行前自动备份 + 输入表名确认 + 全程审计</p>
+    </header>
+    <div class="sc-card__body">
+        <div class="db-btn-grid db-btn-grid--4">
+            <div><button class="sc-btn sc-btn--danger" style="width:100%" id="btnRedDropCol">删字段</button></div>
+            <div><button class="sc-btn sc-btn--danger" style="width:100%" id="btnRedAlterCol">改字段（重建表）</button></div>
+            <div><button class="sc-btn sc-btn--danger" style="width:100%" id="btnRedTruncate">截断表（清空数据）</button></div>
+            <div><button class="sc-btn sc-btn--danger" style="width:100%" id="btnRedDropTable">删表</button></div>
+        </div>
+    </div>
+</section>
+
+<!-- 单表详情 Modal -->
+<div class="modal fade" id="tableDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="sc-modal sc-modal--lg" style="width:auto" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="tdTitle">表详情</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div id="tdMeta"></div>
+                <h3 class="sc-card__title" style="font-size:14px;margin-top:var(--sp-3)">字段</h3>
+                <div class="sc-table-wrap"><table class="sc-table sc-table--dense"><thead><tr><th class="sc-table__th">#</th><th class="sc-table__th">名称</th><th class="sc-table__th">类型</th><th class="sc-table__th">非空</th><th class="sc-table__th">默认值</th><th class="sc-table__th">主键</th></tr></thead><tbody id="tdCols"></tbody></table></div>
+                <h3 class="sc-card__title" style="font-size:14px;margin-top:var(--sp-3)">索引</h3>
+                <div class="sc-table-wrap"><table class="sc-table sc-table--dense"><thead><tr><th class="sc-table__th">名称</th><th class="sc-table__th">唯一</th><th class="sc-table__th">来源</th><th class="sc-table__th">列</th><th class="sc-table__th">自动</th></tr></thead><tbody id="tdIdx"></tbody></table></div>
+                <h3 class="sc-card__title" style="font-size:14px;margin-top:var(--sp-3)">建表 SQL</h3>
+                <pre class="report-pre" id="tdSql"></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 黄级操作表单 Modal -->
+<div class="modal fade" id="opModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="opTitle">操作</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="opBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--warning" id="opNext">下一步（预览 SQL）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 黄级执行确认 Modal（第二层：展示将执行的 SQL） -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">执行确认（黄级操作）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div id="confirmWarn" class="alert alert-danger d-none"></div>
+                <div class="small text-muted" style="margin-bottom:var(--sp-2)">即将执行以下 SQL（执行前将自动生成 <b>.wbak</b> 加密备份，备份失败则中止）：</div>
+                <pre class="report-pre" id="confirmSql"></pre>
+                <div class="form-check" style="margin-top:var(--sp-2)">
+                    <input class="form-check-input" type="checkbox" id="confirmAck">
+                    <label class="form-check-label" for="confirmAck">我已阅读风险提示，确认执行</label>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--warning" id="confirmGo" disabled>执行</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级表单 Modal -->
+<div class="modal fade" id="redModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="redTitle">红级操作</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="redBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--danger" id="redNext">下一步（查看影响面）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级三重闸确认 Modal -->
+<div class="modal fade" id="confirmRedModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg sc-modal--danger" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">高风险操作确认（三重闸）</h3>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="alert alert-danger">
+                    闸 1：执行前将<b>自动生成 .wbak 加密备份</b>（备份失败将中止操作）。<br>
+                    闸 2：请核对下方<b>影响面</b>，并<b>输入目标表名</b>确认。<br>
+                    闸 3：执行后展示结果与<b>恢复指引</b>。
+                </div>
+                <div id="redImpact"></div>
+                <pre class="report-pre" id="redSql"></pre>
+                <div style="margin-bottom:var(--sp-2)">
+                    <label class="sc-field__label" for="redConfirmName" style="display:block;line-height:20px;margin-bottom:var(--sp-1)">输入目标表名以确认（<b id="redTarget"></b>）</label>
+                    <input type="text" class="sc-input" id="redConfirmName" placeholder="请准确输入目标表名">
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--danger" id="redGo" disabled>执行（我很确定）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级执行结果 Modal（闸 3） -->
+<div class="modal fade" id="redResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">执行结果（闸 3）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="redResultBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 入口须知 Modal（风险提醒第一层） -->
+<div class="modal fade" id="noticeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg sc-modal--warning" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">使用须知（请先阅读）</h3>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <ul>
+                    <li><b>绿级（只读）</b>：查看表结构/完整性检查/对账，不会修改任何数据，可放心使用。</li>
+                    <li><b>黄级（低风险）</b>：建表/加字段/建删索引/复制表/重命名/ANALYZE/VACUUM——执行前系统自动生成 <b>.wbak</b> 加密备份；备份失败则操作中止。</li>
+                    <li><b>红级（高风险）</b>：删字段/改字段（重建表）/截断表/删表——三重闸（自动备份 → 确认影响面并输入表名 → 执行后报告含恢复指引），仅对面板自建表开放。</li>
+                    <li><b>应用表只读</b>：系统代码使用的表在面板内一律只读，结构变更请提交 <code>scripts/migrations/</code> 迁移脚本（轨 A）。</li>
+                    <li><b>全程留痕</b>：所有黄级操作写入 DDL 审计表与操作日志，可追溯。</li>
+                    <li><b>不建议</b>：业务高峰执行 VACUUM（独占锁会短暂阻塞）。</li>
+                    <li>出问题找回方法：到「数据库安全」页用最近一份 <b>.wbak</b> 备份恢复。</li>
+                </ul>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--warning" id="noticeAck">我已阅读，进入面板</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/db_admin.js') }}"></script>
+{% endblock %}

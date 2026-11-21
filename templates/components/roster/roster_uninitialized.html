@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.name if meta else '台账未初始化' }}{% endblock %}
+
+{# 085 R-085-01：fresh-app（未执行 m031）时 dynamic_table 元数据行缺失。
+   提供可解释的 200 页面（禁止 404 死链），不渲染上传流程（此时上传端点不可用）。 #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">{{ meta.name if meta else '台账未初始化' }}</h2>
+        <p class="sc-page-head__meta">该台账的元数据尚未初始化</p>
+    </div>
+</header>
+
+<section class="sc-card">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+        <i class="bi bi-info-circle text-primary" style="font-size:20px;margin-top:2px"></i>
+        <div>
+            <p style="margin:0 0 6px;font-weight:600">台账元数据未初始化，请先执行数据库迁移 m031。</p>
+            <p class="sc-field__hint" style="margin:0">
+                当前数据库尚未预置「{{ meta.name if meta else '该台账' }}」的元数据行（dynamic_table），
+                上传建表入口暂不可用。请由运维执行 m031（roster_metadata）迁移后刷新本页；
+                迁移完成后本页将显示上传建表或台账内容。
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

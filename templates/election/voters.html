@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+{% endblock %}
+{% block title %}选民名册 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}{% endblock %}
+{% block content %}
+
+{# 090B 选民名册页（一页纸 §8 选民名册 + 结果；状态推进 §6；对账 §7） #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">{{ round.round_name }}</h2>
+        <div class="sc-page-head__meta">
+            任期 {{ round.start_date }}{% if round.end_date %} ~ {{ round.end_date }}{% endif %}
+            · 登记期 {{ round.register_start }} ~ {{ round.register_end }}
+            · 投票日 {{ round.vote_date }}
+            · <span class="sc-badge sc-badge--primary" id="roundStatus">{{ round.status }}</span>
+        </div>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('election.index') }}"><i class="bi bi-arrow-left"></i> 返回列表</a>
+        <button type="button" class="sc-btn sc-btn--primary" id="btnTransition" hidden></button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnVoterImport" hidden><i class="bi bi-upload"></i> 批量导入</button>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="exportVoters()"><i class="bi bi-download"></i> 导出名册</button>
+    </div>
+</header>
+
+{% if round.status != '选民登记' %}
+<div class="sc-card" id="readonlyHint" style="margin-bottom:var(--sp-3)">
+    <p class="sc-page-head__meta" style="font-size:12px;padding:10px 12px;margin:0;">
+        当前届次状态为「{{ round.status }}」，名册只读（仅「选民登记」状态可增删改与批量导入）。
+    </p>
+</div>
+{% endif %}
+
+<section class="sc-stat-strip" id="reconcileStrip">
+    {# §7 对账：M-01 登记数=已登记行数；M-03 四值互斥=名册总数；M-02 得票合计=Σ #}
+    <div class="sc-stat"><span class="sc-stat-strip__label">名册总数</span><span class="sc-stat-strip__value" id="rcTotal">-</span></div>
+    <div class="sc-stat"><span class="sc-stat-strip__label">已登记</span><span class="sc-stat-strip__value" id="rcRegistered">-</span></div>
+    <div class="sc-stat"><span class="sc-stat-strip__label">委托投票</span><span class="sc-stat-strip__value" id="rcProxy">-</span></div>
+    <div class="sc-stat"><span class="sc-stat-strip__label">外出</span><span class="sc-stat-strip__value" id="rcOut">-</span></div>
+    <div class="sc-stat"><span class="sc-stat-strip__label">得票合计</span><span class="sc-stat-strip__value" id="rcVotes">-</span></div>
+</section>
+
+<section class="sc-card">
+    <header class="sc-card__header"><h3 class="sc-card__title">选民名册</h3></header>
+    <div class="sc-toolbar">
+        <input type="text" class="sc-input" id="sGroup" placeholder="所在组" style="width:130px">
+        <select class="sc-select" id="sRegisterStatus" style="width:140px">
+            <option value="">全部登记状态</option>
+            {% for s in register_statuses %}
+            <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+        </select>
+        <select class="sc-select" id="sIsOut" style="width:120px">
+            <option value="">是否外出</option>
+            <option value="1">外出</option>
+            <option value="0">未外出</option>
+        </select>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="loadVoters()"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--primary" id="btnAddVoter" onclick="openVoterModal()" hidden><i class="bi bi-plus"></i> 登记选民</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">仅「选民登记」状态可增删改选民（登记期守卫）</span>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="voterTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">姓名</th><th class="sc-table__th">身份证号</th><th class="sc-table__th">所在组</th>
+                    <th class="sc-table__th">登记状态</th><th class="sc-table__th">是否外出</th><th class="sc-table__th">委托受托人</th>
+                    <th class="sc-table__th">联系电话</th><th class="sc-table__th">流动票箱</th><th class="sc-table__th">备注</th><th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+</section>
+
+<section class="sc-card">
+    <header class="sc-card__header">
+        <h3 class="sc-card__title">当选结果</h3>
+        <button type="button" class="sc-btn sc-btn--primary" id="btnAddResult" onclick="openResultModal()" hidden><i class="bi bi-plus"></i> 录入结果</button>
+    </header>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="resultTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">职务</th><th class="sc-table__th">当选人</th><th class="sc-table__th sc-table__th--num">得票</th>
+                    <th class="sc-table__th">是否当选</th><th class="sc-table__th">公示日期</th><th class="sc-table__th">备注</th><th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="rtb"></tbody>
+        </table>
+    </div>
+    <p class="sc-page-head__meta" style="font-size:12px;padding:0 12px 10px;">结果录入窗口：「投票」录入、「结果公示」修正；得票合计 = Σ 各结果行得票（M-02）。</p>
+</section>
+
+<!-- 选民 Modal（id 契约：vtForm/vtId） -->
+<div class="modal fade" id="vtModal" tabindex="-1">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="vtForm">
+                <input type="hidden" name="id" id="vtId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="vtTitle">登记选民</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field"><label class="sc-field__label">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" maxlength="50" required></div>
+                    <div class="sc-field"><label class="sc-field__label">身份证号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" maxlength="18" required></div>
+                    <div class="sc-field"><label class="sc-field__label">所在组</label>
+                        <input type="text" class="sc-input" name="group_name" maxlength="50"></div>
+                    <div class="sc-field"><label class="sc-field__label">登记状态<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="register_status">
+                            {% for s in register_statuses %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select></div>
+                    <div class="sc-field"><label class="sc-field__label">委托受托人</label>
+                        <input type="text" class="sc-input" name="proxy_name" maxlength="50"></div>
+                    <div class="sc-field"><label class="sc-field__label">联系电话</label>
+                        <input type="text" class="sc-input" name="phone" maxlength="30"></div>
+                    <div class="sc-field"><label><input type="checkbox" class="sc-checkbox" name="is_out" value="1"> 是否外出</label></div>
+                    <div class="sc-field"><label><input type="checkbox" class="sc-checkbox" name="mobile_box" value="1"> 流动票箱</label></div>
+                    <div class="sc-field sc-field--full"><label class="sc-field__label">备注</label>
+                        <input type="text" class="sc-input" name="remark" maxlength="200"></div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 结果 Modal（id 契约：rsForm/rsId） -->
+<div class="modal fade" id="rsModal" tabindex="-1">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="rsForm">
+                <input type="hidden" name="id" id="rsId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="rsTitle">录入当选结果</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field"><label class="sc-field__label">当选职务<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="position" required>
+                            {% for p in positions %}
+                            <option value="{{ p }}">{{ p }}</option>
+                            {% endfor %}
+                        </select></div>
+                    <div class="sc-field"><label class="sc-field__label">当选人姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="winner_name" maxlength="50" required></div>
+                    <div class="sc-field"><label class="sc-field__label">当选人身份证号</label>
+                        <input type="text" class="sc-input" name="winner_id_card" maxlength="18"></div>
+                    <div class="sc-field"><label class="sc-field__label">得票<span class="sc-field__required">*</span></label>
+                        <input type="number" class="sc-input" name="votes" min="0" step="1" value="0" required></div>
+                    <div class="sc-field"><label class="sc-field__label">公示日期</label>
+                        <input type="date" class="sc-input" name="notice_date"></div>
+                    <div class="sc-field"><label><input type="checkbox" class="sc-checkbox" name="is_elected" value="1" checked> 是否当选</label></div>
+                    <div class="sc-field sc-field--full"><label class="sc-field__label">备注</label>
+                        <input type="text" class="sc-input" name="remark" maxlength="200"></div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 105 批量导入 Modal（id 契约：voterImportFile / btnVoterImportSubmit / voterImportBar）
+     2026-11-19：按 ADR-022 v4.0 导入弹窗组件换壳（对齐党员管理 impModal，样式共享
+     css/pages/import_modal_v2.css）。JS 契约 id 全保留：voterImportFile 仍是真实 file input，
+     submitVoterImport 上传→执行→轮询链路不变；新增投放区交互见 election_voters.js。 -->
+<div class="modal fade" id="voterImportModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="voterImportModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="voterImportModalTitle">批量导入选民</h3>
+                    <p class="pw-modal__sub">支持标准选民名册 Excel 模板上传，异步批次执行与失败行报告</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">选民名册导入模板</span>
+                        <span class="pw-tplbar__ver">9 列固定</span>
+                    </div>
+                    <a class="sc-btn sc-btn--secondary" id="btnVoterTplDownload"
+                       href="{{ url_for('election.api_voter_template', rid=round.id) }}"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+                </div>
+
+                <p class="sc-field__hint">
+                    模板 9 列：姓名 / 身份证号 / 所在组 / 登记状态 / 是否外出 / 委托受托人 / 联系电话 / 是否票箱 / 备注。
+                    同届次同人按 overwrite 覆盖（上传行空单元格保留库中原值）。
+                </p>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="voterImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="voterImportFile" accept=".xlsx,.xls,.csv" class="d-none">
+                    <div class="pw-drop" id="voterImpDrop" role="button" tabindex="0" aria-labelledby="voterImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">支持 <b>.xlsx / .xls / .csv</b> 格式，单文件不超过 <b>10MB</b></span>
+                    </div>
+                    <div class="pw-staged d-none" id="voterImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="voterImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="voterImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="voterImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="voterImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="voterImportProgress" class="d-none">
+                    <div class="progress" style="height:18px;">
+                        <div class="progress-bar" id="voterImportBar" role="progressbar" style="width:0%">0%</div>
+                    </div>
+                    <div class="sc-field__hint" id="voterImportText"></div>
+                </div>
+                <div id="voterImportReport" class="d-none">
+                    <div class="alert alert-info" id="voterImportSummary"></div>
+                    <div class="sc-table-wrap">
+                        <table class="sc-table sc-table--dense">
+                            <thead>
+                                <tr>
+                                    <th class="sc-table__th">行号</th>
+                                    <th class="sc-table__th">身份证(脱敏)</th>
+                                    <th class="sc-table__th">失败原因</th>
+                                </tr>
+                            </thead>
+                            <tbody id="voterImportErrors"></tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="btnVoterImportExportFailed" disabled>导出失败行</button>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnVoterImportSubmit" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+{# 选民详情弹窗（2026-11-17 Master–Detail 全站统一） #}
+<div class="modal fade" id="vtDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="vtDetailTitle">选民详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="vtDetailBody"></div>
+            <footer class="sc-modal__footer" id="vtDetailBtns"></footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/election_voters.js') }}"></script>
+<script>
+initVotersPage({ round: {{ round|tojson }},
+                 transitions: {{ {'筹备': '选民登记', '选民登记': '投票', '投票': '结果公示', '结果公示': '已完成'}|tojson }} });
+</script>
+{% endblock %}

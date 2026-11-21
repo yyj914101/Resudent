@@ -1,0 +1,23 @@
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">{{ current_user.real_name or current_user.username }}</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">{{ current_user.role.name if current_user.role else '' }}</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>{{ current_user.username }}</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>{{ current_user.real_name or '-' }}</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>{{ current_user.role.name if current_user.role else '-' }}</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>{{ current_user.last_login.strftime('%Y-%m-%d %H:%M') if current_user.last_login else '首次登录' }}</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="{{ url_for('auth.logout') }}" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>

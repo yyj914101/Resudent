@@ -1,0 +1,34 @@
+static/lib/lucide/sprite.svg — 057a 壳层图标子集留痕
+下载日期: 2026-10-29 | 执行: leader1（057a 壳层改造 · 图标一期）
+上游: https://unpkg.com/lucide-static@0.469.0/sprite.svg（ISC License）
+
+======================================================================
+文件: static/lib/lucide/sprite.svg
+  来源: 官方 sprite.svg（371,955 字节 / 1,544 个 symbol）本地提取子集
+  处理: 只保留壳层用到的 22 个 symbol，头注释保留 lucide 版本与许可
+  字节数: 5029
+  SHA-256: 7541672cac40b9b4846b45136f2ebd831a6ab9748500e3c2d5dac1a13b6765fe
+  图标清单（symbol id）:
+    house, list-todo, megaphone, users, heart-pulse, shield-check, building-2,
+    heart-handshake, messages-square, folder-open, wrench, settings, search,
+    chevron-down, chevron-up, panel-left-close, panel-left, log-out,
+    triangle-alert, x, user, landmark
+  说明:
+    - 每个 symbol 只含 path，不含 stroke 属性；由使用方 <svg> 统一给
+      fill="none" stroke="currentColor" stroke-width="1.8"（16px 档）
+      或 1.7（18px 档），见视觉基线 v4.0 §六。
+    - 引用方式（同源 HTTP）:
+      <svg class="sc-icon sc-icon--18"><use href="/static/lib/lucide/sprite.svg#house"></use></svg>
+    - 业务页图标二期替换时，从同一上游重新提取并扩充本文件，勿逐个手抄 path。
+
+======================================================================
+扩充留痕:
+  2026-11-05 | 执行: worker-z2（088 养老保险 · 侧栏「社会保障」组新增叶）
+  新增: umbrella（取自同一上游 lucide-static@0.469.0 官方 umbrella symbol，ISC License）
+  用途: nav_spec.py 社会保障组「养老保险」叶图标（templates 统一经 icon 宏引用）
+
+  2026-11-06 | 执行: worker-z2（090A 民生诉求 · 侧栏「民生服务」组新增叶）
+  新增: inbox（取自同一上游 lucide-static@0.469.0 官方 inbox symbol，ISC License）
+  用途: nav_spec.py 民生服务组「民生诉求」叶图标（templates 统一经 icon 宏引用）
+
+

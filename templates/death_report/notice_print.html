@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/death_notice_print.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}停发告知单{% endblock %}
+{% block content %}
+<div class="toolbar">
+    <button class="btn btn-sm btn-primary" onclick="printNotice()"><i class="bi bi-printer"></i> 打印告知单</button>
+    <button class="btn btn-sm btn-success" onclick="exportNotice()"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</button>
+    <a class="btn btn-sm btn-secondary" href="javascript:history.back()">返回</a>
+</div>
+
+<div class="notice-sheet">
+    <div class="sheet-title">停发告知单</div>
+    <div class="sheet-no">编号：{{ notice.notice_no }}</div>
+
+    <div class="sheet-body">
+        <p>{{ village_title }}：</p>
+        <p>
+            兹有本村居民 <b>{{ notice.resident_name }}</b>（身份证号：<b>{{ id_card_display }}</b>），
+            因 <b>{{ notice.reason }}</b> 原因，自 <b>{{ notice.stop_from }}</b> 起停止发放下列补贴项目：
+        </p>
+    </div>
+
+    <table class="sheet-table">
+        <thead>
+            <tr>
+                <th>序号</th>
+                <th>停发补贴项目</th>
+                <th>停发起始期</th>
+                <th>停发原因</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pid in project_ids %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ project_names[loop.index0] if project_names and project_names[loop.index0] else ('项目#' ~ pid) }}</td>
+                <td>{{ notice.stop_from }}</td>
+                <td>{{ notice.reason }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4">该对象名下无在发补贴项目。</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="sheet-sign">
+        <span>村（社区）负责人签字：____________</span>
+        <span>村（社区）盖章：____________</span>
+    </div>
+
+    <div class="sheet-foot">
+        生成时间：{{ notice.generated_at.strftime('%Y-%m-%d %H:%M') if notice.generated_at else '—' }}
+        ｜ 操作人：{{ operator_name or notice.operator or '—' }}
+        ｜ 本单已打印 {{ notice.printed_count or 0 }} 次（重打留痕）
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__PAGE_CFG__ = {
+    noticeId: {{ notice.id }},
+    drId: {{ dr.id }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/pages/death_notice_print.js') }}"></script>
+{% endblock %}

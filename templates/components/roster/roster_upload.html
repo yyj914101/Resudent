@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}上传建立台账{% endblock %}
+
+{# 099 上传与字段确认页：可独立渲染，也被 roster_bootstrap 引导流程复用同一套骨架与 JS
+   088 起支持 roster_prefix 参数化业务前缀（shop 缺省 '/shop'，pension 传 '/pension'），渲染结果与旧版逐字节一致 #}
+{%- set roster_prefix = roster_prefix or '/shop' -%}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">上传建立台账</h2>
+        <p class="sc-page-head__meta">
+            {% if meta %}台账信息：{{ meta.name }} · 归属 {{ module_label(meta.module_key) }}
+            {% else %}台账标识 <code>{{ code }}</code>{% endif %}
+        </p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="{{ roster_prefix }}/roster/{{ code }}/"><i class="bi bi-arrow-left"></i> 返回台账页</a>
+    </div>
+</header>
+
+<section class="sc-card">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+        <i class="bi bi-info-circle text-primary" style="font-size:20px;margin-top:2px"></i>
+        <div>
+            <p style="margin:0 0 6px;font-weight:600">上传 Excel 并确认字段后建表。</p>
+            <p class="sc-field__hint" style="margin:0">
+                流程：① 上传 Excel → ② 确认字段与类型 → ③ 建表并导入数据 → ④ 日常维护。
+                字段不预先约定，由首次上传的表头经人工确认后生成（与系统软表约定一致）。
+            </p>
+        </div>
+    </div>
+</section>
+
+{% include 'components/roster/_upload_flow.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    /* __ST_ROSTER__ 门面全局契约：三模板同构（upload 模式：code + 可选 meta + urls） */
+    window.__ST_ROSTER__ = {
+        mode: 'upload',
+        code: {{ code | tojson }},
+        meta: {{ (meta or {}) | tojson }},
+        urls: {
+            page: '{{ roster_prefix }}/roster/{{ code }}/',
+            list: '{{ roster_prefix }}/roster/{{ code }}/api/list',
+            record: '{{ roster_prefix }}/roster/{{ code }}/api/record',
+            upload: '{{ roster_prefix }}/roster/{{ code }}/api/upload',
+            create: '{{ roster_prefix }}/roster/{{ code }}/api/create',
+            export: '{{ roster_prefix }}/roster/{{ code }}/api/export'
+        }
+    };
+</script>
+<script src="{{ url_for('static', filename='js/pages/roster.js') }}"></script>
+{% endblock %}

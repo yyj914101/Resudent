@@ -1,0 +1,84 @@
+    /* T15-3 停发告知单（B1/D4：村名+标题+清单明细+签字栏+生成时间，A4 纵向分页） */
+    .notice-sheet {
+        max-width: 190mm;
+        margin: 0 auto;
+        padding: 12mm 14mm;
+        font-family: "SimSun", "宋体", serif;
+        color: #000;
+        background: var(--color-surface);
+    }
+    .notice-sheet .sheet-title {
+        text-align: center;
+        font-size: 24pt;
+        font-weight: bold;
+        letter-spacing: 8px;
+        margin: 6mm 0 4mm 0;
+    }
+    .notice-sheet .sheet-no {
+        text-align: center;
+        font-size: 10.5pt;
+        margin-bottom: 8mm;
+    }
+    .notice-sheet .sheet-body {
+        font-size: 12pt;
+        line-height: 2;
+        text-indent: 2em;
+    }
+    .notice-sheet table.sheet-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11pt;
+        margin: 4mm 0 6mm 0;
+    }
+    .notice-sheet table.sheet-table th,
+    .notice-sheet table.sheet-table td {
+        border: 1px solid #000;
+        padding: 2.5mm 2mm;
+        text-align: center;
+    }
+    .notice-sheet .sheet-sign {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 18mm;
+        font-size: 12pt;
+    }
+    .notice-sheet .sheet-sign span {
+        display: inline-block;
+        min-width: 50mm;
+    }
+    .notice-sheet .sheet-foot {
+        margin-top: 6mm;
+        font-size: 10pt;
+        color: #444;
+    }
+    .toolbar {
+        max-width: 190mm;
+        margin: 8mm auto 0;
+        text-align: right;
+    }
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 14mm;
+        }
+        body {
+            background: var(--color-surface) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .toolbar, .tab-bar, .navbar, .app-sidebar, .card-header,
+        .modal, .modal-backdrop, .dropdown-menu {
+            display: none !important;
+        }
+        #contentArea, .container-fluid {
+            padding: 0 !important;
+            max-width: none !important;
+        }
+        .notice-sheet {
+            padding: 0;
+            max-width: none;
+        }
+        table.sheet-table tr {
+            page-break-inside: avoid;
+        }
+    }

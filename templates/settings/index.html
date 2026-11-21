@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% from 'components/_macros/icon.html' import icon %}
+{# 设置中心入口页（057a · A 方案 §四 S1）
+   12 项 = 4 组 × 3；可见项由后端按权限过滤，空组整组不渲染。 #}
+{% block title %}设置中心 - {{ super() }}{% endblock %}
+{% block page_title %}设置中心{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/settings_center.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import page_head %}
+{# 075 RC-10：副标题对齐样图 v4-01「共 N 项，按权限显示」，N = 当前用户可见卡片数 #}
+{% set ns_items = namespace(n=0) %}
+{% for group in groups %}{% set ns_items.n = ns_items.n + group['items'] | length %}{% endfor %}
+{{ page_head('设置中心', '系统配置与运维入口 · 共 ' ~ ns_items.n ~ ' 项，按权限显示') }}
+
+{% for group in groups %}
+<section class="sc-set-group">
+    <h3 class="sc-set-group__label">{{ group.label }}</h3>
+    <div class="sc-set-grid">
+        {% for item in group['items'] %}
+        <a class="sc-set-card" href="{{ item.href }}">
+            <span class="sc-set-card__top">
+                {{ icon(item.icon, 18) }}
+                <span class="sc-set-card__title">{{ item.title }}</span>
+            </span>
+            <span class="sc-set-card__desc">{{ item.desc }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% endblock %}

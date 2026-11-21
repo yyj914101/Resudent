@@ -1,0 +1,7 @@
+{# 壳层图标宏（057a）——lucide 线性图标，离线 sprite，零外链
+   用法：{% from 'components/_macros/icon.html' import icon %} {{ icon('house', 18) }}
+   规格：viewBox 24×24 / fill none / stroke currentColor / 18px 档 1.7、16px 档 1.8
+   真源：static/lib/lucide/sprite.svg（22 个 symbol，见同目录 VERSION.txt） #}
+{% macro icon(name, size=18, extra_class='') -%}
+<svg class="sc-icon sc-icon--{{ size }}{% if extra_class %} {{ extra_class }}{% endif %}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{ '1.7' if size == 18 else '1.8' }}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="{{ url_for('static', filename='lib/lucide/sprite.svg') }}#{{ name }}"></use></svg>
+{%- endmacro %}

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}文明实践站{% endblock %}
+
+{# 089 文明实践站门面页 · ADR-022 视觉基线 v4.0「高密度去噪版」（2026-11-13）
+   对齐 code_artifact2.html / 设计规范：页头 + 三指标卡（口径收纳至 help title）
+   + 居民公约（内容盒 + 有序列表）+ 历史版本折叠 + 附件卡（label 包裹隐藏 file input）
+   + 活动台账指引折叠（保留 8 规范列与建册引导，避免信息散边）。
+   取数不变：MetricsEngine 唯一指标入口 / CivConvention 唯一现行 / 092 附件服务。
+   可交互纪律：弹窗继续复用 .sc-modal（已自带 pointer-events:auto），不引入自定义内容层；
+   上传控件由 label 包裹隐藏 input，change 事件触发上传，杜绝「按钮可见但点不动」。 #}
+{% block page_title %}文明实践站{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civilization.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="cv-page">
+
+    {# ── 1. 页头 ── #}
+    <header class="cv-head">
+        <div class="cv-head__title">
+            <h1 class="cv-head__name">文明实践站</h1>
+            <p class="cv-head__meta">文明实践活动记录（软表承载）与居民公约版本管理 · 指标与看板同源</p>
+        </div>
+        <div class="cv-head__actions">
+            <a class="sc-btn sc-btn--primary cv-btn" href="/civilization/roster/{{ roster.code }}/">
+                <i class="bi bi-journal-text"></i> 进入活动台账
+            </a>
+        </div>
+    </header>
+
+    {# ── 2. 年度指标概览（数值仍由 /api/stats 实时填充，口径文案收纳至帮助图标） ── #}
+    <section class="cv-stats" aria-label="年度指标概览">
+        <div class="cv-stat">
+            <div class="cv-stat__label">年度场次
+                <span class="cv-stat__help" title="口径：年度场次 = 年度内活动行数" aria-label="口径：年度场次 = 年度内活动行数"><i class="bi bi-question-circle"></i></span>
+            </div>
+            <div class="cv-stat__value" id="civSessions">-</div>
+        </div>
+        <div class="cv-stat">
+            <div class="cv-stat__label">年度人次合计
+                <span class="cv-stat__help" title="口径：年度人次 = Σ 参与人数（逐场累加不去重）" aria-label="口径：年度人次 = Σ 参与人数（逐场累加不去重）"><i class="bi bi-question-circle"></i></span>
+            </div>
+            <div class="cv-stat__value" id="civPersonVisits">-</div>
+        </div>
+        <div class="cv-stat">
+            <div class="cv-stat__label">统计年度</div>
+            <div class="cv-stat__value" id="civStatYear">-</div>
+        </div>
+    </section>
+
+    {# ── 3. 居民公约 ── #}
+    <section class="cv-card" id="conventionCard">
+        <header class="cv-card__head">
+            <div>
+                <h2 class="cv-card__title">居民公约</h2>
+                <p class="cv-card__meta">同一时刻仅一个现行版本；换版自动把旧版本转历史，历史只读。</p>
+            </div>
+            <div class="cv-card__actions">
+                <button type="button" class="sc-btn sc-btn--secondary cv-btn" id="editConventionBtn" style="display:none">
+                    <i class="bi bi-pencil"></i> 编辑现行版本
+                </button>
+                <button type="button" class="sc-btn sc-btn--primary cv-btn" id="addConventionBtn">
+                    <i class="bi bi-plus-lg"></i> 新增版本
+                </button>
+            </div>
+        </header>
+
+        <div id="currentConvention">
+            <p class="cv-placeholder">尚未发布居民公约：点击「新增版本」发布第一版。</p>
+        </div>
+
+        <details class="cv-fold" id="conventionHistoryFold" hidden>
+            <summary class="cv-fold__summary">
+                <i class="bi bi-clock-history"></i>
+                历史版本（<span id="conventionHistoryCount">0</span>）
+                <span class="cv-fold__hint">展开查看 / 清理错行</span>
+            </summary>
+            <div class="cv-fold__body" id="conventionHistoryWrap" style="display:none">
+                <div class="sc-table-wrap">
+                    <table class="sc-table cv-table">
+                        <thead class="sc-table__head">
+                            <tr>
+                                <th class="sc-table__th">标题</th>
+                                <th class="sc-table__th" style="width:90px">是否现行</th>
+                                <th class="sc-table__th" style="width:140px">创建时间</th>
+                                <th class="sc-table__th" style="width:110px">登记人</th>
+                                <th class="sc-table__th cv-table__op" style="width:90px">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="conventionHistoryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </details>
+    </section>
+
+    {# ── 4. 公约附件 / 活动照片 ── #}
+    <section class="cv-card cv-card--flush" id="attSection">
+        <header class="cv-card__head cv-card__head--flush">
+            <h2 class="cv-card__title">公约附件 / 活动照片</h2>
+        </header>
+        <div class="cv-upload-row">
+            <label class="sc-btn sc-btn--secondary cv-upload" title="点击选择文件">
+                <i class="bi bi-upload"></i> 上传附件
+                <input type="file" class="cv-upload__input" id="attFile"
+                       accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg" title="点击选择文件">
+            </label>
+            <span class="cv-upload-hint" title="上传后把文件名引用到公约「附件」或活动「照片」列">支持 pdf / xlsx / word / png / jpg，单个 ≤ 10MB</span>
+        </div>
+        <div class="sc-table-wrap">
+            <table class="sc-table cv-table">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th" style="width:33%">文件名</th>
+                        <th class="sc-table__th" style="width:96px">大小</th>
+                        <th class="sc-table__th" style="width:128px">上传人</th>
+                        <th class="sc-table__th" style="width:192px">上传时间</th>
+                        <th class="sc-table__th cv-table__op" style="width:128px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="attTbody"></tbody>
+            </table>
+        </div>
+    </section>
+
+    {# ── 5. 活动台账指引（信息降噪：默认收起，保留 8 规范列 / 建册引导 / 台账入口） ── #}
+    <details class="cv-fold cv-guide" id="rosterGuide">
+        <summary class="cv-fold__summary">
+            <i class="bi bi-table"></i> 活动台账字段规范与建册指引
+            <span class="cv-fold__hint">展开查看规范列与入口</span>
+        </summary>
+        <div class="cv-fold__body cv-guide__body">
+            <p class="cv-guide__line"><strong>文明实践活动记录（{{ roster.name }}）</strong></p>
+            {% if roster.built %}
+            <p class="cv-guide__line">台账已建立，可直接维护活动记录。</p>
+            {% else %}
+            <p class="cv-guide__line">
+                台账尚未建立：首次上传 Excel（表头经人工确认）后生成台账，字段不预先约定。
+                建议按下方规范列准备表头；活动照片经附件区上传后把文件名填入「照片」列。
+            </p>
+            {% endif %}
+            <p class="cv-guide__line">
+                规范列（一页纸 v1.2 §1，8 列已人工核对确认）：{{ canonical_columns | join('、') }}。
+            </p>
+            <a class="sc-btn sc-btn--secondary cv-btn" href="/civilization/roster/{{ roster.code }}/">
+                <i class="bi bi-table"></i> {{ '进入活动记录台账' if roster.built else '去建册（上传 Excel）' }}
+            </a>
+        </div>
+    </details>
+
+</div>
+
+{# ══════════ 新增 / 编辑公约版本 ══════════
+   沿用 .sc-modal：components.css 已显式恢复 pointer-events:auto，
+   且 test_detail_v2_modal_guard.py 白名单覆盖，不引入自定义内容层。 #}
+<div class="modal fade" id="conventionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="conventionForm">
+                <input type="hidden" name="id" id="conventionId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="conventionModalTitle">新增公约版本</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_title">标题<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="title" id="f_title" maxlength="100" required>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_content">正文</label>
+                        <textarea class="sc-textarea" name="content" id="f_content" rows="6" placeholder="公约正文（Text 兜底，按行渲染为条款列表）"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_attachment_path">附件引用</label>
+                        <input type="text" class="sc-input" name="attachment_path" id="f_attachment_path" maxlength="255" placeholder="附件区上传后的文件名引用（增强项，可空）">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">保存后本版本即为现行，原现行版本自动转历史</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/civilization.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/module_attachments.js') }}"></script>
+<script>
+/* 092 附件区：emptyHtml 为设计稿空态（圆形图标 + 文案），缺省路径不变，三模块共用脚本零复制。 */
+initAttachments({
+    base: '{{ url_for("civilization.api_attachment_list") }}',
+    emptyHtml: '<div class="cv-empty"><span class="cv-empty__icon"><i class="bi bi-file-earmark-plus"></i></span><span class="cv-empty__text">暂无附件或照片记录</span></div>',
+    confirmText: '确定删除该附件？'
+});
+</script>
+{% endblock %}

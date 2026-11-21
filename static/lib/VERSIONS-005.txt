@@ -1,0 +1,30 @@
+static/lib/VERSIONS-005.txt — 005 任务 vendored 资产留痕
+下载日期: 2026-09-16 | 执行: leader（005 M0-④ 图标本地化 + CDN 收口）
+惯例沿用: static/lib/adminlte/VERSION.txt（004）
+
+======================================================================
+文件 1: static/lib/fonts/bootstrap-icons.woff2
+  来源: https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/fonts/bootstrap-icons.woff2
+  上游: npm bootstrap-icons@1.11.2（MIT）
+  版本匹配: 与已 vendored 的 static/lib/bootstrap-icons.min.css 严格同版 1.11.2
+            （CSS @font-face 相对路径 fonts/bootstrap-icons.woff2?7141511a…，
+             故落盘于 static/lib/fonts/ 而非任务书原写的 static/lib/bootstrap-icons/fonts/）
+  字节数: 130648 | 魔数: wOF2
+  SHA-256: 5b2dd4d4f81cd1f52a50b0833ea12c8f63f2c4ae4d2c5a799fcc741feb2ea40f
+
+======================================================================
+文件 2: static/lib/fonts/bootstrap-icons.woff
+  来源: https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/fonts/bootstrap-icons.woff
+  上游: npm bootstrap-icons@1.11.2（MIT）
+  字节数: 176088 | 魔数: wOFF
+  SHA-256: d0346eea5a5ca9998be3c506fc655f0cbfccb42deb5fc6df39815425af867bb5
+
+======================================================================
+文件 3: static/lib/chartjs-plugin-datalabels.min.js
+  来源: https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js
+  上游: npm chartjs-plugin-datalabels@2.2.0（MIT）
+  版本: 2.2.0（文件头注释核实）
+  兼容性核实: 本地 Chart.js 为 4.4.1（static/lib/chart.umd.min.js 全文件版本探测），
+              datalabels 2.x 官方支持 Chart.js >= 3.0（含 4.x）→ 兼容 ✅
+  字节数: 12937
+  SHA-256: 20c08f3d9c6d2ef76df6d6a6f1127c0013339fe32add24222276c398c6308c38

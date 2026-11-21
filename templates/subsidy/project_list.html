@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}补贴项目管理{% endblock %}
+{# 077 存量回灌：标题由页头（sc-page-head）承担，顶栏标题留空（同 062 口径） #}
+{% block page_title %}{% endblock %}
+{% block content %}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">补贴项目管理（防误发）</h2>
+    </div>
+    <div class="sc-page-head__actions">
+        {# 092：subsidy 不在侧栏，唯一入口是首页「补贴登记」按钮——本页补一条反向可达性 #}
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('subsidy.record_page') }}"><i class="bi bi-receipt"></i> 补贴登记</a>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="openAddModal()">
+            <i class="bi bi-plus-lg"></i> 新增项目
+        </button>
+    </div>
+</header>
+
+{# 077 存量回灌：按 spec-02 通用列表页型换壳（无样图基准 `outputs/spec-02-列表页.png`，
+   走共享组件层回灌通道，仅换壳不逐字段重构；id/name 契约零改动，页面 JS 零适配） #}
+<section class="sc-card">
+    <header class="sc-card__header"><h3 class="sc-card__title">补贴项目列表</h3></header>
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="name" placeholder="项目名称" style="width:170px">
+        <select class="sc-select" name="project_type" style="width:150px">
+            <option value="">全部类型</option>
+            {% for t in project_types %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select class="sc-select" name="status" style="width:130px">
+            <option value="">全部状态</option>
+            {% for s in statuses %}
+            <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead>
+                <tr>
+                    <th class="sc-table__th" style="width:50px">序号</th>
+                    <th class="sc-table__th">项目名称</th>
+                    <th class="sc-table__th">类型</th>
+                    <th class="sc-table__th">周期</th>
+                    <th class="sc-table__th">默认金额</th>
+                    <th class="sc-table__th">适用年龄</th>
+                    <th class="sc-table__th">适用标签</th>
+                    <th class="sc-table__th">状态</th>
+                    <th class="sc-table__th">备注</th>
+                    <th class="sc-table__th" style="width:130px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- 092 模板附件区：办事流程模板（subsidy 落 projects 页——subsidy 不在侧栏，唯一入口是首页按钮） -->
+<section class="sc-card" id="attSection">
+    <header class="sc-card__header"><h3 class="sc-card__title">办事流程模板</h3></header>
+    <div class="sc-toolbar">
+        <input type="file" class="sc-input" id="attFile" accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg" style="width:auto">
+        <button type="button" class="sc-btn sc-btn--primary" onclick="onAttachmentUpload()"><i class="bi bi-cloud-upload"></i> 上传模板</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">支持 pdf/xlsx/xls/docx/doc/png/jpg，单个 ≤10MB</span>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead class="sc-table__head">
+                <tr><th class="sc-table__th">文件名</th><th class="sc-table__th" style="width:90px">大小</th><th class="sc-table__th" style="width:110px">上传人</th><th class="sc-table__th" style="width:140px">上传时间</th><th class="sc-table__th" style="width:90px">操作</th></tr>
+            </thead>
+            <tbody id="attTbody"></tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Add/Edit Modal（id/name 契约零改动：formModal/saveForm/editId/formModalTitle/targetTagsInput） -->
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="editId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formModalTitle">新增补贴项目</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field"><label class="sc-field__label">项目名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" maxlength="100" required></div>
+                    <div class="sc-field"><label class="sc-field__label">项目类型<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="project_type" required>
+                            <option value="">请选择</option>
+                            {% for t in project_types %}
+                            <option value="{{ t }}">{{ t }}</option>
+                            {% endfor %}
+                        </select></div>
+                    <div class="sc-field"><label class="sc-field__label">发放周期<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="cycle" required>
+                            <option value="">请选择</option>
+                            {% for c in cycles %}
+                            <option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select></div>
+                    <div class="sc-field"><label class="sc-field__label">默认金额（元）</label>
+                        <input type="number" step="0.01" min="0" class="sc-input" name="default_amount"></div>
+                    <div class="sc-field"><label class="sc-field__label">状态<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="status" required>
+                            {% for s in statuses %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select></div>
+                    <div class="sc-field"><label class="sc-field__label">适用年龄下限</label>
+                        <input type="number" min="0" class="sc-input" name="age_min"></div>
+                    <div class="sc-field"><label class="sc-field__label">适用年龄上限</label>
+                        <input type="number" min="0" class="sc-input" name="age_max"></div>
+                    <div class="sc-field sc-field--full"><label class="sc-field__label">适用标签（防误发校验范围）</label>
+                        <input type="text" class="sc-input" name="target_tags" id="targetTagsInput"
+                               placeholder="多个标签用逗号分隔，如：高龄老人,低保对象"></div>
+                    <p class="sc-field__hint">登记补贴时按项目-资格映射校验（C4），只校验与本项目资格相关的记录。</p>
+                    <div class="sc-field sc-field--full"><label class="sc-field__label">备注</label>
+                        <input type="text" class="sc-input" name="remark" maxlength="200"></div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 补贴项目详情弹窗（2026-11-17 Master–Detail 全站统一） -->
+<div class="modal fade" id="projDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="projDetailTitle">补贴项目详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="projDetailBody"></div>
+            <footer class="sc-modal__footer" id="projDetailBtns"></footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/subsidy_project_list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/module_attachments.js') }}"></script>
+<script>initAttachments({ base: '{{ url_for("subsidy.api_attachment_list") }}' });</script>
+{% endblock %}

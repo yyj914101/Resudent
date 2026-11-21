@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>启动口令 - 村级村务综合管理系统</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="/static/css/pages/auth_unlock.css" rel="stylesheet">
+</head>
+<body>
+    <div class="unlock-shell">
+        <div class="top-line"></div>
+        <main class="unlock-main">
+            <section class="unlock-panel">
+                <div class="unlock-card">
+                    <h3>
+                        
+                        <i class="bi bi-key me-1" style="color: var(--gov-blue)"></i>设置启动口令
+                        
+                    </h3>
+                    <div class="hint">
+                        
+                        首次使用请设置启动口令，用于派生数据加密密钥（密钥不落盘）。
+                        
+                    </div>
+                    
+                    
+                    
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="__CSRF__">
+                        <div class="mb-3 input-icon">
+                            <i class="bi bi-lock"></i>
+                            <input type="password" class="auth-input" name="password" placeholder="启动口令" required autofocus>
+                        </div>
+                        
+                        <div class="mb-4 input-icon">
+                            <i class="bi bi-lock-fill"></i>
+                            <input type="password" class="auth-input" name="confirm_password" placeholder="确认启动口令" required>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-unlock w-100">
+                            <i class="bi bi-key me-1"></i>
+                            设置并解锁
+                        </button>
+                    </form>
+                    
+                    <div class="tip">本页仅限服务器本机访问。口令错误可原地重试，不会锁定。</div>
+                </div>
+            </section>
+        </main>
+        <footer class="unlock-footer">村级村务综合管理平台 · 数据加密启动通道</footer>
+    </div>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}就业服务{% endblock %}
+{% block page_title %}就业服务{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+{# 084 就业服务：民政组页壳（civil_shell）+ 页内两 tab
+   - 表格/弹窗件全部复用 components.css 既有类（sc-card / sc-toolbar / sc-table / sc-pagination / sc-modal）
+   - 页内页签用 nav-tabs（civil_pages.css 已给 .sc-civil-page .nav-tabs 规格，与死亡对账同款）
+   - 字段与接口一一对应：字段名 = FormData 名 = 序列化键，结构真源 models/welfare_employment.py、
+     models/welfare_flex_subsidy.py（后端 _employment_to_dict / _subsidy_to_dict 已固定）
+   - 申报状态不经表单编辑：只走「推进状态」（后端 EMPLOYMENT 状态机唯一入口，防绕过） #}
+<div class="sc-civil-page">
+{% call page_head('就业服务', '就业状态登记 · 灵活就业补贴申报') %}
+    <button type="button" class="sc-btn sc-btn--primary" id="btnAddEmployment"><i class="bi bi-plus-lg"></i> 新增登记</button>
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnExportEmployment"><i class="bi bi-download"></i> 导出</button>
+{% endcall %}
+{# 2026-11-16：就业服务由「民政对象管理 · 对象查询」迁入社会保障组（主理人派单） #}
+{{ module_tabs('social', 'employment') }}
+
+{# 页内页签（tab key：employment / subsidy；与 #tab= hash 对齐） #}
+<ul class="nav nav-tabs mb-3" id="employmentTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link active" data-tab="employment" role="tab" aria-selected="true">就业状态登记</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button type="button" class="nav-link" data-tab="subsidy" role="tab" aria-selected="false">灵活就业补贴申报</button>
+    </li>
+</ul>
+
+{# ══════════ Tab 1：就业状态登记 ══════════ #}
+<section class="sc-card" id="panel-employment" data-panel="employment">
+    <form class="sc-toolbar" id="employmentSearchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="姓名 / 身份证号 / 单位 / 地点" style="width:220px">
+        <select class="sc-select" name="village_group" data-dict="village_group" style="width:130px">
+            <option value="">全部所在组</option>
+        </select>
+        <select class="sc-select" name="employment_status" data-dict="employment_status" style="width:140px">
+            <option value="">全部就业状态</option>
+        </select>
+        <select class="sc-select" name="employment_type" data-dict="employment_type" style="width:150px">
+            <option value="">全部就业类型</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" data-toolbar-reset>重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="employmentTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">姓名</th>
+                    <th class="sc-table__th">所在组</th>
+                    <th class="sc-table__th">身份证号</th>
+                    <th class="sc-table__th">电话</th>
+                    <th class="sc-table__th">就业状态</th>
+                    <th class="sc-table__th">就业类型</th>
+                    <th class="sc-table__th">就业单位</th>
+                    <th class="sc-table__th">就业起始</th>
+                    <th class="sc-table__th">状态更新</th>
+                    <th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="employmentBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="employmentStat"></span>
+        <ul class="sc-pagination__pager" id="employmentPagination"></ul>
+    </div>
+</section>
+
+{# ══════════ Tab 2：灵活就业补贴申报 ══════════ #}
+<section class="sc-card d-none" id="panel-subsidy" data-panel="subsidy">
+    <form class="sc-toolbar" id="subsidySearchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="姓名 / 批次号 / 补贴类型 / 身份证号" style="width:240px">
+        <select class="sc-select" name="apply_year" data-year="1" style="width:120px">
+            <option value="">全部年度</option>
+        </select>
+        <select class="sc-select" name="subsidy_type" data-dict="subsidy_type" style="width:170px">
+            <option value="">全部补贴类型</option>
+        </select>
+        <select class="sc-select" name="apply_status" data-dict="apply_status" style="width:140px">
+            <option value="">全部申报状态</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" data-toolbar-reset>重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="subsidyTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">姓名</th>
+                    <th class="sc-table__th">身份证号</th>
+                    <th class="sc-table__th">申报年度</th>
+                    <th class="sc-table__th">批次号</th>
+                    <th class="sc-table__th">补贴类型</th>
+                    <th class="sc-table__th">金额(元)</th>
+                    <th class="sc-table__th">申报日期</th>
+                    <th class="sc-table__th">申报状态</th>
+                    <th class="sc-table__th">未通过原因</th>
+                    <th class="sc-table__th" style="width:180px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="subsidyBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="subsidyStat"></span>
+        <ul class="sc-pagination__pager" id="subsidyPagination"></ul>
+    </div>
+</section>
+
+{# ══════════ 就业状态登记 新增/编辑 ══════════ #}
+<div class="modal fade" id="employmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="employmentForm">
+                <input type="hidden" name="tab" value="employment">
+                <input type="hidden" name="id" id="employmentId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="employmentFormTitle">新增就业登记</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_name">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="e_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_gender">性别</label>
+                        <select class="sc-select" name="gender" id="e_gender">
+                            <option value="">请选择</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_group">所在组</label>
+                        <select class="sc-select" name="village_group" id="e_group" data-dict="village_group">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_id_card">身份证号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" id="e_id_card" required
+                               placeholder="15 或 18 位；编辑时打码回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_phone">电话</label>
+                        <input type="text" class="sc-input" name="phone" id="e_phone">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_status">就业状态<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="employment_status" id="e_status" data-dict="employment_status">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_type">就业类型</label>
+                        <select class="sc-select" name="employment_type" id="e_type" data-dict="employment_type">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_industry">所属行业</label>
+                        <select class="sc-select" name="industry" id="e_industry" data-dict="industry">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_employer">就业单位</label>
+                        <input type="text" class="sc-input" name="employer" id="e_employer">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_work_location">工作地点</label>
+                        <input type="text" class="sc-input" name="work_location" id="e_work_location">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_start_date">就业起始日期</label>
+                        <input type="date" class="sc-input" name="start_date" id="e_start_date">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="e_update_date">状态更新日期</label>
+                        <input type="date" class="sc-input" name="update_date" id="e_update_date">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="e_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="e_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 灵活就业补贴申报 新增/编辑（状态只经「推进状态」变更） ══════════ #}
+<div class="modal fade" id="subsidyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="subsidyForm">
+                <input type="hidden" name="tab" value="subsidy">
+                <input type="hidden" name="id" id="subsidyId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="subsidyFormTitle">新增补贴申报</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_name">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="s_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_id_card">身份证号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" id="s_id_card" required
+                               placeholder="15 或 18 位；编辑时打码回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_year">申报年度<span class="sc-field__required">*</span></label>
+                        <input type="number" class="sc-input" name="apply_year" id="s_year" min="2000" max="2100" step="1" required placeholder="如 2026">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_batch">批次号</label>
+                        <input type="text" class="sc-input" name="batch_no" id="s_batch">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_type">补贴类型<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="subsidy_type" id="s_type" data-dict="subsidy_type">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_amount">金额(元)</label>
+                        <input type="number" step="0.01" min="0" class="sc-input" name="amount" id="s_amount">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_apply_date">申报日期</label>
+                        <input type="date" class="sc-input" name="apply_date" id="s_apply_date">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_review_date">审核日期</label>
+                        <input type="date" class="sc-input" name="review_date" id="s_review_date">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="s_issue_date">发放日期</label>
+                        <input type="date" class="sc-input" name="issue_date" id="s_issue_date">
+                    </div>
+                    {# 未通过原因：仅在「编辑且当前状态为未通过」时显示；新增固定待申报，故默认隐藏 #}
+                    <div class="sc-field sc-field--full d-none" id="subsidyRejectWrap">
+                        <label class="sc-field__label" for="s_reject_reason">未通过原因</label>
+                        <input type="text" class="sc-input" name="reject_reason" id="s_reject_reason" placeholder="推进到「未通过」前必须填写">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="s_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="s_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">申报状态由「推进状态」流转，新建固定为待申报</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 补贴申报：推进状态 ══════════ #}
+<div class="modal fade" id="transitionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:500px">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="transitionForm">
+                <input type="hidden" name="id" id="transitionId" value="0">
+                <input type="hidden" name="tab" value="subsidy">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">推进申报状态</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label">申报人</label>
+                        <input type="text" class="sc-input" id="transitionName" readonly>
+                    </div>
+                    <div class="sc-field mt-2">
+                        <label class="sc-field__label">当前状态</label>
+                        <input type="text" class="sc-input" id="transitionCurrent" readonly>
+                    </div>
+                    <div class="sc-field mt-2">
+                        <label class="sc-field__label">推进至<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="to_status" id="transitionTo" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <p class="sc-field__hint mt-2">
+                        流转是否合法由后端校验，非法会返回原因、弹窗保留可改选。<br>
+                        转「未通过」需先有未通过原因；转「已发放」需先填发放日期 —— 缺项会提示，请回到编辑补齐。
+                    </p>
+                </div>
+                <p class="sc-field__hint text-danger" id="transitionError" style="margin:8px 0 0" hidden></p>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">确认推进</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+
+{# 就业/补贴详情弹窗（2026-11-17 Master–Detail 全站统一：双 tab 共用，内容按 tab 分流） #}
+<div class="modal fade" id="empDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="empDetailTitle">详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="empDetailBody"></div>
+            <footer class="sc-modal__footer" id="empDetailBtns"></footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/employment.js') }}"></script>
+{% endblock %}

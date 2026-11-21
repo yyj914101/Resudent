@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}字典管理 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}字典管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head_actions %}
+<div class="sc-settings-page" data-sc-settings="list">
+{% call settings_head_actions('字典管理', '字典分类与字典项') %}
+    {% if current_user and current_user.role_id == 1 %}
+    <button type="button" class="sc-btn sc-btn--primary" onclick="showItemAdd()">新增条目</button>
+    {% endif %}
+{% endcall %}
+
+<div class="sc-grid">
+    <div class="sc-grid__side">
+        <section class="sc-card">
+            <header class="sc-card__header d-flex justify-content-between align-items-center">
+                <h3 class="sc-card__title">字典分类</h3>
+                {% if current_user and current_user.role_id == 1 %}
+                <button type="button" class="sc-btn sc-btn--text" onclick="showCategoryAdd()">新增分类</button>
+                {% endif %}
+            </header>
+            <div class="sc-list" id="categoryList" style="max-height:500px;overflow-y:auto"></div>
+        </section>
+    </div>
+
+    <div class="sc-grid__main">
+        <section class="sc-card">
+            <header class="sc-card__header">
+                <h3 class="sc-card__title">字典项 · <span id="currentCategoryName">请选择分类</span></h3>
+            </header>
+            <div class="sc-table-wrap">
+                <table class="sc-table">
+                    <thead>
+                        <tr>
+                            <th class="sc-table__th">标签</th>
+                            <th class="sc-table__th">值</th>
+                            <th class="sc-table__th" style="width:80px">排序</th>
+                            <th class="sc-table__th" style="width:90px">状态</th>
+                            <th class="sc-table__th" style="width:170px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemBody">
+                        <tr><td colspan="5" class="text-center text-muted">请先选择左侧分类</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+{# 分类弹窗（v9-04） #}
+<div class="modal fade" id="categoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="categoryForm">
+                <input type="hidden" name="id" id="categoryEditId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="categoryFormTitle">新增分类</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_cat_name">分类名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" id="f_cat_name" name="name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_cat_desc">描述</label>
+                        <input type="text" class="sc-input" id="f_cat_desc" name="description" placeholder="选填，一句话说明用途">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_cat_sort">排序</label>
+                        <input type="number" class="sc-input" id="f_cat_sort" name="sort_order" value="0">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 字典项弹窗（v9-04） #}
+<div class="modal fade" id="itemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="itemForm">
+                <input type="hidden" name="id" id="itemEditId">
+                <input type="hidden" name="category_id" id="itemCategoryId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="itemFormTitle">新增字典项</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_item_label">标签<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" id="f_item_label" name="label" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_item_value">值</label>
+                        <input type="text" class="sc-input" id="f_item_value" name="value">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_item_sort">排序</label>
+                        <input type="number" class="sc-input" id="f_item_sort" name="sort_order" value="0">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dict_mgmt_list.js') }}"></script>
+{% endblock %}

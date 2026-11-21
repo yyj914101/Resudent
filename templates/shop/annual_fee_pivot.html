@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ table_name }}透视{% endblock %}
+
+{# 085 重点场所年度缴费透视页：行=场所、列=年度，服务端 eng.pivot_rows 展示层变换（零横向动态列）。
+   明细录入/批量导入/导出明细走门面台账页 /shop/roster/{{ code }}/（本页只做矩阵展示 + 透视导出）。 #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('resident', 'annual-fee') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">{{ table_name }}透视</h2>
+        <p class="sc-page-head__meta">场所 {{ shop_count }} · 缴费明细 {{ detail_total }} 条{% if truncated %} · 已按列表上限截断{% endif %}</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="/shop/annual-fee/export"><i class="bi bi-file-earmark-excel"></i> 导出透视</a>
+        <a class="sc-btn sc-btn--secondary" href="/shop/roster/{{ code }}/upload"><i class="bi bi-upload"></i> 批量导入</a>
+        <a class="sc-btn sc-btn--primary" href="/shop/roster/{{ code }}/"><i class="bi bi-plus-circle"></i> 缴费明细台账</a>
+    </div>
+</header>
+
+<section class="sc-card">
+    {% if ordered_rows %}
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:200px">场所名称</th>
+                    {%- for c in cols %}
+                    <th class="sc-table__th sc-table__th--num">{{ c }}年</th>
+                    {%- endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {%- for rk in ordered_rows %}
+                <tr>
+                    <td class="sc-table__td">{{ rk }}</td>
+                    {%- for c in cols %}
+                    {%- set cell = pivot['cells'].get(rk, {}).get(c) %}
+                    <td class="sc-table__td sc-table__td--num">{% if cell is not none %}¥{{ '%.2f' | format(cell) }}{% else %}—{% endif %}</td>
+                    {%- endfor %}
+                </tr>
+                {%- endfor %}
+            </tbody>
+            <tfoot class="sc-table__foot">
+                <tr>
+                    <td>小计</td>
+                    {%- for c in cols %}
+                    <td class="sc-table__td--num">¥{{ '%.2f' | format(pivot['col_totals'].get(c, 0)) }}</td>
+                    {%- endfor %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div class="sc-card__body">
+        <p class="text-center text-muted" style="padding:32px 0;margin:0;">
+            暂无缴费明细。请先在「缴费明细台账」新增记录或批量导入历史年度（2024~2026）补录。
+        </p>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,359 @@
+{% extends "base.html" %}
+{% block title %}退伍军人管理{% endblock %}
+
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{# 062 P5 v4.0：标题由页头承担；退伍为独立页（不挂模块胶囊，同待办口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{# 075 RC-18：副标题「24 列超宽表 · 列选择器 + 横向滚动」；11 项筛选大卡 → 紧凑工具栏
+   （单搜索框 q 组合检索：姓名/身份证/政治面貌/兵种，300ms 防抖）+ 动作按钮一行；
+   2026-11-19：主理人拍板移除「← 返回设置中心」sc-backlink（075 RC-18 样图口径作废，
+   入口走侧栏导航，无需回链设置中心） #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">退伍军人档案</h2>
+        <p class="sc-page-head__meta">26 列超宽表 · 列选择器 + 横向滚动</p>
+    </div>
+</header>
+
+{# 24 列宽表（验收 3：colspan 按 24 画）+ 列选择器 + 横滚 #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <div class="sc-field sc-field--top" style="flex:1 1 260px;max-width:420px">
+            <input type="text" class="sc-input" name="q" id="q" placeholder="姓名 / 身份证 / 政治面貌 / 兵种" autocomplete="off">
+            <select class="sc-select" name="key_group_category" id="filterKeyGroup" style="width:150px"><option value="">重点群体类别</option></select>
+            <select class="sc-select" name="retire_category" id="vRetireCategory" style="width:140px"><option value="">退役类别</option></select>
+        </div>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="showImport()"><i class="bi bi-upload"></i> 导入</button>
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('veteran.api_template') }}"><i class="bi bi-download"></i> 下载模板</a>
+        <a class="sc-btn sc-btn--secondary" id="exportBtn" href="{{ url_for('veteran.api_export') }}"><i class="bi bi-file-earmark-excel"></i> 导出</a>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="showAdd()" id="btnAdd"><i class="bi bi-plus"></i> 新增</button>
+    </form>
+
+    <div class="sc-table-toolbar">
+        <span class="sc-col-count" id="veteranColCount">已选 18 / 共 26 列 · 横向滚动查看全部</span>
+        <span id="veteranColHost" style="margin-left:auto"></span>
+    </div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense" id="dataTable" style="min-width:2350px">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:60px">序号</th>
+                    <th class="sc-table__th" style="width:90px">姓名</th>
+                    <th class="sc-table__th" style="width:170px">身份证号码</th>
+                    <th class="sc-table__th" style="width:60px">性别</th>
+                    <th class="sc-table__th" style="width:60px">民族</th>
+                    <th class="sc-table__th" style="width:100px">政治面貌</th>
+                    <th class="sc-table__th" style="width:90px">文化程度</th>
+                    <th class="sc-table__th" style="width:200px">户口所在地</th>
+                    <th class="sc-table__th" style="width:90px">所在组</th>
+                    <th class="sc-table__th" style="width:200px">家庭详细地址</th>
+                    <th class="sc-table__th" style="width:120px">联系方式</th>
+                    <th class="sc-table__th" style="width:90px">亲属姓名</th>
+                    <th class="sc-table__th" style="width:120px">亲属联系方式</th>
+                    <th class="sc-table__th" style="width:100px">入伍年月</th>
+                    <th class="sc-table__th" style="width:100px">退役年月</th>
+                    <th class="sc-table__th" style="width:80px">服役年限</th>
+                    <th class="sc-table__th" style="width:160px">原服役部队</th>
+                    <th class="sc-table__th" style="width:100px">原服役兵种</th>
+                    <th class="sc-table__th" style="width:120px">职务/军衔</th>
+                    <th class="sc-table__th" style="width:140px">退伍证件编号</th>
+                    <th class="sc-table__th" style="width:100px">户籍性质</th>
+                    <th class="sc-table__th" style="width:100px">安置情况</th>
+                    <th class="sc-table__th" style="width:110px">退役类别</th>
+                    <th class="sc-table__th" style="width:120px">重点群体类别</th>
+                    <th class="sc-table__th" style="width:140px">备注</th>
+                    <th class="sc-table__th" style="width:90px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 新增/编辑弹窗（24 字段两列栅格；name/id/required/联想 suggest 契约不变） #}
+<div class="modal fade" id="formModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="sc-modal" role="dialog" aria-modal="true" style="width:100%;max-height:calc(100vh - 3.5rem);overflow:auto">
+            <form id="saveForm">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formModalTitle"><i class="bi bi-person-plus"></i> 新增退伍军人</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <input type="hidden" name="id" id="editId" value="">
+                    <div class="sc-field" style="position:relative;">
+                        <label class="sc-field__label" for="fName">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="fName" required placeholder="输入姓名自动关联居民库" autocomplete="off">
+                        <div id="nameSuggest" class="list-group position-absolute" style="top:100%;left:0;right:0;z-index:999;max-height:200px;overflow-y:auto;display:none;"></div>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fIdCard">身份证号码<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" id="fIdCard" required maxlength="18" placeholder="18位身份证号">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fGender">性别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="gender" id="fGender" required>
+                            <option value="">请选择</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fNation">民族</label>
+                        <select class="sc-select" name="nation" id="fNation">
+                            <option value="">请选择</option>
+                            <option value="汉族" selected>汉族</option>
+                            <option value="少数民族">少数民族</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fPolitics">政治面貌</label>
+                        <select class="sc-select" name="politics_status" id="fPolitics">
+                            <option value="">请选择</option>
+                            <option value="群众">群众</option>
+                            <option value="中共党员">中共党员</option>
+                            <option value="中共预备党员">中共预备党员</option>
+                            <option value="共青团员">共青团员</option>
+                            <option value="其他民主党派">其他民主党派</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fEducation">文化程度</label>
+                        <select class="sc-select" name="education" id="fEducation">
+                            <option value="">请选择</option>
+                            <option value="文盲">文盲</option>
+                            <option value="小学">小学</option>
+                            <option value="初中">初中</option>
+                            <option value="高中">高中</option>
+                            <option value="中专">中专</option>
+                            <option value="大专">大专</option>
+                            <option value="本科">本科</option>
+                            <option value="硕士及以上">硕士及以上</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fHouseholdReg">户籍性质</label>
+                        <select class="sc-select" name="household_reg_type" id="fHouseholdReg">
+                            <option value="">请选择</option>
+                            <option value="农业户口">农业户口</option>
+                            <option value="非农业户口">非农业户口</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fRegisteredResidence">户口所在地<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="registered_residence" id="fRegisteredResidence" required placeholder="关联居民库自动回填">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fGrid">所在组</label>
+                        <select class="sc-select" name="grid" id="fGrid">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fHomeAddress">家庭详细地址<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="home_address" id="fHomeAddress" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fPhone">本人联系方式<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="phone" id="fPhone" required placeholder="11位手机号">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fRelativeName">主要亲属姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="relative_name" id="fRelativeName" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fRelativePhone">亲属联系方式<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="relative_phone" id="fRelativePhone" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fDischargeCertNo">退伍证件编号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="discharge_cert_no" id="fDischargeCertNo" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fEnlistDate">入伍年月<span class="sc-field__required">*</span></label>
+                        <input type="month" class="sc-input" name="enlist_date" id="fEnlistDate" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fDischargeDate">退役年月<span class="sc-field__required">*</span></label>
+                        <input type="month" class="sc-input" name="discharge_date" id="fDischargeDate" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fServiceYears">服役年限</label>
+                        <input type="number" class="sc-input" name="service_years" id="fServiceYears" min="0" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fPlacement">安置情况</label>
+                        <select class="sc-select" name="placement_status" id="fPlacement">
+                            <option value="">请选择</option>
+                            <option value="自主就业">自主就业</option>
+                            <option value="安排工作">安排工作</option>
+                            <option value="退休">退休</option>
+                            <option value="供养">供养</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fRetireCategory">退役类别</label>
+                        <select class="sc-select" name="retire_category" id="fRetireCategory"><option value="">请选择</option></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fKeyGroup">重点群体类别</label>
+                        <select class="sc-select" name="key_group_category" id="fKeyGroup"><option value="">请选择</option></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fServiceUnit">原服役部队<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="service_unit" id="fServiceUnit" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fServiceBranch">原服役兵种</label>
+                        <select class="sc-select" name="service_branch" id="fServiceBranch">
+                            <option value="">请选择</option>
+                            <option value="陆军">陆军</option>
+                            <option value="海军">海军</option>
+                            <option value="空军">空军</option>
+                            <option value="火箭军">火箭军</option>
+                            <option value="战略支援部队">战略支援部队</option>
+                            <option value="联勤保障部队">联勤保障部队</option>
+                            <option value="武警部队">武警部队</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fServiceRank">职务/军衔<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="service_rank" id="fServiceRank" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="fRemark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="fRemark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary" id="btnSave"><i class="bi bi-check-lg"></i> 保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 详情弹窗 #}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="sc-modal" role="dialog" aria-modal="true" style="width:100%;max-height:calc(100vh - 3.5rem);overflow:auto">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="detailModalTitle"><i class="bi bi-person-vcard"></i> 人员档案详情</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="detailModalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# 批量导入弹窗 #}
+{# 2026-11-19：换壳对齐 ADR-022 v4.0 导入弹窗组件（import_modal_v2.css + wireImportDropzone）。
+   导入模式由下拉改双单选卡（name="importMode" 契约不变，veteran_list.js 读:checked）；
+   #importFile 仍是真实 file input；accept 收敛 .xlsx（后端 openpyxl 仅解析 xlsx，修正 .xls 虚标）。 #}
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="importModalTitle">批量导入退役军人</h3>
+                    <p class="pw-modal__sub">支持标准退役军人名册 Excel 模板上传，按身份证自动关联居民信息</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">退役军人名单导入模板</span>
+                    </div>
+                    <a href="{{ url_for('veteran.api_template') }}" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+                </div>
+
+                <div>
+                    <p class="pw-mode-label" id="veteranModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="veteranModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">仅新增</span>
+                                    <span class="pw-radio-card__desc">重复身份证号自动跳过，仅录入新档案</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖更新</span>
+                                    <span class="pw-radio-card__desc">重复身份证号按身份证号覆盖原有档案</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="veteranImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="importFile" accept=".xlsx" class="d-none">
+                    <div class="pw-drop" id="veteranImpDrop" role="button" tabindex="0" aria-labelledby="veteranImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+                    </div>
+                    <div class="pw-staged d-none" id="veteranImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="veteranImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="veteranImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="veteranImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="veteranImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnImport" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/veteran_list.js') }}"></script>
+{% endblock %}

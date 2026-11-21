@@ -1,0 +1,183 @@
+/* import_modal_v2.css — 批量导入弹窗组件（ADR-022 v4.0 File Drop Zone 规格，全站共享）。
+ *
+ * 2026-11-19 自 party_list_v2.css §3 原样抽出，供党员管理 impModal 与
+ * 选举管理·选民名册 voterImportModal（105）共用；类名与视觉零改动。
+ * 依赖基座：components.css(.sc-modal/.sc-btn/.sc-badge) + shell.css(.sc-icon-btn)
+ *          + tokens.css 设计令牌（--c-* / --r-*）。
+ */
+
+/* ═══ 弹窗壳（sc-modal 基座上的 v4.0 换壳：副标题 / 大留白 / 灰底页脚） ═══ */
+.modal-dialog:has(.pw-modal) { max-width: 600px; }
+.pw-modal { width: 100%; }
+.pw-modal .sc-modal__header { padding: 16px 24px; align-items: flex-start; }
+.pw-modal .sc-modal__title { font-size: 16px; }
+.pw-modal__sub { margin: 4px 0 0; font-size: 12px; color: var(--c-muted); }
+.pw-modal .sc-modal__body { padding: 24px; display: grid; gap: 20px; }
+.pw-modal .sc-modal__footer { padding: 14px 24px; background: var(--c-side); }
+
+/* 模板下载条（--c-rail 底） */
+.pw-tplbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--c-rail);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-ctrl);
+}
+.pw-tplbar__info { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; }
+.pw-tplbar__info i { color: var(--c-ink-4); }
+.pw-tplbar__name { color: var(--c-ink-3); font-weight: 500; }
+.pw-tplbar__ver {
+    padding: 2px 6px;
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-badge);
+    background: var(--c-surface);
+    color: var(--c-ink-3);
+    font-family: var(--ff-num);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* 导入模式双列单选卡（原生 radio 驱动选中态，行为与 034 范式一致） */
+.pw-mode-label { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--c-ink-3); }
+.pw-radios { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pw-radio-card { position: relative; display: block; margin: 0; cursor: pointer; }
+.pw-radio-card input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+.pw-radio-card__body {
+    display: flex;
+    gap: 10px;
+    padding: 14px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-ctrl);
+    transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.pw-radio-card:hover .pw-radio-card__body { background: var(--c-side); border-color: var(--c-faint); }
+.pw-radio-card input:checked + .pw-radio-card__body {
+    background: var(--c-side);
+    border-color: var(--c-ink-2);
+    box-shadow: 0 0 0 1px var(--c-ink-2);
+}
+.pw-radio-card input:focus-visible + .pw-radio-card__body {
+    outline: 2px solid var(--c-ink-2);
+    outline-offset: 2px;
+}
+.pw-radio-card__dot {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    border: 1px solid var(--c-faint);
+    border-radius: var(--r-full);
+    background: var(--c-surface);
+}
+.pw-radio-card input:checked + .pw-radio-card__body .pw-radio-card__dot {
+    border-color: var(--c-ink-2);
+    background: radial-gradient(circle, var(--c-ink-2) 0 4px, var(--c-surface) 4.5px);
+}
+.pw-radio-card__title { font-size: 13px; font-weight: 600; color: var(--c-ink); }
+.pw-radio-card__desc { margin: 4px 0 0; font-size: 12px; line-height: 1.6; color: var(--c-muted); }
+
+/* 数据文件标题行 */
+.pw-file-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pw-file-head__label { font-size: 12px; font-weight: 600; color: var(--c-ink-3); }
+.pw-file-head__label .sc-field__required { margin-left: 2px; color: var(--c-danger); }
+
+/* File Drop Zone（与新增居民页 .rw-drop 同规格：--c-side 底 + 1.5px 虚线 + 四态） */
+.pw-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+    background: var(--c-side);
+    border: 1.5px dashed var(--c-line-3);
+    border-radius: var(--r-card);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color .18s ease, border-color .18s ease;
+}
+.pw-drop:hover { background: var(--c-hover); border-color: var(--c-ink-4); }
+.pw-drop.is-drag { background: var(--c-hover); border-style: solid; border-color: var(--c-ink-2); }
+.pw-drop:focus-visible { outline: 2px solid var(--c-ink-2); outline-offset: 2px; }
+.pw-drop__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-full);
+    background: var(--c-surface);
+    color: var(--c-ink-3);
+    font-size: 19px;
+}
+.pw-drop__title { font-size: 13px; font-weight: 600; color: var(--c-ink); }
+.pw-drop__hint { margin-top: 4px; font-family: var(--ff-num); font-size: 12px; color: var(--c-muted); }
+.pw-drop__hint b { color: var(--c-ink-3); font-weight: 500; }
+
+/* 已就绪文件预览卡 */
+.pw-staged {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px;
+    background: var(--c-side);
+    border: 1px solid var(--c-ink-2);
+    border-radius: var(--r-ctrl);
+}
+.pw-staged__file { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1 1 300px; }
+.pw-staged__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-ctrl);
+    background: var(--c-cat-1-weak);
+    color: var(--c-success);
+    font-size: 19px;
+}
+.pw-staged__info { min-width: 0; }
+.pw-staged__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--c-ink);
+}
+.pw-staged__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    font-family: var(--ff-num);
+    font-size: 12px;
+    color: var(--c-muted);
+}
+.pw-staged__ops { display: flex; align-items: center; gap: 6px; flex: none; }
+
+/* 危险文字按钮（暂存卡「移除」） */
+.pw-btn-danger { height: auto; padding: 4px 8px; font-size: 12px; color: var(--c-danger); }
+.pw-btn-danger:hover { background: var(--c-badge-danger-bg); color: var(--c-danger); }
+
+/* 响应式：≤768 单选卡单列（自 party_list_v2.css 同步迁入） */
+@media (max-width: 767.98px) {
+    .pw-radios { grid-template-columns: 1fr; }
+}

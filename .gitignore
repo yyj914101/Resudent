@@ -1,0 +1,49 @@
+# --- 数据与运行时（不进 git，宪法 §14）---
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.bak
+*.wbak
+uploads/
+backups/
+*.key
+*.log
+*.pid
+
+# 保留脱敏种子库（白名单）
+!seed/shucun_seed.db
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# --- 环境与本地配置 ---
+.env
+.env.local
+
+# --- 系统/编辑器 ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Sprint5 补建仓库追加（2026-08-27）---
+instance/
+temp/
+server_startup_error.log
+data/
+!data/seed/
+!data/seed/*
+
+# --- P0-1/P0-2 整改（2026-08-31）：密钥/私钥绝不随包分发 ---
+# 会话签名密钥（config.py 首启随机生成，实例独立）
+secret.key
+# 作者授权私钥（仅作者离线持有，gen_license.py 签发用）
+scripts/author_license_private_key.pem
+*.pem

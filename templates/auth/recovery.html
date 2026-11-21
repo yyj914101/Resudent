@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恢复引导 · 村务综合管理系统</title>
+    <link href="{{ url_for('static', filename='lib/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/auth_recovery.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="container">
+    <div class="card recovery-card">
+        <div class="recovery-body p-4 p-md-5">
+            <h4 class="text-center mb-1 fw-bold" style="color:var(--gov-blue);">系统恢复引导</h4>
+            <p class="text-center text-muted small mb-4">R12-E7 · 口令遗忘 / 密钥数据损坏恢复路径</p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <div class="alert alert-warning small">
+                口令遗忘后数据无法直接解密（系统不提供自助重置）。请使用最近一份
+                <b>.wbak 加密备份</b>恢复（含数据库与附件）。备份位置：
+                <code class="d-block mt-1">{{ backup_dir }}</code>
+            </div>
+
+            <form method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">选择备份包</label>
+                    {% if backups %}
+                        {% for b in backups %}
+                        <label class="backup-item d-flex justify-content-between align-items-center mb-2">
+                            <input type="radio" name="wbak_path" value="{{ b.path }}" class="form-check-input me-2" checked>
+                            <span class="small text-truncate">{{ b.path }}</span>
+                            <span class="recovery-chip ms-2">{{ b.mtime }}</span>
+                        </label>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-muted small">备份目录中暂无 .wbak 加密备份包（无法恢复，请联系镇级管理员）。</div>
+                    {% endif %}
+                </div>
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold">启动口令</label>
+                    <input type="password" class="auth-input" name="password" placeholder="输入启动口令以解密备份" required>
+                </div>
+                <button type="submit" class="btn btn-unlock" {% if not backups %}disabled{% endif %}>
+                    从备份恢复
+                </button>
+                <a href="{{ url_for('auth.unlock') }}" class="btn btn-back w-100 mt-2">返回解锁页</a>
+            </form>
+        </div>
+    </div>
+</div>
+</body>
+</html>

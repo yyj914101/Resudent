@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}同步日志 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}主档同步日志{% endblock %}
+{# GLB-07：resident_sync_log 追溯（admin）；conflict 行 = GLB-06 副本分叉被主档覆盖的留痕。 #}
+{% block content %}
+<div class="card sync-log-page">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-arrow-left-right"></i> 主档同步日志</span>
+        <span class="text-muted small">共 {{ total }} 条，主档编辑回写副本的逐字段留痕</span>
+    </div>
+    <div class="card-body">
+        <form class="row g-2 mb-3" method="get" action="{{ url_for('resident.sync_log') }}">
+            <div class="col-md-2">
+                <select class="form-select form-select-sm" name="status">
+                    <option value="">全部状态</option>
+                    <option value="success" {{ 'selected' if status == 'success' }}>成功（success）</option>
+                    <option value="conflict" {{ 'selected' if status == 'conflict' }}>冲突覆盖（conflict）</option>
+                    <option value="failed" {{ 'selected' if status == 'failed' }}>失败（failed）</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" class="form-control form-control-sm" name="field" placeholder="字段名（如 name）" value="{{ field }}">
+            </div>
+            <div class="col-md-2">
+                <input type="number" class="form-control form-control-sm" name="resident_id" placeholder="居民 ID" value="{{ resident_id }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100"><i class="bi bi-search"></i> 筛选</button>
+            </div>
+        </form>
+
+        <div class="sc-table-wrap">
+            <table class="sc-table sc-table--dense">
+                <thead>
+                    <tr>
+                        <th class="sc-table__th">时间</th>
+                        <th class="sc-table__th">居民</th>
+                        <th class="sc-table__th">字段</th>
+                        <th class="sc-table__th">旧值</th>
+                        <th class="sc-table__th">新值</th>
+                        <th class="sc-table__th">影响表</th>
+                        <th class="sc-table__th">状态</th>
+                        <th class="sc-table__th">操作人</th>
+                        <th class="sc-table__th">说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td class="small text-muted">{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at else '—' }}</td>
+                        <td>{{ names.get(row.resident_id, '—') }}{% if row.resident_id %} <span class="text-muted small">#{{ row.resident_id }}</span>{% endif %}</td>
+                        <td><span class="font-monospace small">{{ row.field or '—' }}</span></td>
+                        <td class="small">{{ row.old_value or '—' }}</td>
+                        <td class="small">{{ row.new_value or '—' }}</td>
+                        <td class="small text-muted">{{ row.affected_tables or '—' }}</td>
+                        <td>
+                            {% set tone = {'success': 'success', 'conflict': 'warning text-dark', 'failed': 'danger'} %}
+                            <span class="badge bg-{{ tone.get(row.status, 'secondary') }}">{{ row.status }}</span>
+                        </td>
+                        <td class="small">{{ row.operator or '—' }}</td>
+                        <td class="small text-muted">{{ row.error_message or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">暂无同步日志</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pages > 1 %}
+        <nav><ul class="pagination pagination-sm justify-content-center">
+            {% for p in range(1, pages + 1) %}
+            <li class="page-item {{ 'active' if p == page }}">
+                <a class="page-link" href="{{ url_for('resident.sync_log', status=status, field=field, resident_id=resident_id, page=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul></nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

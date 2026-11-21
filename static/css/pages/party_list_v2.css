@@ -1,0 +1,308 @@
+/* party_list_v2.css — 党员管理页按《党员管理与批量导入工作台》设计稿改版（2026-11-19）。
+ *
+ * 输入：Desktop/code_artifact.html + Desktop/ui.md（ADR-022 v4.0：对称 4×2 KPI 矩阵 +
+ * 业务规则 ? 气泡收纳 + 支部药丸筛选 + 隐私脱敏开关 + 批量导入弹窗 File Drop Zone）。
+ *
+ * 作用域：全部挂在 .pw-page 下，不污染其他页；颜色/圆角/间距只走 tokens.css 令牌。
+ * DOM 契约零改动：summaryXxx 八格 id、partyBranchSummary、sName/sIdCard/sType/sBranch、
+ * btnSearch/btnReset/btnSyncResidents/btnAdd、impModal（impMode/impFile/impRes）、
+ * fmModal、dtModal/feeModal 与 party_list.js 全部保留。
+ */
+
+/* ── 页面容器：三模块纵向 20px ──
+   2026-11-19：补 minmax(0,1fr) 可收缩轨道——grid 轨道默认 min-width:auto，
+   会被 nowrap 超宽表格的 min-content 撑破（页面级横向滚动条，卡片被撑到 1444px）；
+   收口后卡片贴容器宽，表格超宽按系统既定模式由 .sc-table-wrap(overflow-x:auto) 内滚。 */
+.pw-page { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); }
+
+/* ═══ 1. 党员名册概览卡（原 party-page-header 品牌卡重构） ═══ */
+.pw-overview {
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+}
+.pw-overview__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--c-line-2);
+}
+.pw-overview__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+.pw-overview__emblem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--r-ctrl);
+    background: var(--c-badge-danger-bg);
+    color: var(--c-danger);
+    font-size: 15px;
+}
+.pw-overview__title { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-ink); }
+
+/* ? 业务规则气泡（380px 深色浮层；键盘可达） */
+.pw-help { position: relative; display: inline-flex; align-items: center; }
+.pw-help__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-full);
+    background: var(--c-hover);
+    color: var(--c-muted);
+    font-family: var(--ff-num);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: help;
+}
+.pw-help__btn:hover { color: var(--c-ink); background: var(--c-line-3); }
+.pw-help__bubble {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 8px);
+    width: 380px;
+    padding: 10px 12px;
+    border-radius: var(--r-ctrl);
+    background: var(--c-ink-2);
+    color: var(--c-surface);
+    font-size: 12px;
+    line-height: 1.7;
+    box-shadow: 0 10px 25px -5px rgba(10, 10, 10, .25);
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity .15s ease, visibility .15s ease;
+    pointer-events: none;
+    z-index: 40;
+}
+.pw-help:hover .pw-help__bubble,
+.pw-help__btn:focus-visible + .pw-help__bubble {
+    visibility: visible;
+    opacity: 1;
+}
+.pw-help__bubble strong { display: block; margin-bottom: 2px; color: var(--c-surface); }
+
+/* 顶栏操作组（下载模板移入导入弹窗 → 3 钮） */
+.pw-overview__ops { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* ── 汇总小标题行 ── */
+.pw-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+}
+.pw-summary-head__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--c-ink-3);
+    font-weight: 600;
+}
+.pw-summary-head__label i { color: var(--c-muted); }
+.pw-summary-head__note { color: var(--c-faint); }
+
+/* ── 对称 4×2 KPI 网格（复用 party-summary-* 既有 8 id，仅换壳） ── */
+.pw-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+.pw-kpi {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 58px;
+    padding: 12px 16px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-card);
+}
+.pw-kpi__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--c-muted);
+}
+.pw-kpi__dot {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: var(--r-full);
+    background: var(--c-faint);
+}
+.pw-kpi__dot--ink { background: var(--c-ink-2); }
+.pw-kpi__dot--c1 { background: var(--c-cat-1); }
+.pw-kpi__dot--c2 { background: var(--c-cat-2); }
+.pw-kpi__dot--c3 { background: var(--c-cat-3); }
+.pw-kpi__dot--c4 { background: var(--c-cat-4); }
+.pw-kpi__value {
+    margin-top: 4px;
+    font-family: var(--ff-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--c-ink);
+}
+.pw-kpi__ratio {
+    padding: 2px 6px;
+    border-radius: var(--r-badge);
+    background: var(--c-hover);
+    color: var(--c-muted);
+    font-family: var(--ff-num);
+    font-size: 11px;
+}
+.pw-kpi--primary { border-color: var(--c-line-3); }
+.pw-kpi--alert .pw-kpi__value { color: var(--c-ink); }
+
+/* ── 党支部人数汇总条（可点击药丸 = 筛选快捷入口） ── */
+.pw-branches {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--c-side);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-ctrl);
+}
+.pw-branches__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-muted);
+}
+/* .party-branch-chip 由 party_list.js 生成——保持类名，外观按药丸规格换壳 */
+.pw-branches .party-branch-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 26px;
+    padding: 3px 10px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-full);
+    color: var(--c-ink-3);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color .15s, border-color .15s, color .15s;
+    user-select: none;
+}
+.pw-branches .party-branch-chip:hover { border-color: var(--c-faint); background: var(--c-hover); }
+.pw-branches .party-branch-chip.is-active {
+    background: var(--c-ink-2);
+    border-color: var(--c-ink-2);
+    color: var(--c-surface);
+    font-weight: 500;
+}
+.pw-branches .party-branch-chip strong {
+    margin: 0;
+    padding: 1px 6px;
+    border-radius: var(--r-badge);
+    background: var(--c-hover);
+    color: var(--c-ink);
+    font-family: var(--ff-num);
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    font-weight: 600;
+}
+.pw-branches .party-branch-chip.is-active strong {
+    background: rgba(255, 255, 255, .18);
+    color: var(--c-surface);
+}
+
+/* ═══ 2. 检索筛选与台账列表卡（沿用 .sc-card/.sc-table 基座，套设计稿取值） ═══
+   控件宽度走模板 inline style（customSelect 依据 inline width 判定走「定宽」分支，
+   避免触发「占满父容器」分支把工具条撑爆）；这里只补身份证列的等宽字体。 */
+.pw-list-card .sc-toolbar { gap: 10px; }
+.pw-list-card #sIdCard { font-family: var(--ff-num); }
+.pw-list-card .pw-privacy { margin-left: auto; }
+
+/* 隐私脱敏开关（36×20 滑动开关，默认开 = 脱敏） */
+.pw-privacy {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--c-ink-3);
+    cursor: pointer;
+    user-select: none;
+}
+.pw-privacy__track {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    width: 36px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-full);
+    background: var(--c-faint);
+    cursor: pointer;
+    transition: background-color .2s ease;
+}
+.pw-privacy__track[aria-checked="true"] { background: var(--c-ink-2); }
+.pw-privacy__track:focus-visible { outline: 2px solid var(--c-ink-2); outline-offset: 2px; }
+.pw-privacy__knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: var(--r-full);
+    background: var(--c-surface);
+    box-shadow: 0 1px 2px rgba(10, 10, 10, .2);
+    transition: transform .2s ease;
+}
+.pw-privacy__track[aria-checked="true"] .pw-privacy__knob { transform: translateX(16px); }
+
+/* 表格微调：表头 10/12、单元格 11/12、等宽列（设计稿 .token-table 取值） */
+.pw-list-card .sc-table th { padding: 10px 12px; font-size: 12px; }
+.pw-list-card .sc-table td { padding: 11px 12px; font-size: 13px; }
+.pw-list-card .col-id-card,
+.pw-list-card .col-phone,
+.pw-list-card .col-date,
+.pw-list-card .col-age,
+.pw-list-card .col-party-age { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+/* 底部统计摘要条 */
+.pw-list-card .sc-pagination {
+    background: var(--c-side);
+    border-top: 1px solid var(--c-line-2);
+    padding: 10px 16px;
+}
+.pw-list-card .sc-pagination__stat { font-size: 12px; }
+.pw-list-card .sc-pagination__stat strong { color: var(--c-ink); font-family: var(--ff-num); }
+
+/* ═══ 3. 批量导入弹窗（impModal 换壳；契约 id 不变） ═══
+   2026-11-19：弹窗组件样式（pw-modal/pw-tplbar/pw-radio-card/pw-drop/pw-staged/pw-btn-danger）
+   已原样抽至共享文件 css/pages/import_modal_v2.css（选民导入弹窗复用），本文件不再重复。 */
+
+/* 响应式：992~1199 概览顶栏换行；≤768 KPI 2 列、单选卡单列 */
+@media (max-width: 1199.98px) {
+    .pw-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .pw-overview__ops { margin-top: 8px; }
+}
+@media (max-width: 767.98px) {
+    .pw-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pw-overview { padding: 16px; }
+    .pw-help__bubble { width: 300px; }
+}

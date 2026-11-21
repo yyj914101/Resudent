@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}环卫工作{% endblock %}
+{% block page_title %}环卫工作{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/sanitation_index.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="sanitation-dashboard">
+    <div class="sanitation-dashboard__container">
+        <header class="sanitation-dashboard__header">
+            <h2 class="sanitation-dashboard__title">环卫工作</h2>
+            <p class="sanitation-dashboard__subtitle">环卫队伍、设施点位与环境整治台账（软表承载）· 指标与看板同源</p>
+        </header>
+
+        <section class="sanitation-dashboard__stats" id="sanitationStats" aria-label="环卫工作指标">
+            <article class="sanitation-dashboard__card sanitation-dashboard__stat">
+                <div class="sanitation-dashboard__stat-label">队伍在岗人数合计</div>
+                <div class="sanitation-dashboard__stat-value" id="sanitationHeadcount">-</div>
+            </article>
+            <article class="sanitation-dashboard__card sanitation-dashboard__stat">
+                <div class="sanitation-dashboard__stat-label">设施点位数量</div>
+                <div class="sanitation-dashboard__stat-value sanitation-dashboard__stat-value--success" id="sanitationSiteCount">-</div>
+            </article>
+        </section>
+
+        <section class="sanitation-dashboard__section sanitation-dashboard__rosters" aria-label="环卫工作台账">
+            {% for roster in rosters %}
+            <article class="sanitation-dashboard__card sanitation-dashboard__roster-card">
+                <div class="sanitation-dashboard__roster-head">
+                    <div class="sanitation-dashboard__roster-ident">
+                        {% if roster.code == 'sanitation_team' %}
+                        <span class="sanitation-dashboard__roster-icon" aria-hidden="true"><i class="bi bi-people"></i></span>
+                        {% elif roster.code == 'sanitation_site' %}
+                        <span class="sanitation-dashboard__roster-icon" aria-hidden="true"><i class="bi bi-geo-alt"></i></span>
+                        {% else %}
+                        <span class="sanitation-dashboard__roster-icon" aria-hidden="true"><i class="bi bi-clipboard-check"></i></span>
+                        {% endif %}
+                        <div>
+                            <h3 class="sanitation-dashboard__roster-name">{{ roster.name }}</h3>
+                            <p class="sanitation-dashboard__roster-code">{{ roster.code }}</p>
+                        </div>
+                    </div>
+                    <button type="button" class="sanitation-dashboard__info" title="规范列（一页纸 v1.2）：{% if roster.code == 'sanitation_team' %}{{ team_columns | join('、') }}{% elif roster.code == 'sanitation_site' %}{{ site_columns | join('、') }}{% else %}{{ cleanup_columns | join('、') }}{% endif %}。" aria-label="查看{{ roster.name }}规范列">
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="sanitation-dashboard__roster-desc">{% if roster.built %}台账已建立，可直接维护记录。{% else %}台账尚未建立，进入后可上传 Excel 建立台账。{% endif %}</p>
+                <div class="sanitation-dashboard__roster-action">
+                    <a class="sanitation-dashboard__enter" href="/sanitation/roster/{{ roster.code }}/">
+                        <i class="bi bi-grid-3x3-gap" aria-hidden="true"></i>
+                        {{ '进入台账' if roster.built else '去建册（上传 Excel）' }}
+                    </a>
+                </div>
+            </article>
+            {% endfor %}
+        </section>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/sanitation.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}居民查询{% endblock %}
+
+{# 062 P4 v4.0：标题由页头（sc-page-head）承担，顶栏标题留空（同 P1–P3 口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('resident', 'query') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">居民查询</h2>
+        <p class="sc-page-head__meta">按人/按户两种口径查询辖区居民档案；顶栏搜索「姓名」可直接跳转首查。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('resident.add', tab='template') }}"><i class="bi bi-upload"></i> 批量导入</a>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnExport"><i class="bi bi-download"></i> 导出</button>
+        <a class="sc-btn sc-btn--primary" href="{{ url_for('resident.add') }}"><i class="bi bi-plus-circle"></i> 新增居民</a>
+    </div>
+</header>
+
+{# 062 P4：搜索区（基础 2 + 高级 10，折叠沿用 #btnToggleAdv；零新增组件，两行均为 sc-toolbar） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchIdCard">身份证号</label>
+            <input type="text" class="sc-input" id="searchIdCard" placeholder="输入身份证号" style="width:200px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchName">姓名</label>
+            <input type="text" class="sc-input" id="searchName" placeholder="输入姓名" style="width:140px">
+        </div>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnSearch"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnReset"><i class="bi bi-arrow-counterclockwise"></i> 重置</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnToggleAdv"><i class="bi bi-sliders"></i> 高级</button>
+    </div>
+
+    <div class="sc-toolbar" id="advancedSearch" style="display:none">
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchAgeMin">年龄(从)</label>
+            <input type="number" class="sc-input" id="searchAgeMin" placeholder="最小" min="0" max="150" style="width:80px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchAgeMax">年龄(到)</label>
+            <input type="number" class="sc-input" id="searchAgeMax" placeholder="最大" min="0" max="150" style="width:80px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchGender">性别</label>
+            <select class="sc-select" id="searchGender" style="width:90px">
+                <option value="">全部</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+            </select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchStatus">人员状态</label>
+            <select class="sc-select" id="searchStatus" style="width:100px">
+                <option value="">全部</option>
+                <option value="normal">正常</option>
+                <option value="deceased">死亡</option>
+                <option value="moved_out">迁出</option>
+            </select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchFlowStatus">流动状态</label>
+            <select class="sc-select" id="searchFlowStatus" style="width:100px">
+                <option value="">全部</option>
+                <option value="常住">常住</option>
+                <option value="流入">流入</option>
+                <option value="流出">流出</option>
+            </select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchVillageGroup">所在组</label>
+            <select class="sc-select" id="searchVillageGroup" style="width:120px"><option value="">全部</option></select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchPoliticsStatus">政治面貌</label>
+            <select class="sc-select" id="searchPoliticsStatus" style="width:120px"><option value="">全部</option></select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchHouseholdProp">户属性</label>
+            <select class="sc-select" id="searchHouseholdProp" style="width:110px"><option value="">全部</option></select>
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchPhone">电话号码</label>
+            <input type="text" class="sc-input" id="searchPhone" placeholder="输入电话号码" style="width:150px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchAddress">家庭住址</label>
+            <input type="text" class="sc-input" id="searchAddress" placeholder="模糊" style="width:200px">
+        </div>
+    </div>
+
+    {# 统计条 + 模式切换：复用模块胶囊样式，容器 data-mode-group 与 065 模块胶囊区分（结构断言用） #}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:var(--sp-4);border-bottom:1px solid var(--c-line-2)">
+        <span class="sc-pagination__stat" id="statsText"></span>
+        <div class="sc-chips__row" data-mode-group id="modeToggle">
+            <button type="button" class="sc-chip mode-btn is-active" data-mode="detail">居民明细</button>
+            <button type="button" class="sc-chip mode-btn" data-mode="household">按户汇总</button>
+        </div>
+    </div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="residentTable">
+            <thead id="tableHead">
+                <tr id="detailHead">
+                    <th class="sc-table__th" style="width:56px">#</th>
+                    <th class="sc-table__th" style="width:90px">姓名</th>
+                    <th class="sc-table__th" style="width:170px">身份证号</th>
+                    <th class="sc-table__th" style="width:60px">民族</th>
+                    <th class="sc-table__th" style="width:60px">性别</th>
+                    <th class="sc-table__th" style="width:60px">年龄</th>
+                    <th class="sc-table__th" style="width:90px">所在组</th>
+                    <th class="sc-table__th" style="width:100px">政治面貌</th>
+                    <th class="sc-table__th" style="width:100px">与户主关系</th>
+                    <th class="sc-table__th" style="width:80px">状态</th>
+                    <th class="sc-table__th" style="width:80px">流动</th>
+                </tr>
+                <tr id="householdHead" style="display:none">
+                    <th class="sc-table__th" style="width:56px">#</th>
+                    <th class="sc-table__th" style="width:100px">户主姓名</th>
+                    <th class="sc-table__th" style="width:60px">性别</th>
+                    <th class="sc-table__th" style="width:60px">年龄</th>
+                    <th class="sc-table__th" style="width:90px">所在组</th>
+                    <th class="sc-table__th" style="width:220px">家庭住址</th>
+                    <th class="sc-table__th" style="width:170px">户主身份证号</th>
+                    <th class="sc-table__th" style="width:90px">家庭人数</th>
+                    <th class="sc-table__th" style="width:100px">户属性</th>
+                    <th class="sc-table__th" style="width:130px">电话</th>
+                </tr>
+            </thead>
+            <tbody id="residentTbody">
+                <tr><td colspan="11" class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>点击"查询"按钮加载数据</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    {# 分页：左侧计数沿用「共 N 条 · 每页 20 条」口径；totalCount/pageInfo 由 loadData 回填 #}
+    <div class="sc-pagination">
+        <div class="sc-row-actions">
+            <span class="sc-pagination__stat">共 <strong id="totalCount">0</strong> 条<span id="pageInfo"></span></span>
+            <span class="sc-pagination__stat" id="footerInfo">每页 20 条</span>
+        </div>
+        <div class="sc-row-actions">
+            <ul class="sc-pagination__pager" id="pagination"></ul>
+            <span class="sc-pagination__stat">跳至</span>
+            <input type="number" class="sc-input" id="jumpPage" min="1" style="width:60px;height:30px;text-align:center">
+            <span class="sc-pagination__stat">页</span>
+            <button type="button" class="sc-btn sc-btn--secondary" id="btnJumpPage" style="height:30px">GO</button>
+        </div>
+    </div>
+</section>
+
+{% include "resident/detail_modal.html" %}
+{% endblock %}
+
+{% block extra_js %}
+{# 062 P4 验收 6：?name= 由服务端注入（spa.js 伪导航丢 query，前端不读 location.search） #}
+<script>window.__RESIDENT_INIT__ = { name: {{ initial_name|tojson }} };</script>
+<script src="{{ url_for('static', filename='js/pages/resident_list.js') }}"></script>
+{% endblock %}

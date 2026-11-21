@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}组织架构{% endblock %}
+
+{# 062 v4.0 改造：标题由页头（sc-page-head）承担，顶栏标题留空（同 055 党员页口径） #}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/organization_list.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('org', 'structure') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">组织架构</h2>
+        {# 075 RC-19：副标题对齐样图 v7-23「共 N 人 · 现任 M 人」 #}
+        <p class="sc-page-head__meta">共 {{ head_total or 0 }} 人 · 现任 {{ head_current or 0 }} 人</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="exportData()"><i class="bi bi-download"></i> 导出</button>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="openAddModal()"><i class="bi bi-plus-circle"></i> 新增成员</button>
+    </div>
+</header>
+
+{# 字段真源：docs/design/照单施工-6页字段清单-2026-10-28.md §一（11 列 + 搜索 3 项 + 弹窗 10 字段） #}
+<section class="sc-card">
+    <form class="org-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="name" placeholder="姓名" style="width:140px">
+        <select class="sc-select" name="org_type" id="search_org_type" style="width:150px">
+            <option value="">全部机构</option>
+        </select>
+        <select class="sc-select" name="is_current" style="width:130px">
+            <option value="">全部状态</option>
+            <option value="1">现任</option>
+            <option value="0">离任</option>
+        </select>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="searchData()"><i class="bi bi-search"></i> 查询</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">#</th>
+                    <th class="sc-table__th" style="width:110px">机构分类</th>
+                    <th class="sc-table__th" style="width:90px">姓名</th>
+                    <th class="sc-table__th" style="width:90px">职务</th>
+                    <th class="sc-table__th" style="width:170px">身份证号</th>
+                    <th class="sc-table__th" style="width:130px">电话</th>
+                    <th class="sc-table__th" style="width:110px">政治面貌</th>
+                    <th class="sc-table__th" style="width:110px">任职开始</th>
+                    <th class="sc-table__th" style="width:110px">任职结束</th>
+                    <th class="sc-table__th" style="width:70px">状态</th>
+                    <th class="sc-table__th">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 弹窗骨架对组件-handoff §2.8（sc-modal）；BS 5 JS 共存：外层 .modal.fade，data-bs-dismiss 可用。
+   字段 id/name 与 013 冻结约定一致（formModal/dataForm/modalTitle/editId + f_*），页面 JS 零改动回填。 #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+    <div class="modal-dialog org-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="dataForm">
+                <input type="hidden" name="id" id="editId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="modalTitle">新增组织成员</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_org_type">机构分类<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="org_type" id="f_org_type" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_name">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="f_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_position">职务</label>
+                        <select class="sc-select" name="position" id="f_position">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_id_card">身份证号</label>
+                        <input type="text" class="sc-input" name="id_card" id="f_id_card">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_phone">电话</label>
+                        <input type="text" class="sc-input" name="phone" id="f_phone">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_politics_status">政治面貌</label>
+                        <select class="sc-select" name="politics_status" id="f_politics_status">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_start_date">任职开始</label>
+                        <input type="date" class="sc-input" name="start_date" id="f_start_date">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_end_date">任职结束</label>
+                        <input type="date" class="sc-input" name="end_date" id="f_end_date">
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <input type="checkbox" class="sc-checkbox" name="is_current" id="f_is_current" value="1" checked>
+                        <label for="f_is_current" class="org-check-label">现任</label>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 组织成员详情弹窗（2026-11-17 Master–Detail 全站统一） -->
+<div class="modal fade" id="orgDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="orgDetailTitle">组织成员详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="orgDetailBody"></div>
+            <footer class="sc-modal__footer" id="orgDetailBtns"></footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/organization_list.js') }}"></script>
+{% endblock %}
