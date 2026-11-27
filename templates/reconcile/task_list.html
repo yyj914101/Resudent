@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block title %}死亡名单对账{% endblock %}
+{% block page_title %}死亡名单对账{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{{ page_head('死亡名单对账', '死亡上报 · 公安/殡葬名单导入与四分类比对（5 个明细 tab）') }}
+{# 2026-11-16：死亡名单对账由民政对象迁出，与死亡上报成组（death 组） #}
+{{ module_tabs('death', 'reconcile') }}
+
+<!-- 导入上传区（067 换壳：sc-card + sc-toolbar；四分类徽章为图例，与明细分类同色） -->
+<section class="sc-card mb-3">
+    <form id="importForm" class="sc-toolbar">
+        <span class="fw-bold" style="font-size:14px;">导入对账名单</span>
+        <select id="sourceSel" class="sc-select" style="width:140px">
+            <option value="公安">公安名单</option>
+            <option value="殡葬">殡葬名单</option>
+        </select>
+        <input type="file" id="fileInput" class="sc-input" data-sc-dropzone data-dz-hint="支持 .xlsx / .xls / .xlsb / .csv / .xlsm 名单 · 点击或拖拽" style="width:280px" accept=".xlsx,.xls,.xlsb,.csv,.xlsm">
+        <button type="button" class="sc-btn sc-btn--primary" onclick="doImport()"><i class="bi bi-upload"></i> 导入并比对</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">
+            模板要求：身份证 + 姓名 + 死亡日期（缺身份证列拒绝）；比对产出四分类：
+            <span class="sc-badge sc-badge--success">已登记</span>
+            <span class="sc-badge sc-badge--warning">疑似未登记</span>
+            <span class="sc-badge sc-badge--muted">无档案</span>
+            <span class="sc-badge sc-badge--info">名单外</span>
+        </span>
+    </form>
+    <div id="importProgress" class="d-none w-100 px-3 pb-3">
+        <div class="progress" style="height:8px;"><div class="progress-bar progress-bar-striped progress-bar-animated" style="width:100%"></div></div>
+        <span class="small text-muted" id="importMsg">后台比对中…</span>
+    </div>
+</section>
+
+<!-- 任务列表 -->
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <span class="fw-bold" style="font-size:14px;"><i class="bi bi-list-check"></i> 对账任务</span>
+        <select id="quarterFilter" class="sc-select" style="width:auto" onchange="loadTasks()"><option value="">全部季度</option></select>
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="loadTasks()"><i class="bi bi-arrow-clockwise"></i> 刷新</button>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="taskTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">任务</th><th class="sc-table__th">来源</th><th class="sc-table__th">季度</th><th class="sc-table__th">状态</th>
+                    <th class="sc-table__th">已登记</th><th class="sc-table__th">疑似未登记</th><th class="sc-table__th">无档案</th><th class="sc-table__th">名单外</th>
+                    <th class="sc-table__th">源名单</th><th class="sc-table__th">操作</th>
+                </tr>
+            </thead>
+            <tbody id="taskBody"><tr><td colspan="10" class="text-center text-muted py-4">加载中…</td></tr></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="taskStat"></span>
+        <span class="sc-pagination__stat">导入后 1.5s 轮询状态 · 删除源名单仅 ≤30 天内可操作</span>
+    </div>
+</section>
+
+<!-- 任务详情（5 个 tab：全部 + 4 分类） -->
+<section class="sc-card mt-3 d-none" id="detailCard">
+    <div class="sc-toolbar">
+        <span class="fw-bold" style="font-size:14px;" id="detailTitle">任务详情</span>
+        <span class="sc-table-toolbar" style="margin-left:auto;">
+            <button type="button" class="sc-btn sc-btn--secondary" onclick="exportTask()"><i class="bi bi-file-earmark-excel"></i> 导出结果</button>
+            <button type="button" class="sc-btn sc-btn--text is-danger" onclick="purgeSource()"><i class="bi bi-trash"></i> 删除源名单（≤30 天限期）</button>
+            <button type="button" class="sc-btn sc-btn--secondary" onclick="closeDetail()">关闭</button>
+        </span>
+    </div>
+    <div class="px-3 pt-2">
+        <ul class="nav nav-tabs" id="typeTabs">
+            <li class="nav-item"><a class="nav-link active" data-type="" data-key="all" href="#tab=all">全部</a></li>
+            <li class="nav-item"><a class="nav-link" data-type="已登记" data-key="registered" href="#tab=registered">已登记</a></li>
+            <li class="nav-item"><a class="nav-link" data-type="疑似未登记" data-key="suspect" href="#tab=suspect">疑似未登记</a></li>
+            <li class="nav-item"><a class="nav-link" data-type="无档案" data-key="no-file" href="#tab=no-file">无档案</a></li>
+            <li class="nav-item"><a class="nav-link" data-type="名单外" data-key="outside" href="#tab=outside">名单外</a></li>
+        </ul>
+    </div>
+    <div class="sc-table-wrap mt-2">
+        <table class="sc-table" id="resultTable">
+            <thead class="sc-table__head">
+                <tr><th class="sc-table__th">姓名</th><th class="sc-table__th">身份证</th><th class="sc-table__th">死亡日期</th><th class="sc-table__th">分类</th><th class="sc-table__th">处置状态</th><th class="sc-table__th" style="width:160px;">操作</th></tr>
+            </thead>
+            <tbody id="resultBody"><tr><td colspan="6" class="text-center text-muted py-3">选择分类查看明细</td></tr></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="resultStat"></span>
+    </div>
+</section>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/reconcile_task_list.js') }}"></script>
+{% endblock %}

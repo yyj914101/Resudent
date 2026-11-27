@@ -1,0 +1,107 @@
+/* skeleton.css — base.html 壳层样式（011：自 base.html 内联 <style> 块外移）
+ *
+ * 原位置：base.html 内联 <style>（L16-105）
+ * 引入位置：必须保持 .app.css 之后（与原内联块同层叠优先级）
+ * 内容：① 顶部标签栏 tab-bar 系列 ② 布局稳定性 ③ SPA 加载占位
+ * 注：值等价搬运，未改动任何声明（零视觉变更）
+ */
+/* 顶部标签栏 —— 057a 按视觉基线 §5.5 换肤（激活中性黑/未激活浅灰，高 32 圆角 7 字 12） */
+.tab-bar {
+    display: flex; align-items: center;
+    background: var(--c-surface);
+    padding: 0 12px;
+    min-height: 44px;
+    overflow: hidden; user-select: none;
+    border-bottom: 1px solid var(--c-line-2);
+    position: relative;
+}
+/* 104 P1-3：页签超宽时右缘 24px 渐隐提示可横向滚动；滚到末端由 spa.js 加 .tab-at-end 隐藏 */
+.tab-bar::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 24px;
+    background: linear-gradient(to left, var(--c-surface), transparent);
+    pointer-events: none;
+    transition: opacity .15s;
+}
+.tab-bar.tab-at-end::after { opacity: 0; }
+.tab-scroll {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    align-items: center;
+    height: 100%;
+    padding: 4px 0;
+}
+.tab-item {
+    display: flex; align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    color: var(--c-muted);
+    background: var(--c-hover);
+    border-radius: var(--r-badge);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+    flex-shrink: 0;
+}
+.tab-item:hover {
+    background: var(--c-line-3);
+    color: var(--c-ink-3);
+}
+.tab-item.active {
+    background: var(--c-ink-2);
+    color: var(--c-surface);
+    font-weight: 500;
+}
+.tab-item.active .tab-icon {
+    color: var(--c-surface);
+}
+.tab-item .tab-icon {
+    font-size: 14px;
+    color: var(--c-faint);
+    transition: color 0.15s;
+}
+.tab-item:hover .tab-icon {
+    color: var(--c-muted);
+}
+.tab-item .tab-close {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px; border-radius: 50%;
+    font-size: 0.65rem; line-height: 1;
+    color: #94a3b8;
+    margin-left: 2px;
+    opacity: 0;
+    transition: opacity 0.15s, background 0.15s;
+    flex-shrink: 0;
+}
+.tab-item:hover .tab-close {
+    opacity: 1;
+}
+.tab-item .tab-close:hover {
+    background: rgba(0,0,0,0.12);
+    color: #475569;
+}
+.tab-item.active .tab-close {
+    color: rgba(255,255,255,0.7);
+}
+.tab-item.active .tab-close:hover {
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+}
+
+/* ── 布局稳定性优化（骨架已换 AdminLTE 类：侧栏尺寸由 --lte-sidebar-width 接管，两列由 .app-wrapper grid 接管） ── */
+.app-main { min-width: 0; }
+#contentArea { min-height: 200px; }
+
+/* ── 加载占位动画 ── */
+.spa-loading-placeholder {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 300px; color: #94a3b8;
+}
+.spa-loading-placeholder .spinner-border { width: 2rem; height: 2rem; }

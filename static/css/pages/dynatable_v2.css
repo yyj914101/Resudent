@@ -1,0 +1,321 @@
+/* dynatable_v2.css — 软表引擎 V2.5 补丁 B-2 局部样式（严格复用 tokens.css ADR-022 变量） */
+
+/* KPI 指标条 & 筛选栏 */
+.dtv2-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+@media (max-width: 768px) {
+    .dtv2-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.dtv2-kpi {
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-card, 10px);
+    padding: 12px 15px;
+}
+.dtv2-kpi__label { font-size: 12px; color: var(--c-muted); }
+.dtv2-kpi__val { font-size: 20px; font-weight: 700; color: var(--c-ink); margin-top: 2px; }
+.dtv2-kpi__sub { font-size: 11.5px; color: var(--c-muted-2); margin-top: 2px; }
+
+.dtv2-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-card, 10px);
+    margin-bottom: 12px;
+}
+/* 覆盖 components.css 的 .sc-input { flex: 1 }，防止搜索框被拉满整行 */
+.dtv2-search,
+.dtv2-fixed-ctrl {
+    flex: 0 0 auto !important;
+}
+.dtv2-search { width: 240px !important; }
+.dtv2-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.dtv2-pill {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--c-line-3);
+    background: var(--c-surface);
+    color: var(--c-ink-3);
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: background 0.12s ease;
+}
+.dtv2-pill:hover { background: var(--c-hover); color: var(--c-ink); }
+.dtv2-pill.active { background: var(--c-ink-2); color: var(--c-surface); border-color: var(--c-ink-2); }
+
+/* 工作簿分组卡片 */
+.dtv2-group-list { display: flex; flex-direction: column; gap: 10px; }
+.dtv2-group-card {
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-card, 10px);
+    overflow: hidden;
+}
+.dtv2-group-head {
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.dtv2-group-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--c-ink);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+.dtv2-group-meta {
+    font-size: 12px;
+    color: var(--c-muted);
+    margin-top: 4px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.dtv2-group-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.dtv2-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--c-rail);
+    color: var(--c-muted-2);
+    border: 1px solid var(--c-line-3);
+    white-space: nowrap;
+}
+.dtv2-tag--info { background: var(--c-badge-info-bg); color: var(--c-info-strong); border-color: transparent; }
+.dtv2-tag--ok { background: var(--c-cat-1-weak); color: var(--c-success); border-color: transparent; }
+.dtv2-tag--warn { background: var(--c-cat-4-weak); color: var(--c-warning); border-color: transparent; }
+
+.dtv2-sub-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    border-top: 1px solid var(--c-line-2);
+    background: var(--c-bg);
+}
+.dtv2-sub-table th {
+    text-align: left;
+    padding: 7px 14px;
+    color: var(--c-muted-2);
+    font-weight: 600;
+    border-bottom: 1px solid var(--c-line-2);
+    font-size: 11.5px;
+}
+.dtv2-sub-table td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--c-line-2);
+    vertical-align: middle;
+}
+.dtv2-sub-table tr:last-child td { border-bottom: 0; }
+.dtv2-sub-table tr:hover td { background: var(--c-hover); }
+
+/* 3 步统一建表向导（满宽，不依赖旧 .dt-upload 作用域） */
+.dtv2-stepper {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+@media (max-width: 720px) {
+    .dtv2-stepper { grid-template-columns: 1fr; }
+}
+.dtv2-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 15px;
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-card, 10px);
+    background: var(--c-surface);
+    cursor: pointer;
+}
+.dtv2-step.active { border-color: var(--c-ink-2); background: var(--c-rail); }
+.dtv2-step__num {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: var(--c-rail);
+    color: var(--c-muted-2);
+    border: 1px solid var(--c-line-3);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+.dtv2-step.active .dtv2-step__num { background: var(--c-ink-2); color: var(--c-surface); border-color: var(--c-ink-2); }
+.dtv2-step.done .dtv2-step__num { background: var(--c-cat-1-weak); color: var(--c-success); border-color: transparent; }
+.dtv2-step__title { font-size: 13.5px; font-weight: 600; color: var(--c-ink); }
+.dtv2-step__desc { font-size: 11.5px; color: var(--c-muted); }
+
+.dtv2-wiz-body { padding: 20px; }
+.dtv2-dropzone {
+    position: relative;
+    border: 1.5px dashed var(--c-line-3);
+    border-radius: var(--r-card, 10px);
+    padding: 36px 20px;
+    text-align: center;
+    background: var(--c-bg);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dtv2-dropzone:hover,
+.dtv2-dropzone.is-dragover {
+    border-color: var(--c-ink-2);
+    background: var(--c-hover);
+}
+.dtv2-dropzone__title { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--c-ink); }
+.dtv2-dropzone__hint { margin: 0 0 14px; font-size: 12.5px; color: var(--c-muted); }
+.dtv2-dropzone__file { margin-top: 10px; font-size: 12.5px; font-weight: 500; color: var(--c-success); }
+
+.dtv2-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 24px;
+    max-width: 960px;
+}
+@media (max-width: 720px) {
+    .dtv2-form-grid { grid-template-columns: 1fr; }
+}
+.dtv2-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.dtv2-field__label { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.dtv2-field .sc-input,
+.dtv2-field .sc-select { width: 100% !important; flex: none !important; }
+.dtv2-field__hint { font-size: 12px; color: var(--c-muted); line-height: 1.45; }
+
+.dtv2-wiz-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 20px;
+    border-top: 1px solid var(--c-line-2);
+    background: var(--c-bg);
+}
+.dtv2-sample-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    background: var(--c-bg);
+    border: 1px solid var(--c-line-2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+/* 统一工作台：满宽单卡 + 分段胶囊头 + A4 舞台（138：去左侧导航树，多子表走顶部胶囊） */
+.dtv2-adv-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px dashed var(--c-line-2);
+    background: var(--c-bg);
+}
+.dtv2-wb-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--c-line-2);
+    flex-wrap: wrap;
+}
+.dtv2-chips-seg {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--c-rail);
+    padding: 3px;
+    border-radius: var(--r-ctrl, 8px);
+    flex-wrap: wrap;
+}
+.dtv2-chip-btn {
+    border: 0;
+    background: transparent;
+    color: var(--c-ink-3);
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 5px 11px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.dtv2-chip-btn.active { background: var(--c-ink-2); color: var(--c-surface); }
+
+.dtv2-list-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--c-line-2);
+    background: var(--c-bg);
+}
+
+.dtv2-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--c-line-2); font-size: 12px; }
+.dtv2-bar--rail { background: var(--c-rail); color: var(--c-ink-2); }
+.dtv2-bar--bg { background: var(--c-bg); color: var(--c-muted-2); }
+.dtv2-bar .dtv2-fill { flex: 1 1 auto; }
+.dtv2-seg { display: inline-flex; border: 1px solid var(--c-line-3); border-radius: 6px; overflow: hidden; background: var(--c-surface); }
+.dtv2-seg button { border: 0; border-right: 1px solid var(--c-line-2); background: transparent; color: var(--c-ink-3); padding: 2px 8px; font-size: 12px; cursor: pointer; }
+.dtv2-seg button:last-child { border-right: 0; }
+.dtv2-seg button.active { background: var(--c-ink-2); color: var(--c-surface); }
+.dtv2-stage { overflow: auto; padding: 16px; background: var(--c-rail); max-height: 70vh; }
+.dtv2-a4-paper { width: 794px; margin: 0 auto; background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--c-line-3); border-radius: 4px; padding: 34px 38px; font-family: "SimSun", "宋体", serif; }
+.dtv2-a4-paper.is-landscape { width: 1123px; }
+.dtv2-a4-paper.margin-narrow { padding: 18px 22px; }
+.dtv2-a4-paper.margin-normal { padding: 34px 38px; }
+.dtv2-a4-paper.margin-wide { padding: 48px 54px; }
+.dtv2-doc-title { text-align: center; font-size: 20px; font-weight: 700; margin: 0 0 6px; outline: none; }
+.dtv2-doc-meta { font-size: 12px; margin: 0 0 8px; white-space: pre-wrap; outline: none; }
+.dtv2-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 12px; }
+.dtv2-table thead { display: table-header-group; }
+.dtv2-table tr { break-inside: avoid; page-break-inside: avoid; }
+.dtv2-table th, .dtv2-table td { border: 1px solid var(--c-ink); padding: 4px 5px; font-size: 12px; vertical-align: middle; word-break: break-word; position: relative; }
+.dtv2-table th { background: var(--c-bg); font-weight: 700; }
+.dtv2-cell-ed { width: 100%; min-height: 20px; outline: none; white-space: pre-wrap; word-break: break-word; }
+.dtv2-locked { font-family: monospace; color: var(--c-muted-2); cursor: pointer; }
+.dtv2-sec-actions { display: flex; justify-content: flex-end; gap: 6px; margin: -6px 0 12px; font-family: var(--ff-base, sans-serif); }
+.dtv2-a4-paper.is-fmt-mode .dtv2-table td, .dtv2-a4-paper.is-fmt-mode .dtv2-table th { cursor: pointer; }
+.dtv2-table .is-selected-fmt { outline: 2px solid var(--c-ink-2) !important; outline-offset: -2px; background: var(--c-rail) !important; z-index: 3; }
+.dtv2-col-resizer { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 5; }
+.dtv2-col-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+.dtv2-row-resizer { position: absolute; left: 0; bottom: -4px; width: 100%; height: 8px; cursor: row-resize; z-index: 4; }
+.dtv2-row-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+body.dtv2-resizing-col, body.dtv2-resizing-col * { cursor: col-resize !important; user-select: none !important; }
+body.dtv2-resizing-row, body.dtv2-resizing-row * { cursor: row-resize !important; user-select: none !important; }
+.dtv2-print-overlay { position: fixed; inset: 0; background: rgba(10, 10, 10, 0.45); z-index: 1060; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dtv2-print-dialog { background: var(--c-surface); border-radius: var(--r-card, 10px); width: 100%; max-width: 1180px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--c-line-3); }
+.dtv2-print-head { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--c-line-2); }
+.dtv2-print-body { padding: 16px; overflow: auto; background: var(--c-rail); }
+.dtv2-print-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--c-line-2); background: var(--c-bg); }
+
+@media print {
+    .main-sidebar, .main-header, .content-header, .sc-chips, .sc-page-head, .dtv2-sider, .dtv2-wb-head, .dtv2-bar, .dtv2-list-bar, .dtv2-sec-actions, .dtv2-noprint, .dtv2-col-resizer, .dtv2-row-resizer, .dtv2-print-overlay { display: none !important; }
+    .dtv2-wb-layout, .dtv2-wb-layout.has-sider { display: block !important; }
+    .dtv2-stage { padding: 0; background: var(--c-surface); max-height: none; overflow: visible; }
+    .dtv2-a4-paper { border: 0; padding: 0; width: 100% !important; }
+}

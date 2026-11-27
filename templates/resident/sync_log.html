@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}同步日志 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}主档同步日志{% endblock %}
+{# GLB-07：resident_sync_log 追溯（admin）；conflict 行 = GLB-06 副本分叉被主档覆盖的留痕。 #}
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">主档同步日志</h2>
+        <p class="sc-page-head__meta">共 {{ total }} 条，主档编辑回写副本的逐字段留痕</p>
+    </div>
+</header>
+
+<section class="sc-card sync-log-page">
+    <form class="sc-toolbar" method="get" action="{{ url_for('resident.sync_log') }}">
+        <select class="sc-select" name="status" style="width:168px">
+            <option value="">全部状态</option>
+            <option value="success" {{ 'selected' if status == 'success' }}>成功（success）</option>
+            <option value="conflict" {{ 'selected' if status == 'conflict' }}>冲突覆盖（conflict）</option>
+            <option value="failed" {{ 'selected' if status == 'failed' }}>失败（failed）</option>
+        </select>
+        <input type="text" class="sc-input" name="field" style="width:180px" placeholder="字段名（如 name）" value="{{ field }}">
+        <input type="number" class="sc-input" name="resident_id" style="width:140px" placeholder="居民 ID" value="{{ resident_id }}">
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 筛选</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">时间</th>
+                    <th class="sc-table__th">居民</th>
+                    <th class="sc-table__th">字段</th>
+                    <th class="sc-table__th">旧值</th>
+                    <th class="sc-table__th">新值</th>
+                    <th class="sc-table__th">影响表</th>
+                    <th class="sc-table__th">状态</th>
+                    <th class="sc-table__th">操作人</th>
+                    <th class="sc-table__th">说明</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td class="small text-muted">{{ row.created_at.strftime('%Y-%m-%d %H:%M:%S') if row.created_at else '—' }}</td>
+                    <td>{{ names.get(row.resident_id, '—') }}{% if row.resident_id %} <span class="text-muted small">#{{ row.resident_id }}</span>{% endif %}</td>
+                    <td><span class="font-monospace small">{{ row.field or '—' }}</span></td>
+                    <td class="small">{{ row.old_value or '—' }}</td>
+                    <td class="small">{{ row.new_value or '—' }}</td>
+                    <td class="small text-muted">{{ row.affected_tables or '—' }}</td>
+                    <td>
+                        {% set tone = {'success': 'success', 'conflict': 'warning', 'failed': 'danger'} %}
+                        <span class="sc-badge sc-badge--{{ tone.get(row.status, 'muted') }}">{{ row.status }}</span>
+                    </td>
+                    <td class="small">{{ row.operator or '—' }}</td>
+                    <td class="small text-muted">{{ row.error_message or '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">暂无同步日志</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if pages > 1 %}
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat">第 {{ page }} / {{ pages }} 页，共 {{ total }} 条</span>
+        <ul class="sc-pagination__pager">
+            {% for p in range(1, pages + 1) %}
+            <li class="page-item {{ 'active' if p == page }}">
+                <a class="page-link" href="{{ url_for('resident.sync_log', status=status, field=field, resident_id=resident_id, page=p) }}">{{ p }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

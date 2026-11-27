@@ -1,0 +1,922 @@
+/* ==========================================================================
+ * components.css — 通用组件层（065 起）
+ * 依据：A 方案 §3.2（分组胶囊规格）+ 视觉基线 v4.0（令牌）
+ * 加载序：shell.css 之后；全局层，SPA 与整页均生效
+ * 约定：类名 sc- 前缀；颜色/圆角/间距只走 056 令牌，不写裸色值
+ * ========================================================================== */
+
+/* ── 分组胶囊容器（宽度自撑，不撑满内容区：右侧留白与下方全宽筛选卡形成疏密对比） ── */
+.sc-chips {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--sp-4);
+  margin: 0 0 var(--sp-6);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  background: var(--c-surface);
+}
+
+.sc-chips__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 30px;
+}
+
+/* 行标签：固定宽 72，两行必须同宽，否则胶囊起点错位 */
+.sc-chips__label {
+  flex: none;
+  width: 72px;
+  font-size: 12px;
+  color: var(--c-muted-2);
+  white-space: nowrap;
+}
+
+.sc-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 6px;          /* 设计稿实测值，不在圆角令牌阶梯上 */
+  background: var(--c-active);
+  color: var(--c-ink-3);
+  font-size: 13px;
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.sc-chip:hover { background: var(--c-line-3); color: var(--c-ink-2); }
+.sc-chip.is-active {
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+  font-weight: 500;
+}
+.sc-chip:focus-visible {
+  outline: 2px solid var(--c-ink-2);
+  outline-offset: 2px;
+}
+
+/* ── 多行分组胶囊共享栅格（样图 v4.0 civil 5+5 实测：两行同列共用列宽=max 文案+padding，
+      上下左右对齐；容器 fit-content 不满幅；间隙 11px≈样图 19px@1.7） ──
+   宏把多行渲染进单个 .sc-chips__grid（label 与胶囊平铺，列数 1+N，N 按权限过滤后计算）。 */
+.sc-chips--grid { display: flex; width: fit-content; }
+.sc-chips--grid .sc-chips__grid {
+  display: grid;
+  grid-template-columns: 72px repeat(var(--n, 1), max-content);
+  gap: 11px;
+  align-items: center;
+}
+/* 胶囊作为栅格项会拉伸到整列宽（列宽=跨行最大文案），文字须水平居中 */
+.sc-chips--grid .sc-chip { justify-content: center; }
+
+@media (max-width: 767.98px) {
+  .sc-chips { display: flex; }
+  .sc-chips__row { height: auto; flex-wrap: wrap; }
+}
+
+/* ==========================================================================
+ * 062 · 通用组件层（组件-handoff v1.5 §二 + 页面-handoff v1.0 §一）
+ * 落地说明（R-061-C2）：由 062 首个业务页带出；059/061 复用本层，禁另写一份。
+ * 取值：优先 056 令牌；规格字面量（无对应 token）带出处注释（同 sc-chip 圆角先例）。
+ * ========================================================================== */
+
+/* ── 页头（页面-handoff §1.1；059/060/061 三路验收收敛的唯一真源，062 收口自此） ── */
+.sc-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  min-height: 56px;
+  margin-bottom: var(--sp-6);
+}
+.sc-page-head__title { min-width: 0; }
+.sc-page-head__name {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.6px;
+  color: var(--c-ink);
+}
+.sc-page-head__meta {
+  margin: var(--sp-1) 0 0;
+  font-size: 14px;
+  color: var(--c-muted);
+}
+.sc-page-head__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+}
+@media (max-width: 991.98px) {
+  .sc-page-head { flex-direction: column; gap: var(--sp-2); }
+}
+
+/* ── 卡片（§2.1；全站零阴影） ── */
+.sc-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+}
+.sc-card__header { padding: var(--sp-4); }
+.sc-card__title { margin: 0; font-size: 16px; font-weight: 600; color: var(--c-ink); }
+.sc-card__subtitle { margin: 4px 0 0; font-size: 14px; color: var(--c-muted); }
+.sc-card__body { padding: var(--sp-4); }
+
+/* ── 统计徽章条（077 真源收敛：原 app.css / civil_pages.css 双处裸定义归并此处，全站唯一；
+      值 22px 按页面规格 §1.2；形态=首页 grid 六格，首页视觉不变。
+      列表页 flex 卡式走 .sc-civil-page 作用域差异，见 pages/civil_pages.css） ── */
+.sc-stat-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--sp-4);
+  height: 88px;
+  padding: 0 var(--sp-4);
+  border: var(--card-border);
+  border-radius: var(--r-card);
+  background: var(--c-surface);
+}
+.sc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sc-stat__value {
+  font-family: var(--ff-num);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--c-ink);
+}
+.sc-stat__label { font-size: 12px; color: var(--c-muted); }
+@media (max-width: 991.98px) {
+  .sc-stat-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    height: auto;
+    padding: var(--sp-4);
+    row-gap: var(--sp-4);
+  }
+}
+
+/* ── 按钮（§2.2：--primary 每屏最多 1 个；--text 用于行内操作组） ── */
+.sc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--r-ctrl);
+  background: none;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: background .15s, border-color .15s, color .15s, transform .1s ease;
+}
+/* 命中区扩展：视觉 36px 不变，命中 36+4×2=44px（细节收口 F-02，2026-11-19）；
+   -4px 双向外扩与 .sc-row-actions gap 10px 相容，不相邻命中区重叠 */
+.sc-btn::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; }
+/* 按压反馈：0.97 ∈ [0.95, 0.98] 合规档（细节收口 F-03） */
+.sc-btn:active:not(:disabled) { transform: scale(0.97); }
+.sc-btn--primary { background: var(--c-ink-2); color: var(--c-surface); font-weight: 500; }
+.sc-btn--primary:hover { background: var(--c-ink); color: var(--c-surface); }
+.sc-btn--secondary { background: var(--c-surface); border-color: var(--c-line); color: var(--c-ink-2); }
+.sc-btn--secondary:hover { background: var(--c-hover); }
+/* 危险描边档（068 v9-05「一键清空数据」；红边红字，hover 淡红底） */
+.sc-btn--danger { background: var(--c-surface); border-color: var(--c-danger); color: var(--c-danger); }
+.sc-btn--danger:hover { background: var(--c-badge-danger-bg); }
+/* 警示描边档（068 DDL 面板黄级操作） */
+.sc-btn--warning { background: var(--c-surface); border-color: var(--c-warning); color: var(--c-warning); }
+.sc-btn--warning:hover { background: var(--c-warning-bg); }
+/* 弹窗警示头（068 DDL 入口须知） */
+.sc-modal--warning .sc-modal__header { background: var(--c-warning-bg); }
+.sc-modal--warning .sc-modal__title { color: var(--c-warning); }
+.sc-btn--text {
+  height: auto;
+  padding: 0;
+  border: none;
+  font-size: 14px;
+  color: var(--c-ink-5);       /* §2.2 文本按钮文字（--c-ink-5 = #525252，062 收口补令牌） */
+}
+.sc-btn--text:hover { color: var(--c-ink); }
+.sc-btn.is-disabled, .sc-btn:disabled { opacity: .5; pointer-events: none; }
+
+/* ── 徽章（§2.4：状态档映射 bg-success→success、bg-secondary→muted、bg-primary→primary、bg-info→info） ── */
+.sc-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;         /* 规格字面量 §2.4（--r-badge=7 为 §0.2 速记档，组件节明确 10） */
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.sc-badge--success { background: var(--c-cat-1-weak); color: var(--c-success); }  /* #DCFCE7 与 cat-1-weak 同值 */
+.sc-badge--warning { background: var(--c-warning-bg); color: var(--c-warning); }
+.sc-badge--danger  { background: var(--c-badge-danger-bg); color: var(--c-danger); }
+.sc-badge--muted   { background: var(--c-rail); color: var(--c-muted); }
+.sc-badge--primary { background: var(--c-badge-primary-bg); color: var(--c-badge-primary-fg); }
+.sc-badge--info    { background: var(--c-badge-info-bg); color: var(--c-badge-info-fg); }
+
+/* ── 数据表（§2.5；行高 52 = v3 样板实测） ── */
+.sc-table-wrap { overflow-x: auto; background: var(--c-surface); }
+.sc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sc-table__th {
+  height: 44px;
+  padding: 0 12px;
+  background: var(--c-rail);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-muted);
+  text-align: left;
+  white-space: nowrap;
+}
+.sc-table__th--num, .sc-table__td--num { text-align: right; }
+.sc-table__th--center, .sc-table__td--center { text-align: center; }
+/* 2026-11-13 全站布局修正：本文件历来只给 th 加了 nowrap，td 缺同规则 → 列多的台账表格
+   在 1366/1024 下被浏览器压到「最小内容宽」，中文逐字断行成竖排（巡检实测 todo 15 /
+   medical-insurance 20 / party 5 / organization 4 / election 4 / welfare 4 处）。
+   td 补 nowrap 后表格按内容撑开，超宽由 .sc-table-wrap(overflow-x:auto) 横向滚动；
+   确需换行的长文本列按需加 .sc-ellipsis（单行省略）或列宽上限，不要退回逐字竖排。 */
+.sc-table__td { white-space: nowrap; }
+/* 裸 td 也生效：crudTable / 手写 JS 都输出 <td> 而不带 class（062 P2 修复）。
+   2026-11-13 补漏：上一轮只给带类的 .sc-table__td 补了 nowrap，裸 <td> 仍被压成
+   中文逐字竖排（/todo/ 标题列实测 102px 宽 / 85px 高）。nowrap 必须同时落在
+   .sc-table td 上，超宽统一交给 .sc-table-wrap(overflow-x:auto) 横向滚动。 */
+.sc-table td {
+  height: 52px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--c-line-2);
+  color: var(--c-ink-2);
+  white-space: nowrap;
+}
+/* 行 hover 反馈（细节收口 F-05）：全站 .sc-table 统一 --c-hover 底；
+   行点击详情页（Master-Detail）借此建立「行可点」可供性 */
+.sc-table tbody tr:hover td { background: var(--c-hover); }
+.sc-table__td--num { font-weight: 500; font-variant-numeric: tabular-nums; }
+.sc-table__foot td {
+  padding: 0 12px;
+  height: 44px;
+  background: var(--c-rail);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--c-ink);
+}
+/* 13~14 列宽表字号降档（§2.5 主理人拍板口径；>14 列不降，走列选择器 + 横滚） */
+.sc-table--dense { font-size: 12px; }
+.sc-table--dense .sc-table__th { font-size: 12px; }
+
+/* ── 分页（§2.7 + renderPagination 输出适配：引擎产出 li.page-item>a.page-link） ── */
+.sc-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 52px;
+  padding: 0 16px;
+}
+.sc-pagination__stat { font-size: 12px; color: var(--c-muted); }
+.sc-pagination__pager { display: flex; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.sc-pagination .page-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--r-badge);
+  background: var(--c-hover);
+  color: var(--c-muted);
+  font-size: 12px;
+}
+.sc-pagination .page-item.active .page-link { background: var(--c-ink-2); color: var(--c-side); }
+.sc-pagination .page-item.disabled .page-link { opacity: .5; }
+
+/* ── 弹窗（§2.8；浮层阴影 = 全站唯一例外；BS 5 JS 共存：外层仍用 .modal.fade） ── */
+.sc-modal {
+  width: 480px;
+  max-width: calc(100vw - 32px);
+  pointer-events: auto;          /* BS5 .modal-dialog 默认 none，.modal-content 才恢复；sc-modal 替代它必须自恢复，否则点击穿透到 backdrop 关闭 */
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);   /* 浮层唯一允许阴影（§0.2） */
+}
+.sc-modal--lg { width: 640px; }                   /* 复杂表单两列档（§2.8：640~720） */
+.sc-modal--detail { width: 820px; }               /* 详情弹窗·分组卡片档（样图 ~810，2026-11） */
+/* 外层 BS modal-dialog 的 modal-lg max-width:800 会压住 820 内宽，需同步放开 */
+.modal-dialog:has(.sc-modal--detail) { max-width: 820px; }
+.sc-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 56px;
+  padding: 0 20px;
+}
+.sc-modal__title { margin: 0; font-size: 16px; font-weight: 600; color: var(--c-ink); }
+.sc-modal__body { padding: 20px; }
+.sc-modal__body--grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.sc-modal__divider { height: 1px; background: var(--c-line-2); }
+.sc-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  min-height: 64px;
+  padding: 0 20px;
+}
+
+/* ── 详情弹窗·分组卡片式（低保详情改版样图 2026-11；暖底/描边为样图量色，无对应 token，带出处注释） ── */
+.sc-dheader { align-items: flex-start; padding: 18px 20px 14px; }
+.sc-dheader__name-row { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.sc-dheader__name { font-size: 20px; font-weight: 700; color: var(--c-ink); line-height: 1.25; }
+.sc-dheader__meta { margin-top: 6px; font-size: 12px; color: var(--c-muted); }
+.sc-dheader__close {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; margin: -4px -6px 0 0; flex: none;
+  border: 0; background: none; color: var(--c-ink-2); cursor: pointer;
+  border-radius: var(--r-card);
+}
+.sc-dheader__close:hover { color: var(--c-ink); background: var(--c-hover); }
+.sc-detail__grid { display: flex; gap: 14px; align-items: flex-start; }
+.sc-detail__col { flex: 1 1 0; min-width: 0; display: grid; gap: 14px; align-content: start; }
+.sc-detail__group {
+  background: var(--c-side);                        /* 卡底 2026-11-03 leader 裁定 var(--c-side)（原样图量值 var(--c-side) 作废） */
+  border: 1px solid var(--c-line-3);                  /* 样图分组卡描边（同上） */
+  border-radius: var(--r-card);
+  padding: 14px 16px 16px;
+}
+.sc-detail__grouptitle {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 12px; font-size: 13px; font-weight: 600; color: var(--c-ink);
+}
+.sc-detail__grouptitle::before {
+  content: ''; flex: none; width: 3px; height: 14px;
+  background: var(--c-warning); border-radius: 2px;
+}
+.sc-detail__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 18px; }
+.sc-detail__field--full { grid-column: 1 / -1; }
+.sc-detail__label { display: block; margin-bottom: 3px; font-size: 12px; color: var(--c-muted); }
+.sc-detail__value { font-size: 14px; line-height: 1.5; color: var(--c-ink-2); word-break: break-word; }
+.sc-detail__value--warn { color: var(--c-warning); font-weight: 500; }
+.sc-detail__value--danger { color: var(--c-danger); font-weight: 500; }
+.sc-detail__value--success { color: var(--c-success); font-weight: 500; }
+.sc-detail__footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; }
+@media (max-width: 767.98px) {
+  .sc-detail__grid { flex-direction: column; }
+}
+
+/* ── 表单字段（§2.9：label 固定宽 108，单列/两列同宽，input 左缘不漂移） ── */
+.sc-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sc-field__label {
+  flex: 0 0 108px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--c-ink-3);
+  line-height: 36px;
+  white-space: nowrap;
+}
+.sc-field__required { margin-left: 2px; font-size: 13px; color: var(--c-danger); }
+.sc-input, .sc-select, .sc-textarea {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-ctrl);
+  background: var(--c-surface);
+  color: var(--c-ink-2);
+  font-size: 14px;
+}
+.sc-input, .sc-select { height: 36px; padding: 0 12px; }
+.sc-textarea { padding: 10px 12px; min-height: 72px; resize: vertical; }  /* rows=3→72 / rows=4→88 由 rows 属性撑高 */
+.sc-input::placeholder, .sc-textarea::placeholder { color: var(--c-faint); }
+.sc-input:focus, .sc-select:focus, .sc-textarea:focus { outline: none; border-color: var(--c-muted-2); }
+.sc-input[readonly] { background: var(--c-rail); }
+/* 表单校验态（062 P4：内嵌表单换 sc-input/sc-select 后，BS .was-validated 不再命中，
+   在组件层补回可见红边，避免必填提示只剩 toast） */
+.was-validated .sc-input:invalid,
+.was-validated .sc-select:invalid,
+.was-validated .sc-textarea:invalid { border-color: var(--c-danger); }
+/* 复选框尺寸：只作用于 input 本身。2026-11-13 修正——原 `.sc-checkbox` 未限定标签，
+   被误加到 .sc-field 容器上时会把容器压成 18×18，label 文字逐字竖排并与相邻列重叠
+   （election/voters.html 登记选民/结果录入实测）；限定 input 后误用不再生效。 */
+input.sc-checkbox { width: 18px; height: 18px; border-radius: 4px; accent-color: var(--c-ink-2); }
+.sc-field--full { grid-column: 1 / -1; }
+.sc-field--top { align-items: flex-start; }  /* textarea 等高控件：label 与控件首行对齐 */
+.sc-field__hint { width: 100%; margin: 0; font-size: 12px; color: var(--c-muted); }
+
+/* ── 行内操作组（§2.12：≤2 动作 12px；≥3 动作加 --tight 降 10px；危险动作恒末位） ── */
+.sc-row-actions { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+/* text-end 单元格内右对齐：flex 容器不吃 text-align，须显式 justify（2026-11-24 主理人
+   人工核对指认「操作」表头右贴边而按钮组缩在列左侧的错位观感，全站 sc-table 同款受益） */
+.text-end .sc-row-actions { justify-content: flex-end; }
+.sc-row-actions .sc-btn--text { font-size: 12px; }
+.sc-row-actions--tight .sc-btn--text { font-size: 10px; }
+.sc-row-actions .sc-btn--text.is-danger { margin-left: 4px; color: var(--c-danger); }
+.sc-row-actions .sc-btn--text.is-success { color: var(--c-success); }
+
+/* ── 工具条（§2.6：卡内搜索/筛选，与表格 1px 分隔；062 P2 上移公共层） ── */
+.sc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--c-line-2);
+}
+/* 工具条控件定宽（sc-input 默认 flex:1 服务表单栅格，工具条不跟随拉伸）。
+   104 P1-1：必须用直接子代选择器——祖先选择器会命中 .sc-field 内嵌输入框，
+   使 veteran 等页工具条内容溢出 93px，下拉框画到「导入」按钮上。 */
+.sc-toolbar > .sc-input,
+.sc-toolbar > .sc-select { flex: 0 0 auto; }
+/* 104 P1-1 窄容器兜底：工具条内 .sc-field 容器小于内容最小宽（两个 054 下拉
+   min-content 290px）时允许内部控件换行，杜绝下拉框溢出压到相邻按钮（1024 实测 14px） */
+.sc-toolbar .sc-field { flex-wrap: wrap; }
+/* 074 RC-07：工具条右侧「共 N 人」计数（样图 v3-01 / v8-01） */
+.sc-toolbar__count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--c-muted);
+  white-space: nowrap;
+}
+
+/* 075 RC-18：宽表列计数行（表格上方独立一行：左「已选 X / 共 Y 列」+ 右「列选择」）。
+   真源自 civil_pages.css 上收全局层（GLB-02 组件唯一真源），veteran 复用 */
+.sc-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 8px;
+}
+.sc-col-count { font-size: 12px; color: var(--c-muted); }
+
+/* ── 危险文字（失败行/超期提示，走令牌；禁 BS .text-danger 色漂移） ── */
+.sc-text-danger { color: var(--c-danger); }
+
+/* ── 返回链接（组件 §2.11：12/400 muted，hover ink；068 设置中心 12 页共用） ── */
+.sc-backlink {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  margin-bottom: var(--sp-2);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--c-muted);
+  text-decoration: none;
+}
+.sc-backlink:hover { color: var(--c-ink); }
+
+/* ── 设置中心页容器（068：1 hub + 12 内容区；卡间距 16，末卡不留白） ── */
+.sc-settings-page > .sc-card,
+.sc-settings-page > .sc-row,
+.sc-settings-page > .alert { margin-bottom: var(--sp-4); }
+.sc-settings-page > .sc-card:last-child,
+.sc-settings-page > .sc-row:last-child,
+.sc-settings-page > .alert:last-child { margin-bottom: 0; }
+
+/* ── 只读键值行（授权管理 v9-03：label 108 muted + 值 500） ── */
+.sc-kv {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  border-bottom: 1px solid var(--c-line-2);
+}
+.sc-kv:last-child { border-bottom: 0; }
+.sc-kv__label { flex: 0 0 108px; font-size: 12px; color: var(--c-muted); }
+.sc-kv__value { font-size: 14px; font-weight: 500; color: var(--c-ink-2); min-width: 0; }
+
+/* ── 卡头右侧口径（备份/大屏列表「共 N 个 · 占用 X」） ── */
+.sc-card__meta { font-size: 12px; color: var(--c-muted); white-space: nowrap; }
+
+/* ── 危险弹窗（spec-03：唯一 danger 档；清空数据库/红级确认） ── */
+.sc-modal--danger .sc-modal__header { background: var(--c-danger); }
+.sc-modal--danger .sc-modal__title { color: var(--c-surface); }
+.sc-modal--danger .sc-modal__header .sc-icon-btn { color: var(--c-surface); border-color: transparent; background: transparent; }
+
+/* ── 分类列表（字典管理 v9-04 左栏） ── */
+.sc-list { display: flex; flex-direction: column; }
+.sc-list__item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--c-line-2);
+  font-size: 13px;
+  color: var(--c-ink-3);
+  text-decoration: none;
+  cursor: pointer; /* 整行可点选中（字典管理左栏），不再仅名称可点 */
+}
+.sc-list__item:last-child { border-bottom: 0; }
+.sc-list__item:hover { background: var(--c-hover); }
+.sc-list__item.is-active { background: var(--c-active); color: var(--c-ink); font-weight: 500; }
+.sc-list__count { margin-left: auto; font-size: 12px; color: var(--c-muted); }
+
+/* ── 权限矩阵（角色管理 v9-02：模块 × 5 动作表格） ── */
+.sc-perm-table td { height: 44px; }
+.sc-perm-table .sc-checkbox { margin: 0; }
+.sc-perm-tools { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.sc-perm-tools .sc-btn--text { font-size: 11px; }
+
+/* ── 弹窗内遗留表单控件桥（068：DDL 面板弹窗由 JS 生成 BS 控件，统一到 sc 皮肤） ── */
+.sc-modal .form-control,
+.sc-modal .form-select {
+  height: 36px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-ctrl);
+  font-size: 14px;
+}
+.sc-modal .form-label { font-size: 12px; color: var(--c-ink-3); }
+.sc-modal textarea.form-control { height: auto; }
+
+/* ── 弹窗对话框宽度（§2.8：两列复杂表单 640~720 档；BS .modal-dialog 用 max-width 控宽） ── */
+.sc-modal-dialog { max-width: 672px; }
+
+/* ── 单元格单行省略（§2.5：长文本列，宽度按列内联） ── */
+.sc-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── 可编辑单元格（062 P5：死亡上报名单；原 death_list.css 的 td.editable 上移） ── */
+.sc-table td[contenteditable] { cursor: text; }
+.sc-table td[contenteditable]:hover { background: var(--c-hover); }
+.sc-table td[contenteditable]:focus { outline: none; background: var(--c-warning-bg); }
+
+/* ── 党费月份状态格（062 P5：原 party_dues.css 上移，三态走令牌） ── */
+.sc-month-cell { padding: 4px 2px; font-size: 12px; text-align: center; cursor: pointer; min-width: 52px; }
+.sc-month-cell:hover { opacity: .8; }
+.sc-month-cell--paid { background: var(--c-cat-1-weak); color: var(--c-success); font-weight: 600; }
+.sc-month-cell--unpaid { background: var(--c-warning-bg); color: var(--c-warning); font-weight: 600; }
+.sc-month-cell--none { background: var(--c-rail); color: var(--c-faint); }
+
+
+/* ── 编辑弹窗·分组表单式（规格样图 2026-11-02：960×838 圆角16；头部82 底部66；
+      分组卡圆角12 内距14/20 卡距12；字段列距14 行距8 标签距3；输入框高34 圆角8 内距0 12；
+      地址/备注跨两列、备注高54、按钮高38；字面色为规格值，无对应 token，带出处；
+      卡底 2026-11-02 leader 裁定 #FAFAFA（原样图量值 #FFF7EF 作废）） ── */
+.sc-fmodal { width: 960px; border-radius: var(--r-card); }
+.modal-dialog:has(.sc-fmodal) { max-width: 976px; }   /* 外层 BS modal-lg 800 max-width 会压住 960 内宽 */
+.sc-fmodal .sc-dheader { min-height: 82px; padding: 12px 24px; align-items: center; }
+.sc-fmodal .sc-dheader__name { font-size: 20px; }
+.sc-fmodal__meta { margin-top: 5px; font-size: 12px; color: var(--c-muted); }
+.sc-fmodal .sc-modal__body { display: block; padding: 2px 24px 18px; }
+.sc-fgroups { display: flex; gap: 12px; align-items: flex-start; }
+.sc-fgroups__col { flex: 1 1 0; min-width: 0; display: grid; gap: 12px; align-content: start; }
+.sc-fgroup { background: var(--c-side); border: 1px solid var(--c-line-3); border-radius: var(--r-card); padding: 14px 20px 16px; }
+.sc-fgroup__title {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 10px; font-size: 15px; font-weight: 600; color: var(--c-ink-2);
+}
+.sc-fgroup__title::before { content: ''; flex: none; width: 3px; height: 15px; background: var(--c-cat-4); border-radius: 2px; }
+.sc-fgroup__fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; }
+.sc-fgroup__field--full { grid-column: 1 / -1; }
+.sc-fgroup .sc-field { display: block; }
+.sc-fgroup .sc-field__label {
+  display: block; width: auto; flex: none;
+  margin: 0 0 3px; line-height: 1.4;
+  font-size: 12px; color: var(--c-muted);
+}
+.sc-fgroup .sc-input, .sc-fgroup .sc-select {
+  height: 34px; padding: 0 12px; border-radius: var(--r-ctrl);
+  border-color: var(--c-line-3); font-size: 14px; background: var(--c-surface);
+}
+.sc-fgroup .sc-input:focus, .sc-fgroup .sc-select:focus { border-color: var(--c-muted-2); box-shadow: none; }
+.sc-fgroup .sc-textarea { min-height: 54px; border-radius: var(--r-ctrl); border-color: var(--c-line-3); padding: 6px 12px; }
+.sc-fmodal .sc-modal__footer { min-height: 66px; padding: 0 24px; }
+.sc-fmodal .sc-modal__footer .sc-btn { height: 38px; }
+@media (max-width: 1023.98px) { .sc-fgroups { flex-direction: column; } }
+
+/* ── 页签区（工作台二级页签：证明开具/模板管理/开具记录，样图 2026-11-02）——
+   脱离胶囊卡的下划线式文字页签，置于模块胶囊卡下方；仅当前模块页渲染 ── */
+.sc-subtabs { display: flex; gap: 28px; margin: 12px 0 0; padding: 0; border: 0; background: none; }
+.sc-subtabs .nav-link {
+  padding: 0 0 7px; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: none; font-size: 15px; color: var(--c-muted); cursor: pointer;
+}
+.sc-subtabs .nav-link:hover { color: var(--c-ink-2); }
+.sc-subtabs .nav-link.active { color: var(--c-ink); font-weight: 500; border-bottom-color: var(--c-ink-2); }
+
+/* ═══ 2026-11-11 民政对象详情弹窗 v2（ui1.md「全宽四列统一栅格只读规范 + 业务风险阻断」，
+      原型 code_artifact1.html；低保/残疾/特困/儿童四模块共用，渲染器 detail_v2.js） ═══
+    蓝语义色（令牌 --color-accent-blue）限弹窗作用域；键值上下结构：标签 12px #64748B / 值 14px #1E293B；
+    等宽数字（金额/证件号/日期/账号）tabular-nums；容器几何固定 920（§2.1 max-w-[920px]）。 */
+.modal-dialog:has(.d2-shell) { width: 920px; max-width: none !important; margin-left: auto; margin-right: auto; }
+.modal:has(.d2-shell) { overflow-x: auto; }
+.d2-shell { width: 920px; max-width: none; border-radius: var(--r-card); background: var(--c-surface);
+    pointer-events: auto;   /* BS5 .modal-dialog 为 none，须由内容层恢复，否则整条子树（含底部按钮）不可点击 */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--c-line-3); }
+
+/* T1 标题 + 身份标签组 + KPI 药丸 */
+.d2-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-line-3); }
+.d2-header__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.d2-header__row1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.d2-name { margin: 0; font-size: 20px; font-weight: 700; color: var(--c-ink); letter-spacing: -0.2px; }
+.d2-tags { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.d2-tag { padding: 2px 8px; font-size: 12px; font-weight: 500; border-radius: var(--r-badge);
+    border: 1px solid transparent; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.d2-tag--amber  { background: var(--c-warning-bg); color: var(--c-warning); border-color: var(--c-line-3); }
+.d2-tag--blue   { background: var(--c-badge-primary-bg); color: var(--c-badge-primary-fg); border-color: var(--c-line-3); }
+.d2-tag--orange { background: var(--c-cat-4-weak); color: var(--c-cat-4); border-color: var(--c-line-3); }
+.d2-tag--red    { background: var(--c-badge-danger-bg); color: var(--c-danger); border-color: var(--c-danger); font-weight: 600; }
+.d2-tag--slate  { background: var(--c-rail); color: var(--c-ink-3); }
+.d2-pingdot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-danger); position: relative; flex: none; }
+.d2-pingdot::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: var(--c-danger);
+    animation: d2ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@keyframes d2ping { 0% { transform: scale(1); opacity: 0.9; } 75%, 100% { transform: scale(2.2); opacity: 0; } }
+.d2-subtitle { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--c-muted); }
+.d2-subtitle strong { font-weight: 500; color: var(--c-ink-3); }
+.d2-subtitle__sep { color: var(--c-line-3); }
+.d2-kpi__box { display: flex; align-items: center; gap: 16px; background: var(--c-side);
+    border: 1px solid var(--c-line); border-radius: var(--r-ctrl); padding: 6px 14px; flex: none; }
+.d2-kpi { display: flex; flex-direction: column; }
+.d2-kpi__label { font-size: 11px; color: var(--c-faint); }
+.d2-kpi__val { margin-top: 2px; font-size: 12px; font-weight: 700; color: var(--c-ink-3);
+    display: flex; align-items: center; gap: 6px; }
+.d2-kpi__sep { width: 1px; height: 24px; background: var(--c-line-3); }
+.d2-close { border: 0; background: none; width: 32px; height: 32px; padding: 6px; border-radius: var(--r-ctrl);
+    color: var(--c-faint); cursor: pointer; flex: none; }
+.d2-close:hover { color: var(--c-ink-3); background: var(--c-rail); }
+
+/* T2 业务风险阻断横幅 */
+.d2-risk { display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px; background: var(--c-badge-danger-bg); border-bottom: 1px solid var(--c-line-3);
+    font-size: 12px; color: var(--c-danger); }
+.d2-risk[hidden] { display: none; }
+.d2-risk__text { display: flex; align-items: center; gap: 8px; }
+.d2-risk__icon { color: var(--c-danger); font-size: 16px; flex: none; }
+.d2-risk__u { text-decoration: underline; font-weight: 600; }
+.d2-risk__btn { background: var(--c-danger); color: var(--c-surface); border: 0; border-radius: var(--r-ctrl);
+    padding: 4px 10px; font-size: 12px; font-weight: 500; cursor: pointer; flex: none; margin-left: 16px; }
+/* 无更深一档危险色令牌：用亮度过滤作 hover 反馈（避免同色失效） */
+.d2-risk__btn:hover { filter: brightness(0.9); }
+
+/* T3 三段式四列只读栅格（键值上下结构） */
+.d2-body { padding: 20px 24px; user-select: text; }
+.d2-section { margin-bottom: 20px; }
+.d2-section:last-child { margin-bottom: 0; }
+.d2-sechead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.d2-sechead__bar { width: 4px; height: 14px; border-radius: var(--r-full); background: var(--c-ink-2); flex: none; }
+.d2-sechead__title { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink-3); letter-spacing: 0.5px; }
+.d2-sechead__note { font-size: 11px; color: var(--c-faint); margin-left: 4px; }
+.d2-sechead__line { flex: 1; height: 1px; background: var(--c-rail); margin-left: 8px; }
+.d2-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 24px; }
+.d2-span2 { grid-column: span 2; }
+.d2-field__labelrow { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.d2-field__label { font-size: 12px; color: var(--c-muted); }
+.d2-field__valrow { min-height: 28px; display: flex; align-items: center; gap: 6px;
+    font-size: 14px; color: var(--c-ink-2); min-width: 0; }
+.d2-val--strong { font-weight: 600; color: var(--c-ink); }
+.d2-val--medium { font-weight: 500; color: var(--c-ink-2); }
+.d2-val--orange { color: var(--c-warning); font-weight: 600; }
+.d2-val--emerald { color: var(--c-success); font-weight: 600; }
+.d2-mute { color: var(--c-faint); }
+.d2-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.d2-dot--emerald { background: var(--c-success); }
+.d2-dot--blue { background: var(--color-accent-blue); }
+.d2-chip { padding: 1px 6px; font-size: 12px; font-weight: 600; border-radius: var(--r-badge); white-space: nowrap; }
+.d2-chip--blue { background: var(--c-badge-primary-bg); color: var(--c-badge-primary-fg); }
+.d2-chip--red { background: var(--c-badge-danger-bg); color: var(--c-danger); border: 1px solid var(--c-danger); }
+.d2-chip--slate { background: var(--c-rail); color: var(--c-ink-3); font-weight: 500; }
+.d2-chip--white { background: var(--c-surface); color: var(--c-ink-3); border: 1px solid var(--c-line-3); font-weight: 500; }
+.d2-stamp { font-size: 11px; color: var(--c-success); background: var(--c-cat-1-weak); padding: 1px 6px;
+    border-radius: var(--r-badge); border: 1px solid var(--c-cat-1-weak); flex: none; }
+.d2-chipbox { min-height: 28px; display: flex; align-items: center; justify-content: space-between;
+    background: var(--c-side); border: 1px solid var(--c-line-3);
+    border-radius: var(--r-ctrl); padding: 0 10px; font-size: 12px; font-weight: 500; color: var(--c-ink-2); min-width: 0; }
+.d2-chipbox__text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d2-copybtn { border: 0; background: none; color: var(--c-faint); cursor: pointer;
+    padding: 2px var(--sp-1); border-radius: var(--r-badge); font-size: 12px; flex: none; }
+.d2-copybtn:hover { color: var(--color-accent-blue); background: var(--c-badge-primary-bg); }
+.d2-copybtn--text { font-size: 11px; color: var(--color-accent-blue); background: none; font-weight: 500; }
+.d2-accountcard { background: var(--c-side); border: 1px solid var(--c-line);
+    border-radius: var(--r-ctrl); padding: 14px; }
+.d2-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-variant-numeric: tabular-nums; }
+/* 详情 v2 弹窗内沿用的旧服务事项表头（残疾 093 区块）兼容 */
+.d2-body .sc-detail__grouptitle { font-size: 12px; font-weight: 700; color: var(--c-ink-3); }
+
+/* T4 底部操作栏：隐私脱敏开关 + 删除/关闭/编辑 */
+.d2-footer { display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px; background: var(--c-side); border-top: 1px solid var(--c-line-3); }
+.d2-privacy { display: flex; align-items: center; gap: 8px; font-size: 12px;
+    color: var(--c-muted); cursor: pointer; }
+.d2-privacy:hover { color: var(--c-ink); }
+.d2-privacy input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--c-ink-2); }
+.d2-footer__btns { display: flex; align-items: center; gap: 12px; }
+.d2-btn { height: 30px; padding: 0 14px; border-radius: var(--r-ctrl); font-size: 12px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    position: relative; transition: background .15s, border-color .15s, color .15s, transform .1s ease; }
+/* 命中区扩展（30px 视觉 → 44px 命中）+ 按压反馈（对齐 .ed2-btn 细节收口规格） */
+.d2-btn::after { content: ''; position: absolute; inset: -7px -4px; border-radius: var(--r-ctrl); }
+.d2-btn:active:not(:disabled) { transform: scale(0.97); }
+.d2-btn--danger { background: var(--c-surface); border: 1px solid var(--c-danger); color: var(--c-danger); }
+.d2-btn--danger:hover { background: var(--c-badge-danger-bg); border-color: var(--c-danger); }
+.d2-btn--ghost { background: var(--c-surface); border: 1px solid var(--c-line-3); color: var(--c-ink-3); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+.d2-btn--primary { background: var(--c-ink-2); border: 1px solid transparent; color: var(--c-surface); padding: 0 20px; }
+.d2-btn--primary:hover { background: var(--c-ink); }
+
+/* ═══ 2026-11-11 编辑弹窗 v2 ed2-*（低保/残疾/特困/儿童编辑表单，ui.md 四列栅格模式同 mi2；
+      蓝语义色（令牌 --color-accent-blue）限弹窗作用域。医保编辑弹窗仍用 medical_insurance.css mi2-* 块） ═══ */
+.modal-dialog:has(.ed2-shell) { width: 1026px; max-width: none !important; margin-left: auto; margin-right: auto; }
+.modal:has(.ed2-shell) { overflow-x: auto; }
+.ed2-shell { width: 1026px; max-width: none; border-radius: var(--r-card); background: var(--c-surface);
+    pointer-events: auto;   /* 同 .d2-shell：BS5 .modal-dialog 为 none，内容层须恢复，否则表单与底部按钮不可交互 */
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid var(--c-line-3); }
+.ed2-header { display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-line-3); }
+.ed2-header__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ed2-header__row1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ed2-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-ink-2); letter-spacing: -0.2px; }
+.ed2-meta { font-size: 12px; color: var(--c-muted); }
+.ed2-close { border: 0; background: none; width: 32px; height: 32px; padding: 6px;
+    border-radius: var(--r-ctrl); color: var(--c-faint); cursor: pointer; flex: none; }
+.ed2-close:hover { color: var(--c-ink-3); background: var(--c-rail); }
+.ed2-body { padding: 20px 24px 8px; }
+.ed2-section { margin-bottom: 20px; }
+.ed2-section:last-child { margin-bottom: 12px; }
+.ed2-sechead { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ed2-sechead__bar { width: 4px; height: 14px; border-radius: var(--r-full); background: var(--c-ink-2); flex: none; }
+.ed2-sechead__title { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink-3); letter-spacing: 0.5px; }
+.ed2-sechead__line { flex: 1; height: 1px; background: var(--c-rail); margin-left: 8px; }
+.ed2-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px 20px; }
+.ed2-field { display: block; }  /* 覆盖 .sc-field 基类 flex-row（label 左值右）→ 标签在上、控件独占整行（同 mi2 模式） */
+.ed2-field .sc-field__label { display: flex; align-items: center; width: auto;
+    margin: 0 0 4px; line-height: 16px; font-size: 12px; font-weight: 500; color: var(--c-ink-3); }
+.ed2-field .sc-field__required { margin-left: 2px; color: var(--c-danger); }
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-select,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-textarea {
+    width: 100%; flex: none; height: 32px; padding: 0 10px; border-radius: var(--r-ctrl);
+    border-color: var(--c-line-3); background: var(--c-surface); color: var(--c-ink-2); font-size: 12px;
+}
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input::placeholder { color: var(--c-faint); }
+/* G-04 校验样式统一（细节收口 2026-11-19b）：ed2 表单原生校验补项目红边（--c-danger）。
+   :user-invalid 仅在用户交互后失效时显红，首开无红边噪音；不支持该伪类的浏览器降级为仅原生 bubble。 */
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input:user-invalid,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-select:user-invalid,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-textarea:user-invalid { border-color: var(--c-danger); }
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input:focus,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-select:focus,
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-textarea:focus {
+    border-color: var(--c-muted-2); box-shadow: none; outline: none;
+}
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-textarea { min-height: 32px; padding: 6px 10px; }
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input[name="id_card"],
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input[name="mobile_phone"],
+.modal-dialog:has(.ed2-shell) .ed2-field .sc-input[name="phone"] {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.ed2-span2 { grid-column: span 2; }
+.ed2-footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+    padding: 14px 24px; background: var(--c-side); border-top: 1px solid var(--c-line-3); }
+.ed2-btn { height: 30px; padding: 0 14px; border-radius: var(--r-ctrl); font-size: 12px; font-weight: 500;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+    position: relative; transition: background .15s, border-color .15s, color .15s, transform .1s ease; }
+/* 命中区扩展（30px 视觉 → 44px 命中；横向 -4px 与 footer gap 相容）+ 按压反馈 */
+.ed2-btn::after { content: ''; position: absolute; inset: -7px -4px; border-radius: var(--r-ctrl); }
+.ed2-btn:active:not(:disabled) { transform: scale(0.97); }
+.ed2-btn--ghost { background: var(--c-surface); border: 1px solid var(--c-line-3); color: var(--c-ink-3);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
+.ed2-btn--ghost:hover { background: var(--c-side); }
+.ed2-btn--primary { background: var(--c-ink-2); border: 1px solid transparent; color: var(--c-surface); padding: 0 20px; }
+.ed2-btn--primary:hover { background: var(--c-ink); }
+
+/* ═══ 105 选民批量导入弹窗局部修正（2026-11-13，仅本弹窗，不动全局组件） ═══
+   ① 居中：.sc-modal-dialog 为 max-width:672px 而 .sc-modal 固定 480px，内容盒左对齐
+      → 内容盒中心恒比视口中心偏左 (672-480)/2 = 96px。只让本弹窗内容盒在 dialog 内居中；
+      不改 .sc-modal-dialog 全局（7+ 页面共用，改全局会连带移动其它弹窗）。
+   ② 工具条换行：.sc-toolbar > .sc-input 是 flex:0 0 auto，叠加 inline max-width:260px；
+      三控件 134+8+260+8+100=510px > 可用 448px（480−padding 32）必换行。
+      → 文件框改为可伸缩并解除 260 上限（!important 仅用于压 inline，本弹窗作用域内）。
+   ③ 次级按钮描边偏淡：--c-line 为 rgba(226,232,240,.7)，浅底上近似无边框
+      → 本弹窗内统一加深为 #CBD5E1（含「导出失败行」「关闭」）。 */
+#voterImportModal .sc-modal { width: 560px; margin-inline: auto; }
+#voterImportModal .sc-toolbar > #voterImportFile {
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: none !important;
+}
+#voterImportModal .sc-btn--secondary { border-color: #CBD5E1; }
+
+/* 105 选民名册表格局部修正（2026-11-13）：.sc-table__th 有 nowrap 而 .sc-table__td 没有，
+   10 列在 1366 视口被压到最小内容宽 → 姓名/所在组/备注逐字竖排。td 补 nowrap 让表格按内容
+   撑开、由 .sc-table-wrap(overflow-x:auto) 横向滚动；备注列限宽省略避免过宽。 */
+#voterTable .sc-table__td { white-space: nowrap; }
+#voterTable .sc-table__td:nth-child(9) {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ── Batch 1 全局加固：下拉防溢出 + ADR-022 统一 4 列单屏详情卡片（.sc-d3-*） ── */
+.sc-modal__body--grid .sc-select {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.modal-dialog:has(.sc-d3-wrap) { max-width: 840px; }
+.sc-modal:has(.sc-d3-wrap) { width: 840px; max-width: 100%; }
+.sc-d3-wrap { display: grid; gap: 12px; }
+.sc-d3-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+}
+.sc-d3-card__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 8px; margin-bottom: 10px;
+  border-bottom: 1px solid var(--c-line-2);
+}
+.sc-d3-card__title { display: flex; align-items: center; gap: 8px; }
+.sc-d3-bar { width: 3px; height: 14px; border-radius: var(--r-full); flex: none; }
+.sc-d3-bar--1 { background: var(--c-cat-1); }
+.sc-d3-bar--2 { background: var(--c-cat-2); }
+.sc-d3-idx {
+  font-family: var(--ff-num); font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: var(--r-badge);
+}
+.sc-d3-idx--1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.sc-d3-idx--2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+.sc-d3-card__name { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink); letter-spacing: 0.04em; }
+.sc-d3-card__count { font-size: 11px; color: var(--c-muted); }
+.sc-d3-grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 18px; }
+.sc-d3-field { display: flex; flex-direction: column; min-width: 0; }
+.sc-d3-label { font-size: 11px; color: var(--c-muted); margin-bottom: 2px; }
+.sc-d3-val { font-size: 13px; line-height: 1.45; color: var(--c-ink); font-weight: 500; word-break: break-word; }
+.sc-d3-val--num { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+.sc-d3-val--empty { color: var(--c-faint); font-weight: 400; }
+.sc-d3-slot {
+  background: var(--c-side); border: 1px solid var(--c-line-2); border-radius: var(--r-ctrl);
+  padding: 8px 12px; font-size: 13px; line-height: 1.55; color: var(--c-ink-2);
+  white-space: pre-wrap; word-break: break-word;
+}
+.sc-d3-slot + .sc-d3-slot { margin-top: 8px; }
+.sc-d3-slot__tag { display: block; font-size: 11px; font-weight: 600; color: var(--c-muted); margin-bottom: 2px; }
+@media (max-width: 767.98px) {
+  .sc-d3-grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Batch 2 标准件：通用 Click-or-Drop 文件投放区（.sc-dropzone，零改动既有 input 契约） ── */
+.sc-dz-wrap { position: relative; width: 100%; }
+.sc-dz-input-hidden {
+  position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; overflow: hidden;
+}
+.sc-dz-box {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--c-line-3);
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.sc-dz-box:hover, .sc-dz-box.is-dragover {
+  border-color: var(--c-ink-2);
+  background: var(--c-hover);
+}
+.sc-dz-box__left { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.sc-dz-box__icon {
+  width: 30px; height: 30px; border-radius: var(--r-ctrl); flex: none;
+  background: var(--c-surface); border: 1px solid var(--c-line);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--c-ink-3); font-size: 14px;
+}
+.sc-dz-box__text { min-width: 0; display: flex; flex-direction: column; }
+.sc-dz-box__title {
+  font-size: 12.5px; font-weight: 600; color: var(--c-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sc-dz-box__hint { font-size: 11px; color: var(--c-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-dz-box__clear {
+  border: 0; background: none; color: var(--c-muted); font-size: 12px; cursor: pointer;
+  padding: 2px 6px; border-radius: var(--r-ctrl); flex: none;
+}
+.sc-dz-box__clear:hover { background: var(--c-surface); color: var(--c-danger); }
+.sc-dz-box.is-invalid {
+  border-color: var(--c-danger);
+  background: var(--c-badge-danger-bg);
+}
+.sc-dz-box.is-invalid:focus {
+  outline: 2px solid var(--c-danger);
+  outline-offset: 1px;
+}
+.sc-dz-error {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--c-danger);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sc-dz-error[hidden] { display: none; }
+.sc-dz-wrap--compact { width: 320px; max-width: 100%; }
+.sc-dz-wrap--compact .sc-dz-box { padding: 6px 10px; gap: 8px; }
+.sc-dz-wrap--compact .sc-dz-box__icon { width: 26px; height: 26px; font-size: 13px; }

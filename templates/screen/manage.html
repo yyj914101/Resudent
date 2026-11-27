@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+{% block title %}大屏管理{% endblock %}
+{% block page_title %}大屏管理{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/screen_manage.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="special">
+{{ settings_head('大屏管理', '大厅投屏内容配置、实时预览与多终端独立凭证管理') }}
+
+<!-- 顶部 3 联运行状态概览 -->
+<div class="sm-kpi-grid">
+    <div class="sm-kpi">
+        <div>
+            <div class="sm-kpi__label">大屏投屏总开关</div>
+            <div class="sm-kpi__val"><span class="sc-badge sc-badge--muted" id="screenState">读取中</span></div>
+        </div>
+        <span class="sm-kpi__icon"><i class="bi bi-display" aria-hidden="true"></i></span>
+    </div>
+    <div class="sm-kpi">
+        <div>
+            <div class="sm-kpi__label">有效终端 / 全部大屏</div>
+            <div class="sm-kpi__val"><span id="screenActiveCount">0</span> / <span id="screenTotal">0</span> 块</div>
+        </div>
+        <span class="sm-kpi__icon"><i class="bi bi-tv" aria-hidden="true"></i></span>
+    </div>
+    <div class="sm-kpi">
+        <div>
+            <div class="sm-kpi__label">自动刷新策略</div>
+            <div class="sm-kpi__val" id="screenRefreshSummary">每 60 秒 · 08:00–18:00</div>
+        </div>
+        <span class="sm-kpi__icon"><i class="bi bi-clock" aria-hidden="true"></i></span>
+    </div>
+</div>
+
+<!-- 主体两栏 + 底部通栏 -->
+<div class="sm-layout">
+    <!-- 左：大屏展示配置 -->
+    <section class="sc-card">
+        <header class="sc-card__header">
+            <h3 class="sc-card__title">大屏展示配置</h3>
+            <p class="sc-card__subtitle">调整大厅投屏标题、刷新频率与公开展示口径</p>
+        </header>
+        <div class="sc-card__body">
+            <form id="screenConfigForm">
+                <div class="sm-switch-bar">
+                    <div>
+                        <div class="sm-switch-bar__title">启用大厅数据大屏</div>
+                        <div class="sm-switch-bar__sub">关闭后所有投屏终端将立即显示「大屏暂不可用」保护页</div>
+                    </div>
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="screenEnabled" name="enabled" aria-label="启用大厅数据大屏">
+                    </div>
+                </div>
+
+                <div class="sm-form-section">
+                    <div class="sm-form-section__title">基础展示信息</div>
+                    <div class="sm-row-2">
+                        <div class="sm-field">
+                            <label class="sm-field__label" for="villageName">展示村名</label>
+                            <input class="sc-input" name="village_name" id="villageName" placeholder="例如：融水镇三合村">
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-field__label" for="screenTitle">大屏主标题</label>
+                            <input class="sc-input" name="title" id="screenTitle" placeholder="例如：村务综合数据大屏">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sm-form-section">
+                    <div class="sm-form-section__title">自动刷新与工作时段</div>
+                    <div class="sm-row-3">
+                        <div class="sm-field">
+                            <label class="sm-field__label" for="refreshSeconds">刷新间隔</label>
+                            <div class="sm-input-unit">
+                                <input class="sc-input" type="number" min="30" max="3600" name="refresh_seconds" id="refreshSeconds">
+                                <span class="sm-input-unit__suffix">秒</span>
+                            </div>
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-field__label" for="workStart">工作开始</label>
+                            <input class="sc-input" type="time" name="work_start" id="workStart">
+                        </div>
+                        <div class="sm-field">
+                            <label class="sm-field__label" for="workEnd">工作结束</label>
+                            <input class="sc-input" type="time" name="work_end" id="workEnd">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sm-privacy-box">
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="showDeath" name="show_death_count">
+                        <label class="form-check-label fw-semibold" for="showDeath">在大屏统计中显示「本月死亡人数」</label>
+                    </div>
+                    <div class="sm-privacy-note">
+                        <i class="bi bi-shield-check me-1" aria-hidden="true"></i>
+                        隐私保护承诺：大屏仅展示汇总计数，绝不显示个人姓名、身份证号、联系电话与家庭住址；仅在工作时段内自动轮询刷新。
+                    </div>
+                </div>
+
+                <div class="sm-form-actions">
+                    <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-check2" aria-hidden="true"></i> 保存配置</button>
+                    <a class="sc-btn sc-btn--secondary" id="previewButton" href="{{ screen_url }}" target="_blank">
+                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i> 打开默认大屏
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- 右：实时顶栏预览 + 新增终端 -->
+    <div class="sm-side-stack">
+        <section class="sc-card">
+            <header class="sc-card__header">
+                <h3 class="sc-card__title">投屏效果预览</h3>
+                <p class="sc-card__subtitle">修改左侧村名或标题时实时联动预览</p>
+            </header>
+            <div class="sc-card__body">
+                <div class="sm-preview-screen">
+                    <div class="sm-preview-screen__top">
+                        <span class="sm-preview-screen__village" id="pvVillage">未设置村名</span>
+                        <span class="sm-preview-screen__live">
+                            <span class="sm-preview-screen__dot" id="pvDot"></span>
+                            <span id="pvStatusText">投屏运行中</span>
+                        </span>
+                    </div>
+                    <div class="sm-preview-screen__title" id="pvTitle">村务综合数据大屏</div>
+                    <div class="sm-preview-screen__bars">
+                        <div class="sm-preview-tile">
+                            <div class="sm-preview-tile__k">刷新周期</div>
+                            <div class="sm-preview-tile__v" id="pvRefresh">60s</div>
+                        </div>
+                        <div class="sm-preview-tile">
+                            <div class="sm-preview-tile__k">工作时段</div>
+                            <div class="sm-preview-tile__v" id="pvWindow">08:00–18:00</div>
+                        </div>
+                        <div class="sm-preview-tile">
+                            <div class="sm-preview-tile__k">本月死亡数</div>
+                            <div class="sm-preview-tile__v" id="pvDeath">已隐藏</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sc-card">
+            <header class="sc-card__header">
+                <h3 class="sc-card__title">新增一块大屏</h3>
+                <p class="sc-card__subtitle">每块大屏分配独立访问凭证，可单独轮换或撤销</p>
+            </header>
+            <div class="sc-card__body">
+                <div class="sm-add-row">
+                    <input class="sc-input" id="newScreenName" placeholder="如：一楼便民大厅 / 二楼会议室" maxlength="100">
+                    <button class="sc-btn sc-btn--primary" type="button" id="addScreen" style="flex:none"><i class="bi bi-plus-lg" aria-hidden="true"></i> 新增</button>
+                </div>
+                <ul class="sm-tip-list">
+                    <li>在安卓电视盒子浏览器中打开专属地址即可全屏投屏（需同局域网并建议固定服务端 IP）。</li>
+                    <li>执行「轮换」或「撤销」后，<b>旧访问地址立即失效</b>，需重新配置到对应设备。</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+    <!-- 下方通栏：大屏终端列表 -->
+    <section class="sc-card sm-full">
+        <header class="sc-card__header d-flex align-items-center justify-content-between">
+            <div>
+                <h3 class="sc-card__title">大屏终端与凭证列表</h3>
+                <p class="sc-card__subtitle">复制完整投屏地址配置到对应终端；支持按设备独立轮换凭证或紧急撤销</p>
+            </div>
+            <span class="sc-card__meta">共 <span id="screenListCount">0</span> 块大屏</span>
+        </header>
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead>
+                    <tr>
+                        <th class="sc-table__th">终端名称</th>
+                        <th class="sc-table__th">专属访问凭证</th>
+                        <th class="sc-table__th" style="width:110px">状态</th>
+                        <th class="sc-table__th" style="width:180px">最近活跃</th>
+                        <th class="sc-table__th" style="width:270px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="screenBody">
+                    <tr><td colspan="5" class="text-center text-muted py-4">正在加载…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- 凭证操作二次确认弹窗（替代原生 confirm） -->
+<div class="modal fade" id="screenConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--danger" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="smConfirmTitle">确认操作</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <p class="mb-0" id="smConfirmDesc"></p>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--danger" id="smConfirmGo">确认执行</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+(function(){
+    var STATUS={approved:['有效','sc-badge--success'],revoked:['已撤销','sc-badge--muted'],missing:['凭证缺失','sc-badge--danger']};
+    // GLB-37：AJAX 路径统一挂 script_root，避免子路径部署时绝对路径失效
+    var API_ROOT={{ request.script_root|tojson }};
+    var PENDING_ACT=null;
+
+    function esc(v){ return $('<div>').text(v==null?'':v).html(); }
+    function maskToken(t){ return t ? (t.slice(0,8)+'…'+t.slice(-4)) : '—'; }
+
+    function syncPreview(){
+        var enabled=$('#screenEnabled').prop('checked');
+        var vName=($('#villageName').val()||'').trim() || '未设置村名';
+        var title=($('#screenTitle').val()||'').trim() || '村务综合数据大屏';
+        var sec=($('#refreshSeconds').val()||'60').trim();
+        var ws=$('#workStart').val()||'08:00';
+        var we=$('#workEnd').val()||'18:00';
+        var showD=$('#showDeath').prop('checked');
+
+        $('#pvVillage').text(vName);
+        $('#pvTitle').text(title);
+        $('#pvRefresh').text(sec+'s');
+        $('#pvWindow').text(ws+'–'+we);
+        $('#pvDeath').text(showD?'显示':'已隐藏');
+        $('#pvDot').toggleClass('is-off', !enabled);
+        $('#pvStatusText').text(enabled?'投屏运行中':'已暂停投屏');
+        $('#screenRefreshSummary').text('每 '+sec+' 秒 · '+ws+'–'+we);
+    }
+
+    function renderScreens(items){
+        var body=$('#screenBody').empty();
+        var active=items.filter(function(d){ return d.status==='approved'; }).length;
+        $('#screenTotal').text(items.length);
+        $('#screenListCount').text(items.length);
+        $('#screenActiveCount').text(active);
+        if(!items.length){
+            body.append('<tr><td colspan="5" class="text-center text-muted py-4">暂无大屏终端，请在右上方输入名称新增。</td></tr>');
+            return;
+        }
+        items.forEach(function(d){
+            var st=STATUS[d.status]||[d.status,'sc-badge--muted'];
+            var tokenCell='<span class="sm-token-cell">'
+                +'<code class="sm-token-code">'+esc(maskToken(d.token))+'</code>'
+                +'<button type="button" class="sm-copy-btn" data-act="copy" data-id="'+d.id+'"><i class="bi bi-clipboard"></i> 复制地址</button>'
+                +'</span>';
+            var ops='<div class="sm-ops-split">'
+                  + '<a class="sc-btn sc-btn--text" href="'+esc(d.url)+'" target="_blank">打开</a>'
+                  + '<span class="sm-ops-sep"></span>'
+                  + '<button type="button" class="sc-btn sc-btn--text" data-act="rotate" data-id="'+d.id+'">轮换</button>'
+                  + '<button type="button" class="sc-btn sc-btn--text" data-act="revoke" data-id="'+d.id+'">撤销</button>'
+                  + '<button type="button" class="sc-btn sc-btn--text is-danger" data-act="delete" data-id="'+d.id+'">删除</button>'
+                  + '</div>';
+            body.append('<tr>'
+                +'<td class="fw-semibold">'+esc(d.name)+'</td>'
+                +'<td>'+tokenCell+'</td>'
+                +'<td><span class="sc-badge '+st[1]+'">'+st[0]+'</span></td>'
+                +'<td class="small text-muted">'+esc(d.last_seen||'尚未访问')+'</td>'
+                +'<td>'+ops+'</td></tr>');
+        });
+        window.__screens=items;
+    }
+
+    function loadConfig(){
+        $.get(API_ROOT+'/screen-admin/api/config', function(r){
+            if(!r.success) return;
+            var c=r.data.config;
+            $('#screenEnabled').prop('checked', !!c.enabled);
+            $('#villageName').val(c.village_name || '');
+            $('#screenTitle').val(c.title || '');
+            $('#refreshSeconds').val(c.refresh_seconds || 60);
+            $('#workStart').val(c.work_start || '08:00');
+            $('#workEnd').val(c.work_end || '18:00');
+            $('#showDeath').prop('checked', !!c.show_death_count);
+            $('#screenState').removeClass('sc-badge--success sc-badge--muted')
+                .addClass(c.enabled ? 'sc-badge--success' : 'sc-badge--muted')
+                .text(c.enabled ? '已启用' : '未启用');
+            if(r.data.screen_url) $('#previewButton').attr('href', r.data.screen_url);
+            syncPreview();
+            renderScreens(r.data.screens || []);
+        });
+    }
+
+    function loadScreens(){
+        $.get(API_ROOT+'/screen-admin/api/screens', function(r){
+            if(r.success) renderScreens(r.data.items || []);
+        });
+    }
+
+    $('#screenConfigForm').on('input change', 'input', syncPreview);
+    $('#screenConfigForm').on('submit', function(e){
+        e.preventDefault();
+        $.post(API_ROOT+'/screen-admin/api/config/save', $(this).serialize(), function(r){
+            if(r.success){ showToast('大屏配置已保存','success'); loadConfig(); }
+            else showToast(r.msg || '保存失败','danger');
+        }).fail(function(){ showToast('保存失败','danger'); });
+    });
+
+    $('#addScreen').on('click', function(){
+        var name=$('#newScreenName').val().trim();
+        $.post(API_ROOT+'/screen-admin/api/screens', {name:name}, function(r){
+            if(!r.success){ showToast(r.msg||'新增失败','danger'); return; }
+            $('#newScreenName').val('');
+            showToast('已新增大屏，请复制专属地址配置到对应设备','success');
+            loadScreens();
+        }).fail(function(){ showToast('新增失败','danger'); });
+    });
+
+    var ACT_META={
+        rotate:{title:'确认轮换大屏凭证', desc:'轮换后，该大屏原有的投屏地址将立即失效，需把新地址重新配置到电视盒子。确定继续吗？'},
+        revoke:{title:'确认撤销大屏权限', desc:'撤销后，该大屏将立即停止投屏并显示暂不可用页面。确定继续吗？'},
+        delete:{title:'确认删除大屏记录', desc:'删除后该终端的访问地址将永久失效且不可恢复。确定删除吗？'}
+    };
+
+    $('#screenBody').on('click','button[data-act]',function(){
+        var btn=$(this), act=btn.data('act'), id=btn.data('id');
+        var item=(window.__screens||[]).filter(function(d){ return String(d.id)===String(id); })[0] || {};
+        if(act==='copy'){
+            var text=item.url||'';
+            var done=function(){
+                var oldHtml=btn.html();
+                btn.html('<i class="bi bi-check2"></i> 已复制');
+                setTimeout(function(){ btn.html(oldHtml); }, 1600);
+                showToast('投屏地址已复制','success');
+            };
+            if(navigator.clipboard && navigator.clipboard.writeText){
+                navigator.clipboard.writeText(text).then(done, function(){ showToast('请手工复制','warning'); });
+            } else {
+                var t=document.createElement('textarea'); t.value=text; document.body.appendChild(t); t.select();
+                try{ document.execCommand('copy'); done(); }catch(e){ showToast('请手工复制','warning'); }
+                t.remove();
+            }
+            return;
+        }
+        var meta=ACT_META[act]||{title:'确认操作',desc:'确定继续吗？'};
+        PENDING_ACT={act:act, id:id};
+        $('#smConfirmTitle').text(meta.title+'（'+(item.name||'')+'）');
+        $('#smConfirmDesc').text(meta.desc);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('screenConfirmModal')).show();
+    });
+
+    $('#smConfirmGo').on('click', function(){
+        if(!PENDING_ACT) return;
+        var act=PENDING_ACT.act, id=PENDING_ACT.id;
+        PENDING_ACT=null;
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('screenConfirmModal')).hide();
+        var opt={type:'POST'}, url=API_ROOT+'/screen-admin/api/screens/'+id+'/'+act;
+        if(act==='delete'){ opt={type:'DELETE'}; url=API_ROOT+'/screen-admin/api/screens/'+id; }
+        $.ajax(Object.assign({url:url,dataType:'json'},opt)).done(function(r){
+            if(!r.success){ showToast(r.msg||'操作失败','danger'); return; }
+            showToast(r.msg||'操作成功','success');
+            loadScreens();
+        }).fail(function(){ showToast('操作失败','danger'); });
+    });
+
+    loadConfig();
+})();
+</script>
+{% endblock %}

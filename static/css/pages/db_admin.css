@@ -1,0 +1,349 @@
+/* 数据库管理面板（ADR-022 v4.0 紧凑三标签工作台 + 零代码可视化表单，零裸色值） */
+.db-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 14px;
+  margin-bottom: var(--sp-3);
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--c-warning);
+  background: var(--c-warning-bg);
+  color: var(--c-ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.db-banner__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.db-banner__icon {
+  color: var(--c-warning);
+  font-size: 15px;
+  flex: none;
+}
+
+/* —— 顶部紧凑 4 联 KPI —— */
+.db-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.db-stat-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 14px;
+}
+.db-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-bottom: 3px;
+}
+.db-stat-card .stat-value {
+  font-family: var(--ff-num);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* —— 主工作台标签页（解决长滚动） —— */
+.db-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: var(--sp-3);
+  border-radius: var(--r-ctrl);
+  background: var(--c-rail);
+  border: 1px solid var(--c-line-3);
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.db-tab {
+  border: 0;
+  background: transparent;
+  color: var(--c-ink-3);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.db-tab:hover { color: var(--c-ink); }
+.db-tab.is-active {
+  background: var(--c-surface);
+  color: var(--c-ink);
+  box-shadow: 0 1px 2px rgba(10, 10, 10, 0.07);
+}
+.db-tab__count {
+  font-family: var(--ff-num);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-hover);
+  color: var(--c-muted);
+}
+.db-tab.is-active .db-tab__count {
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+}
+.db-pane[hidden] { display: none; }
+
+/* —— 表目录筛选工具栏 + 固定高度吸顶表头容器 —— */
+.db-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--c-line-2);
+  background: var(--c-side);
+}
+.db-pills {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.db-pill {
+  border: 1px solid var(--c-line-3);
+  background: var(--c-surface);
+  color: var(--c-ink-3);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.db-pill:hover { background: var(--c-hover); color: var(--c-ink); }
+.db-pill.is-active {
+  background: var(--c-ink-2);
+  border-color: var(--c-ink-2);
+  color: var(--c-surface);
+}
+.db-search-box {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+}
+.db-search-box i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--c-faint);
+  font-size: 13px;
+  pointer-events: none;
+}
+.db-search-box .sc-input {
+  padding-left: 30px;
+  height: 32px;
+  font-size: 12.5px;
+}
+.db-table-scroll {
+  max-height: 460px;
+  overflow-y: auto;
+}
+.db-table-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--c-rail);
+}
+.db-tname__zh {
+  font-weight: 600;
+  color: var(--c-ink);
+  font-size: 13.5px;
+  line-height: 1.35;
+}
+.db-tname__desc {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.db-tname__en {
+  font-family: var(--ff-num);
+  font-size: 11px;
+  color: var(--c-faint);
+  margin-left: 6px;
+  font-weight: 400;
+}
+.col-app { color: var(--c-ink); font-weight: 600; }
+.col-panel { color: var(--c-ink-3); }
+
+/* —— 操作中心（黄级 + 红级卡片网格） —— */
+.db-ops-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-4);
+}
+.db-op-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.db-op-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 6px;
+  padding: 13px 14px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--c-line-3);
+  background: var(--c-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  width: 100%;
+}
+.db-op-card:hover {
+  border-color: var(--c-ink-2);
+  background: var(--c-side);
+}
+.db-op-card--danger:hover {
+  border-color: var(--c-danger);
+  background: var(--c-badge-danger-bg);
+}
+.db-op-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+.db-op-card--danger .db-op-card__head { color: var(--c-danger); }
+.db-op-card__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-badge);
+  background: var(--c-rail);
+  color: var(--c-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex: none;
+}
+.db-op-card--danger .db-op-card__icon {
+  background: var(--c-badge-danger-bg);
+  color: var(--c-danger);
+}
+.db-op-card__desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--c-muted);
+}
+
+/* —— 零代码可视化字段编辑器 —— */
+.db-tpl-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--sp-3);
+  padding: 8px 10px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  border: 1px solid var(--c-line-2);
+  font-size: 12px;
+  color: var(--c-muted);
+}
+.db-col-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--sp-2);
+}
+.db-col-table th {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--c-muted);
+  text-align: left;
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--c-line-3);
+}
+.db-col-table td {
+  padding: 6px 4px;
+  vertical-align: middle;
+}
+.db-col-check {
+  display: flex;
+  justify-content: center;
+}
+.db-idx-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--c-line-3);
+  background: var(--c-side);
+}
+.db-idx-col-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  color: var(--c-ink);
+  cursor: pointer;
+}
+.db-summary-box {
+  padding: 10px 12px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  border: 1px solid var(--c-line-3);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--c-ink);
+  margin-bottom: var(--sp-3);
+}
+.db-sql-details {
+  margin-top: var(--sp-2);
+}
+.db-sql-details summary {
+  font-size: 12px;
+  color: var(--c-muted);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 6px;
+}
+.report-pre {
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--c-rail);
+  padding: 12px;
+  border-radius: var(--r-ctrl);
+  color: var(--c-ink-2);
+}
+.db-diag-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+@media (max-width: 1100px) {
+  .db-op-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+  .db-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-op-grid { grid-template-columns: 1fr; }
+}

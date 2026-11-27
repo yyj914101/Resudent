@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}台账建表{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/dynatable_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+            台账建表中心
+            <span class="dtv2-tag dtv2-tag--info">按工作簿分组 · 单表/整组安全删除</span>
+        </h2>
+        <p class="sc-page-head__meta">统一管理全部自定义软表工作簿：支持按挂载业务模块筛选、展开查看组内子表、一键整组期次结转，以及删前自动加密快照的级联安全删除。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--primary" id="uploadEntry" href="/dynatable/upload"><i class="bi bi-upload"></i> ＋ 上传 Excel / 建新台账</a>
+    </div>
+</header>
+
+<div class="dtv2-kpi-grid" id="dtIndexKpi"></div>
+
+<div class="dtv2-filter-bar">
+    <input type="text" class="sc-input dtv2-search" id="dtIndexSearch" placeholder="搜索工作簿名、子表名或期次...">
+    <div class="dtv2-pills" id="dtModulePills"></div>
+</div>
+
+<div class="dtv2-group-list" id="dtGroupList"></div>
+
+<div class="dtv2-print-overlay" id="dtDeleteOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:480px">
+        <div class="dtv2-print-head">
+            <strong id="dtDelTitle">确认安全删除台账</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-close-overlay="dtDeleteOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <p id="dtDelDesc" style="margin:0 0 10px;color:var(--c-ink-2)"></p>
+            <div style="background:var(--c-rail);border:1px solid var(--c-line-2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--c-muted-2)">
+                删除前系统会自动生成双份加密快照备份，并级联清理记录、字段定义、导入日志、安全目录节点与版式配置。系统内置表受保护禁止删除。
+            </div>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-close-overlay="dtDeleteOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--danger" id="dtBtnConfirmDel">确认安全删除</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtCloneOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:480px">
+        <div class="dtv2-print-head">
+            <strong id="dtCloneTitle">台账期次结转</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-close-overlay="dtCloneOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <div class="dtv2-field" style="margin-bottom:10px">
+                <label class="dtv2-field__label" for="dtClonePeriod">新期次标签（例如：2026-02）</label>
+                <input type="text" class="sc-input" id="dtClonePeriod">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer">
+                <input type="checkbox" id="dtCloneCopyRows" checked> 沿用原台账全部数据行
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="dtCloneWholeGroup" checked> 整组结转同工作簿下的全部子表
+            </label>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-close-overlay="dtCloneOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--primary" id="dtBtnConfirmClone">立即生成新期次</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dynatable_index.js') }}"></script>
+{% endblock %}

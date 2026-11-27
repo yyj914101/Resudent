@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>大屏暂不可用</title>
+<style>
+:root{--brand:#1877C9;--bg:#F4F7FA;--muted:#6c757d}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{display:grid;place-items:center;background:var(--bg);color:#212529;font-family:"Microsoft YaHei",Arial,sans-serif}
+.box{display:grid;justify-items:center;gap:14px;padding:48px 56px;background:#fff;border:1px solid #e5e9ef;border-radius:14px;box-shadow:0 6px 24px rgba(24,119,201,.08);text-align:center;max-width:420px}
+.icon{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:rgba(24,119,201,.1);color:var(--brand);font-size:30px}
+h1{margin:0;font-size:20px;font-weight:600}h1 .bi{color:var(--brand)}
+p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}">
+</head>
+<body>
+<div class="box">
+    <div class="icon"><i class="bi bi-display"></i></div>
+    <h1><i class="bi bi-shield-lock me-1"></i>大屏暂不可用</h1>
+    <p>大厅数据大屏未启用，或访问凭证无效。<br>请联系管理员在「系统管理 → 大屏管理」中开启并获取最新访问地址。</p>
+</div>
+</body>
+</html>

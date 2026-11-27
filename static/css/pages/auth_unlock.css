@@ -1,0 +1,15 @@
+/* auth_unlock.css — 启动口令解锁页（ADR-022 v4.0，零裸色值） */
+.auth-panel--unlock {
+  width: min(460px, 100%);
+}
+.auth-match-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--c-muted);
+}
+.auth-match-hint[hidden] { display: none; }
+.auth-match-hint.is-ok { color: var(--c-success); }
+.auth-match-hint.is-err { color: var(--c-danger); }

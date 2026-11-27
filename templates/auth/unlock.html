@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>启动口令 - 村级村务综合管理系统</title>
+    <link href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/tokens.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/auth_common.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/auth_unlock.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-shell">
+        <div class="auth-topbar"></div>
+        <main class="auth-main">
+            <section class="auth-panel auth-panel--unlock">
+                <div class="auth-card">
+                    <span class="auth-eyebrow">
+                        <span class="auth-eyebrow__dot auth-eyebrow__dot--info"></span>
+                        本机回环安全通道 · 密钥不落盘
+                    </span>
+                    <div>
+                        <div class="auth-head-icon">
+                            {% if is_first_run %}
+                            <i class="bi bi-key" aria-hidden="true"></i>
+                            {% else %}
+                            <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <h1 class="auth-title">{% if is_first_run %}设置启动口令{% else %}输入启动口令{% endif %}</h1>
+                    <p class="auth-subtitle">
+                        {% if is_first_run %}
+                        首次启动请设置数据加密口令，系统将在内存中派生主密钥，请务必妥善保管。
+                        {% else %}
+                        服务已就绪，请输入启动口令以在内存中解锁数据加密密钥。
+                        {% endif %}
+                    </p>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="auth-alert auth-alert--{{ 'danger' if category in ('danger', 'error') else ('warning' if category == 'warning' else 'success') }}" role="alert">
+                            <span>{{ message }}</span>
+                            <button type="button" class="auth-alert__close" aria-label="关闭" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="auth-field{% if not is_first_run %} auth-field--last{% endif %}">
+                            <label class="auth-label" for="unlockPwd">启动口令</label>
+                            <div class="auth-input-wrap">
+                                <i class="bi bi-lock auth-input-wrap__icon" aria-hidden="true"></i>
+                                <input type="password" id="unlockPwd" class="auth-input auth-input--with-icon auth-input--with-toggle" name="password" placeholder="请输入启动口令" required autofocus>
+                                <button type="button" class="auth-eye" data-toggle-for="unlockPwd" aria-label="显示或隐藏口令"><i class="bi bi-eye"></i></button>
+                            </div>
+                        </div>
+                        {% if is_first_run %}
+                        <div class="auth-field auth-field--last">
+                            <label class="auth-label" for="unlockConfirmPwd">确认启动口令</label>
+                            <div class="auth-input-wrap">
+                                <i class="bi bi-lock-fill auth-input-wrap__icon" aria-hidden="true"></i>
+                                <input type="password" id="unlockConfirmPwd" class="auth-input auth-input--with-icon auth-input--with-toggle" name="confirm_password" placeholder="请再次输入启动口令" required>
+                                <button type="button" class="auth-eye" data-toggle-for="unlockConfirmPwd" aria-label="显示或隐藏确认口令"><i class="bi bi-eye"></i></button>
+                            </div>
+                            <div class="auth-match-hint" id="unlockMatchHint" hidden></div>
+                        </div>
+                        {% endif %}
+                        <button type="submit" class="auth-btn">
+                            <i class="bi bi-key" aria-hidden="true"></i>
+                            <span>{% if is_first_run %}设置并解锁{% else %}解锁系统{% endif %}</span>
+                        </button>
+                    </form>
+
+                    {% if not is_first_run %}
+                    <div class="auth-link-row">
+                        <a href="{{ url_for('auth.recovery') }}" class="auth-link">
+                            <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>忘记口令？从最近加密备份恢复
+                        </a>
+                    </div>
+                    {% endif %}
+
+                    <div class="auth-note">本页仅限服务器本机访问；口令输入错误可原地重试，不会触发锁定。</div>
+                </div>
+            </section>
+        </main>
+        <footer class="auth-footer">村级村务综合管理平台 · 数据加密启动通道</footer>
+    </div>
+    <script>
+    (function () {
+        document.querySelectorAll('.auth-eye[data-toggle-for]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var target = document.getElementById(btn.getAttribute('data-toggle-for'));
+                if (!target) return;
+                var show = target.type === 'password';
+                target.type = show ? 'text' : 'password';
+                btn.innerHTML = show ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+            });
+        });
+        var p1 = document.getElementById('unlockPwd');
+        var p2 = document.getElementById('unlockConfirmPwd');
+        var hint = document.getElementById('unlockMatchHint');
+        if (p1 && p2 && hint) {
+            function syncMatch() {
+                if (!p2.value) { hint.hidden = true; return; }
+                hint.hidden = false;
+                if (p1.value === p2.value) {
+                    hint.className = 'auth-match-hint is-ok';
+                    hint.innerHTML = '<i class="bi bi-check-circle-fill"></i>两次输入的启动口令一致';
+                } else {
+                    hint.className = 'auth-match-hint is-err';
+                    hint.innerHTML = '<i class="bi bi-exclamation-circle-fill"></i>两次输入的启动口令不一致';
+                }
+            }
+            p1.addEventListener('input', syncMatch);
+            p2.addEventListener('input', syncMatch);
+        }
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+/* settings_linkage.css — 数据联动与补贴口径可视化配置页（ADR-022 v4.0 令牌） */
+
+.sl-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: var(--sp-4, 16px);
+}
+
+.sl-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--c-ink-2);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.sl-tab.is-active {
+    background: var(--c-ink);
+    color: var(--c-surface);
+    border-color: var(--c-ink);
+}
+
+.sl-toolbar-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--c-line-2);
+}
+
+.sl-toolbar-row__hint {
+    font-size: 12px;
+    color: var(--c-muted);
+    margin: 0;
+}
+
+.sl-sync-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+}
+
+.sl-sync-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--c-ink-2);
+    cursor: pointer;
+}
+
+.sl-soft-card {
+    margin-top: var(--sp-4, 16px);
+}
+
+.sl-soft-form {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    gap: 10px;
+    align-items: end;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--c-line-2);
+    background: var(--c-bg);
+}
+
+@media (max-width: 960px) {
+    .sl-soft-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

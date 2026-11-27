@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs, col_picker, toolbar_actions %}
+{% block title %}低保人员查询 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}低保人员查询{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{# 075 RC-06：副标题统一为样图口径（村名走 village_name 设置项，未配置回退不带村名） #}
+{% set civil_subtitle = (village_name ~ ' · ' if village_name else '') ~ '10 类民政对象 · 在册 ' ~ (civil_headcount or 0) ~ ' 人' %}
+{% call page_head('低保人员查询', civil_subtitle) %}
+    <button type="button" class="sc-btn sc-btn--primary" onclick="openAdd()"><i class="bi bi-plus"></i> 新增低保对象</button>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="exportData()"><i class="bi bi-download"></i> 导出名单</button>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="$('#importModal').modal('show')"><i class="bi bi-upload"></i> 批量导入</button>
+{% endcall %}
+{{ civil_tabs('dibao') }}
+
+{# 076 RC-09（Q5/DoD ④-8）：移除样图（v3-01）没有的「低保户数/人数」统计卡；
+   工具栏右侧「共 N 人」计数（074 RC-07）已承载在册口径 #}
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <input type="text" class="sc-input" id="searchName" placeholder="姓名/户主" style="width:140px">
+        <input type="text" class="sc-input" id="searchIdCard" placeholder="身份证号" style="width:170px">
+        <select class="sc-select" id="searchType" style="width:150px">
+            <option value="">全部救助类别</option>
+        </select>
+        <select class="sc-select" id="searchSupport" style="width:150px">
+            <option value="">全部保障状态</option>
+            <option>已认定</option>
+            <option>复审中</option>
+            <option>待核实</option>
+        </select>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="loadList(1)"><i class="bi bi-search"></i> 查询</button>
+        {{ toolbar_actions() }}
+    </div>
+    {{ col_picker('dibao', '户主姓名|成员姓名|是否户主|救助类别|享受人口|户救助金额|保障状态|操作') }}
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dibaoTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">所属地区</th><th class="sc-table__th">户主姓名</th><th class="sc-table__th">户主身份证号</th><th class="sc-table__th">成员姓名</th>
+                    <th class="sc-table__th">成员身份证号</th><th class="sc-table__th sc-table__th--center">是否户主</th><th class="sc-table__th">关系</th><th class="sc-table__th">开始享受</th>
+                    <th class="sc-table__th sc-table__th--center">救助类别</th><th class="sc-table__th">救助细类</th><th class="sc-table__th sc-table__th--center">享受人口</th><th class="sc-table__th sc-table__th--center">户救助金额</th>
+                    <th class="sc-table__th">发放月份</th><th class="sc-table__th">开户人</th><th class="sc-table__th">银行账号</th><th class="sc-table__th">是否死亡</th>
+                    <th class="sc-table__th">保障状态</th><th class="sc-table__th">操作</th>
+                </tr>
+            </thead>
+            <tbody id="dibaoBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- Import Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="importModalTitle">批量导入低保</h3>
+                    <p class="pw-modal__sub">支持标准低保名单 Excel 模板上传，按身份证自动关联居民信息</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">低保名单导入模板</span>
+                    </div>
+                    <a href="/dibao/api/template" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+                </div>
+
+                <div>
+                    <p class="pw-mode-label" id="dibaoModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="dibaoModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">仅新增</span>
+                                    <span class="pw-radio-card__desc">重复身份证号自动跳过，仅录入新档案</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖更新</span>
+                                    <span class="pw-radio-card__desc">重复身份证号用表格最新信息覆盖原有档案</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="dibaoImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="importFile" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none">
+                    <div class="pw-drop" id="dibaoImpDrop" role="button" tabindex="0" aria-labelledby="dibaoImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+                    </div>
+                    <div class="pw-staged d-none" id="dibaoImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="dibaoImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="dibaoImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="dibaoImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="dibaoImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="importResult" class="small"></div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="impSubmit" onclick="doImport()" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+{% include "dibao/detail_modal.html" %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/dibao_list.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,160 @@
+/* party_dev_detail.css — 党员发展·详情弹窗（2026-11-19 按设计稿
+   《紧凑单屏五阶段发展档案详情弹窗》ADR-022 基线重做）。
+   作用域 .pdv，仅作用于 #detailModal；业务弹窗 formModal/transitionModal 不动。
+   注意：本弹窗沿用 .sc-modal 壳（pointer-events 已在组件层恢复），
+   新增区块不得脱离 .pdv 前缀，避免污染其它详情弹窗。 */
+
+/* ── 容器：960px 单屏档 ── */
+.modal-dialog:has(.pdv) { max-width: 960px; }
+.pdv { width: 960px; }
+.pdv .pdv-num { font-family: var(--ff-num); font-variant-numeric: tabular-nums; }
+
+/* ── 单行紧凑档案头部 ── */
+.pdv-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 20px; min-height: 0;
+}
+.pdv-header__id { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.pdv-header__name { font-size: 15px; font-weight: 700; color: var(--c-ink); white-space: nowrap; }
+.pdv-header__dot { margin: 0 4px; font-weight: 400; color: var(--c-faint); }
+.pdv-badge::before {
+  content: ''; width: 6px; height: 6px; border-radius: var(--r-full);
+  background: var(--c-badge-info-fg); flex: none;
+}
+.pdv-vline { background: var(--c-line-3); flex: none; }
+.pdv-vline--sm { width: 1px; height: 14px; }
+.pdv-vline--lg { width: 1px; height: 16px; }
+.pdv-header__meta { font-size: 12px; color: var(--c-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdv-header__ops { display: flex; align-items: center; gap: 8px; flex: none; }
+.pdv-btn { padding: 4px 10px; font-size: 12px; }
+.pdv-close { width: 28px; height: 28px; margin: 0; }
+
+/* ── 主体三段卡片区 ── */
+.pdv-body { padding: 12px 20px; display: grid; gap: 10px; }
+.pdv-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+}
+.pdv-card--flush { padding: 0; overflow: hidden; }
+.pdv-card__head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding-bottom: 6px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--c-line-2);
+}
+.pdv-card__head--flush { padding: 8px 16px; margin-bottom: 0; }
+.pdv-card__title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pdv-card__name { margin: 0; font-size: 12px; font-weight: 700; color: var(--c-ink); letter-spacing: .02em; }
+.pdv-card__hint { font-size: 11px; color: var(--c-muted); flex: none; }
+.pdv-catbar { width: 3px; height: 14px; border-radius: var(--r-full); flex: none; }
+.pdv-catbar--1 { background: var(--c-cat-1); }
+.pdv-catbar--2 { background: var(--c-cat-2); }
+.pdv-catbar--3 { background: var(--c-cat-3); }
+.pdv-catindex {
+  font-family: var(--ff-num); font-size: 11px; font-weight: 600;
+  padding: 1px 6px; border-radius: var(--r-badge); flex: none;
+}
+.pdv-catindex--1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.pdv-catindex--2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+.pdv-catindex--3 { background: var(--c-cat-3-weak); color: var(--c-cat-3); }
+
+/* Section 01：四列统一网格（Row2 两字段各跨两列） */
+.pdv-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 20px; }
+.pdv-field { display: flex; flex-direction: column; min-width: 0; }
+.pdv-field--half { grid-column: span 2; }
+.pdv-label { font-size: 11px; color: var(--c-muted); margin-bottom: 2px; }
+.pdv-value { font-size: 13px; color: var(--c-ink); line-height: 1.4; }
+.pdv-value--strong { font-weight: 600; }
+.pdv-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pdv-unset {
+  display: inline-block; padding: 1px 8px; border-radius: var(--r-badge);
+  background: var(--c-hover); color: var(--c-faint); font-size: 11px;
+}
+
+/* Section 02：水平五阶段进度条 */
+.pdv-stepper { padding: 4px 8px; }
+.pdv-step-row { display: flex; align-items: flex-start; justify-content: space-between; width: 100%; }
+.pdv-step { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 84px; flex: none; }
+.pdv-step__circle {
+  width: 24px; height: 24px; border-radius: var(--r-full);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; flex: none;
+}
+.pdv-step--done .pdv-step__circle {
+  background: var(--c-cat-1-weak); color: var(--c-success);
+  border: 1px solid rgba(47, 159, 61, .3);
+}
+.pdv-step--active .pdv-step__circle {
+  background: var(--c-ink-2); color: var(--c-surface);
+  font-weight: 700; box-shadow: 0 0 0 3px var(--c-badge-info-bg);
+}
+.pdv-step--todo .pdv-step__circle {
+  background: var(--c-surface); color: var(--c-faint);
+  border: 1.5px dashed var(--c-line-3);
+}
+.pdv-step__name { font-size: 12px; margin-top: 6px; line-height: 1.3; }
+.pdv-step--done .pdv-step__name { color: var(--c-ink); font-weight: 600; }
+.pdv-step--active .pdv-step__name { color: var(--c-badge-info-fg); font-weight: 700; }
+.pdv-step--todo .pdv-step__name { color: var(--c-faint); font-weight: 500; }
+.pdv-step__date { font-size: 11px; margin-top: 2px; }
+.pdv-step--done .pdv-step__date { color: var(--c-muted); }
+.pdv-step--active .pdv-step__date { color: var(--c-badge-info-fg); font-weight: 500; }
+.pdv-step--todo .pdv-step__date { color: var(--c-faint); }
+.pdv-step-line { flex: 1 1 auto; margin: 12px 4px 0; height: 0; }
+.pdv-step-line--done { border-top: 2px solid var(--c-success); }
+.pdv-step-line--todo { border-top: 1.5px dashed var(--c-line-3); }
+
+/* Section 02：考察备注中性卡槽 */
+.pdv-remark {
+  margin-top: 10px; padding: 6px 12px;
+  background: var(--c-side); border: 1px solid var(--c-line-2);
+  border-radius: var(--r-ctrl);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  font-size: 12px;
+}
+.pdv-remark__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--c-ink); }
+.pdv-remark__label { color: var(--c-muted); font-weight: 500; }
+.pdv-remark__link {
+  border: 0; background: none; padding: 0; cursor: pointer; flex: none;
+  font-size: 11px; color: var(--c-ink-5);
+}
+.pdv-remark__link:hover { text-decoration: underline; color: var(--c-ink); }
+
+/* Section 03：阶段迁移日志（固定列宽 + 表体限高滚动） */
+.pdv-logwrap { max-height: 115px; overflow-y: auto; border-top: 1px solid var(--c-line-2); }
+.pdv-table { table-layout: fixed; width: 100%; }
+.pdv-col-date { width: 150px; }
+.pdv-col-op { width: 130px; }
+.pdv-col-snap { width: 180px; }
+.pdv-table th {
+  background: var(--c-rail); color: var(--c-muted); font-weight: 500;
+  font-size: 12px; padding: 6px 16px; text-align: left;
+  border-bottom: 1px solid var(--c-line-3);
+}
+.pdv-table td {
+  padding: 7px 16px; border-bottom: 1px solid var(--c-line-2);
+  font-size: 12px; color: var(--c-ink); vertical-align: middle;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pdv-table tr:last-child td { border-bottom: none; }
+.pdv-table tbody tr:hover td { background: var(--c-side); }
+.pdv-count { padding: 0 8px; font-size: 11px; }
+
+/* ── 底部周期状态栏 ── */
+.pdv-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 20px; background: var(--c-side);
+}
+.pdv-footer__status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--c-muted); }
+.pdv-dot { width: 6px; height: 6px; border-radius: var(--r-full); background: var(--c-success); flex: none; }
+
+/* ── 响应式（≤767px：四列退两列、头部允许换行） ── */
+@media (max-width: 767.98px) {
+  .pdv { width: 100%; }
+  .pdv-header { flex-wrap: wrap; }
+  .pdv-header__id { flex-wrap: wrap; }
+  .pdv-grid { grid-template-columns: repeat(2, 1fr); }
+  .pdv-field--half { grid-column: span 2; }
+  .pdv-step { min-width: 64px; }
+}

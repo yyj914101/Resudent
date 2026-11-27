@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="__CSRF__">
+    <title>信访维稳</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="/static/lib/adminlte/css/adminlte.min.css" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="/static/css/tokens.css" rel="stylesheet">
+    <link href="/static/css/app.css" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="/static/css/shell.css" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="/static/css/components.css" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="/static/css/skeleton.css" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="/static/lib/driver.css" rel="stylesheet">
+    <link href="/static/css/tour.css" rel="stylesheet">
+    
+<link href="/static/css/pages/governance_petition.css" rel="stylesheet">
+
+
+<script src="/static/js/nav_labels_boot.js"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: true,
+    menuRules: [
+        ['a[href="/resident/"]', true],
+        ['a[href="/resident/add"]', true],
+        ['a[href="/shop/"]', true],
+        ['a[href="/dibao/"]', true],
+        ['a[href="/disabled/"]', true],
+        ['a[href="/care/"]', true],
+        ['a[href="/organization/"]', true],
+        ['a[href="/party/"]', true],
+        ['a[href="/party/dues"]', true],
+        ['a[href="/veteran/"]', true],
+        ['a[href="/todo/"]', true],
+        ['a[href="/welfare/"]', true],
+        ['a[href="/mediation/"]', true],
+        ['a[href="/governance/roster/gov_special_visit/"]', true],
+        ['a[href="/governance/roster/gov_stability_risk/"]', true],
+        ['a[href="/governance/roster/gov_mental_health/"]', true],
+        ['a[href="/governance/roster/gov_security_committee/"]', true],
+        ['a[href="/safety/"]', true],
+        ['a[href="/notice/"]', true],
+        ['a[href="/word-form/"]', true],
+        ['a[href="/medical-insurance/"]', true],
+        ['a[href="/certificate/"]', true],
+        ['a[href="/death-report/"]', true],
+        ['a[href="/visit/"]', true],
+        ['a[href="/visit/history"]', true],
+        ['a[href="/reconcile/"]', true]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    
+
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            
+            <nav class="sc-topbar">
+                
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left-close"></use></svg>
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left"></use></svg>
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="/resident/">
+                    <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#search"></use></svg>
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">0</span> 人在线
+                    </span>
+                    <span class="sc-sync" id="syncStatus" title="单机模式：数据保存在本机，未启用同步">
+                        <span class="sc-dot sc-dot--muted"></span>本机数据
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">a</span>
+                            <span class="sc-usermenu__name">admin</span>
+                            <svg class="sc-icon sc-icon--14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#chevron-down"></use></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">超级管理员</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+
+
+
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo"><svg class="sc-icon sc-icon--20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg></span>
+        <span class="sc-sidebar__title" id="systemTitle">村级村务综合管理系统</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+
+            
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dashboard/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#house"></use></svg><span>首页</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/todo/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-todo"></use></svg><span>待办提醒</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/organization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#building-2"></use></svg><span>机构管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/election/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#check2-square"></use></svg><span>选举管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/civilization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg><span>文明实践站</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/medical-insurance/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-pulse"></use></svg><span>社会保障</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dibao/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>民政对象管理</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/resident/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#users"></use></svg><span>居民管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/mediation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#messages-square"></use></svg><span>综治管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/visit/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>走访关爱</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#folder-open"></use></svg><span>安全工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/emergency">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-checks"></use></svg><span>应急管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/sanitation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#wrench"></use></svg><span>环卫工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/death-report/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#book-open"></use></svg><span>死亡上报</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/veteran/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#shield-check"></use></svg><span>退役军人服务</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/certificate/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#scroll-text"></use></svg><span>证明开具</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/demand/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#inbox"></use></svg><span>民生诉求</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/notice/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#megaphone"></use></svg><span>补贴公示</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dynatable/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database"></use></svg><span>台账建表</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/import/batches">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database-zap"></use></svg><span>导入批次</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        
+        <a class="nav-link sc-nav-item"
+           href="/settings/center">
+            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#settings"></use></svg><span>设置</span>
+        </a>
+        
+        <div class="sc-user-card">
+            <span class="sc-avatar">a</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">admin</span>
+                <span class="sc-user-card__role">超级管理员</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="/auth/logout" aria-label="退出登录">
+                <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#log-out"></use></svg>
+            </a>
+        </div>
+    </div>
+</aside>
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+            <!-- 顶部标签栏 -->
+            <div class="tab-bar" id="tabBar">
+                <div class="tab-scroll" id="tabScroll"></div>
+            </div>
+            
+            <h1 id="pageTitle">信访维稳</h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+                
+                
+                
+                
+
+<nav class="sc-chips sc-chips--grid" aria-label="模块内导航">
+  <div class="sc-chips__grid" style="grid-template-columns: 72px repeat(3, max-content);"><span class="sc-chips__label" style="grid-column:1">人员管理</span>
+    <a class="sc-chip" href="/governance/roster/gov_mental_health/#tab=mental-health" title="严重精神障碍患者台账">严重精神障碍</a>
+    <a class="sc-chip" href="/governance/roster/gov_security_committee/#tab=security-committee" title="治保委员会花名册">治保委员会</a>
+    <a class="sc-chip" href="/governance/roster/gov_criminal/#tab=criminal" title="刑事人员台账（服刑人员 / 刑满释放人员）">刑事人员</a><span class="sc-chips__label" style="grid-column:1">场所与行业</span>
+    <a class="sc-chip" href="/governance/roster/gov_road_hazard/#tab=road-hazard" title="道路交通安全隐患台账">道交隐患</a>
+    <a class="sc-chip" href="/governance/roster/gov_key_vehicle/#tab=key-vehicle" title="重点车辆驾驶人名册">重点车辆</a>
+    <a class="sc-chip" href="/governance/roster/gov_guide_station/#tab=guide-station" title="交通安全劝导站台账">劝导站</a><span class="sc-chips__label" style="grid-column:1">矛盾调处</span>
+    <a class="sc-chip" href="/mediation/#tab=mediation" title="矛盾纠纷化解">矛盾纠纷化解</a>
+    <a class="sc-chip" href="/governance/roster/gov_stability_risk/#tab=stability-risk" title="社会稳定风险排查化解记录">社会稳定风险</a>
+    <a class="sc-chip is-active" href="/governance/petition/#tab=petition" title="信访维稳">信访维稳</a>
+  </div>
+</nav>
+
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">信访维稳</h2>
+        <p class="sc-page-head__meta">信访事项受理 · 办理过程留痕 · 办结归档</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink" href="#"><i class="bi bi-file-earmark-excel"></i> 导出台账</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton"><i class="bi bi-plus-circle"></i> 新增事项</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="信访人 / 联系方式 / 身份证号 / 摘要 / 承办人" style="width:340px">
+        <select class="sc-select" name="status" data-dict="status" style="width:130px">
+            <option value="">全部办理状态</option>
+        </select>
+        <select class="sc-select" name="category" data-dict="category" style="width:150px">
+            <option value="">全部诉求类别</option>
+        </select>
+        <select class="sc-select" name="source" data-dict="source" style="width:130px">
+            <option value="">全部来源</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:90px">信访人</th>
+                    <th class="sc-table__th" style="width:110px">诉求类别</th>
+                    <th class="sc-table__th">诉求摘要</th>
+                    <th class="sc-table__th" style="width:110px">受理日期</th>
+                    <th class="sc-table__th" style="width:96px">办理状态</th>
+                    <th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg gp-form-modal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                
+                <input type="hidden" name="petition_no" id="f_petition_no">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增信访事项</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#x"></use></svg></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_petitioner_name">信访人<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="petitioner_name" id="f_petitioner_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_contact">联系方式</label>
+                        <input type="text" class="sc-input" name="contact" id="f_contact" placeholder="已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_source">信访来源<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="source" id="f_source" data-dict="source">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_category">诉求类别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="category" id="f_category" data-dict="category">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_accept_date">受理日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="accept_date" id="f_accept_date" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_case_officer">承办人</label>
+                        <input type="text" class="sc-input" name="case_officer" id="f_case_officer">
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_address">住址/涉及地点</label>
+                        <input type="text" class="sc-input" name="address" id="f_address">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_summary">诉求摘要<span class="sc-field__required">*</span></label>
+                        <textarea class="sc-textarea" name="summary" id="f_summary" rows="3" required
+                                  placeholder="信访人反映的主要问题与诉求"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_reply">答复情况</label>
+                        <textarea class="sc-textarea" name="reply" id="f_reply" rows="2"
+                                  placeholder="办结前必须填写（推进到「已办结」时后端会校验）"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="f_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">办理状态不在此处修改，请用行内「推进」</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal gp-shell" role="dialog" aria-modal="true">
+            <header class="gp-header">
+                <div class="gp-header__main">
+                    <h2 class="gp-header__name" id="detailName">信访事项详情</h2>
+                    <span class="sc-badge sc-badge--muted gp-header__chip" id="detailStatusChip" hidden></span>
+                    <span class="gp-header__sep"></span>
+                    <span class="gp-header__meta" id="detailMeta"></span>
+                </div>
+                <div class="gp-header__actions">
+                    <button type="button" class="sc-btn sc-btn--secondary" id="detailTransitionBtn" hidden><i class="bi bi-arrow-left-right"></i> 变更办理状态</button>
+                    <button type="button" class="sc-btn sc-btn--secondary" id="detailEditBtn" hidden><i class="bi bi-pencil"></i> 编辑</button>
+                    <button type="button" class="sc-btn sc-btn--primary" id="gpAddHandleBtn"><i class="bi bi-plus-lg"></i> 新增办理记录</button>
+                    <span class="gp-header__vline"></span>
+                    <button type="button" class="gp-header__close" data-bs-dismiss="modal" aria-label="关闭"><svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#x"></use></svg></button>
+                </div>
+            </header>
+
+            <div class="gp-body">
+                <section class="gp-card">
+                    <div class="gp-card__head">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat1"></span>
+                            <span class="gp-card__index gp-card__index--cat1">01</span>
+                            <h3 class="gp-card__title-text">基本与受理信息</h3>
+                        </div>
+                        <span class="gp-card__count">共 8 项核心字段</span>
+                    </div>
+                    <div class="gp-grid4" id="gpBasicGrid"></div>
+                </section>
+
+                <section class="gp-card">
+                    <div class="gp-card__head gp-card__head--noborder">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat2"></span>
+                            <span class="gp-card__index gp-card__index--cat2">02</span>
+                            <h3 class="gp-card__title-text">诉求内容与答复摘要</h3>
+                        </div>
+                    </div>
+                    <div class="gp-summary">
+                        <p class="gp-summary__text" id="gpSummaryText">—</p>
+                        <p class="gp-summary__sub" id="gpReplyText" hidden></p>
+                        <p class="gp-summary__sub" id="gpRemarkText" hidden></p>
+                    </div>
+                </section>
+
+                <section class="gp-card gp-card--last">
+                    <div class="gp-card__head">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat3"></span>
+                            <span class="gp-card__index gp-card__index--cat3">03</span>
+                            <h3 class="gp-card__title-text">办理记录</h3>
+                            <span class="sc-badge sc-badge--muted" id="handleCount">共 0 条</span>
+                        </div>
+                        <button type="button" class="gp-card__more" id="gpAddHandleBtn2">+ 新增记录</button>
+                    </div>
+                    <div class="gp-table-wrap">
+                        <table class="gp-table">
+                            <thead>
+                                <tr>
+                                    <th class="gp-table__date gp-num">办理日期</th>
+                                    <th class="gp-table__handler">处理人</th>
+                                    <th>办理措施</th>
+                                    <th>办理结果</th>
+                                    <th>后续计划</th>
+                                </tr>
+                            </thead>
+                            <tbody id="handleBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="gp-footer">
+                <div class="gp-footer__sync">
+                    <span class="gp-footer__sync-dot"></span>
+                    <span>数据已同步<span id="gpSyncDate"></span></span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+
+            
+            <div class="gp-drawer-backdrop" id="gpDrawerBackdrop" hidden>
+                <div class="gp-drawer" role="dialog" aria-modal="true" aria-label="新增办理记录">
+                    <div class="gp-drawer__scroll">
+                        <div class="gp-drawer__head">
+                            <h3 class="gp-drawer__title"><span class="gp-card__bar gp-card__bar--cat3"></span>新增办理记录</h3>
+                            <button type="button" class="gp-drawer__close" id="gpDrawerClose1">✕</button>
+                        </div>
+                        <form class="gp-drawer__form" id="handleForm">
+                            <input type="hidden" name="petition_id" id="handlePetitionId" value="">
+                            <div class="gp-drawer__tip">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span class="gp-drawer__tip-text" id="gpDrawerTip">提示：新增记录将作为办理过程留痕。</span>
+                            </div>
+                            <div class="gp-drawer__row2">
+                                <div>
+                                    <label class="gp-drawer__field-label" for="h_date">办理日期<span class="sc-field__required">*</span></label>
+                                    <input type="date" class="gp-drawer__input gp-num" name="handle_date" id="h_date" required>
+                                </div>
+                                <div>
+                                    <label class="gp-drawer__field-label" for="h_handler">处理人</label>
+                                    <input type="text" class="gp-drawer__input" name="handler" id="h_handler" placeholder="如：张伟">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="gp-drawer__chips-label">
+                                    <label class="gp-drawer__field-label" for="h_action" style="margin-bottom:0">办理措施<span class="sc-field__required">*</span></label>
+                                    <span class="gp-drawer__chips-hint">点击标签快捷填入</span>
+                                </div>
+                                <textarea class="gp-drawer__input" name="action" id="h_action" rows="3" required
+                                          placeholder="请输入约谈、转办、协调会或政策解释详情..."></textarea>
+                                <div class="gp-drawer__chips">
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【约谈】">约谈</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【转办】">转办</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【协调会】">协调会</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【政策解释】">政策解释</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="h_result">办理结果</label>
+                                <textarea class="gp-drawer__input" name="result" id="h_result" rows="2" placeholder="可选填写阶段性结果"></textarea>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="h_next_plan">后续计划</label>
+                                <textarea class="gp-drawer__input" name="next_plan" id="h_next_plan" rows="2" placeholder="可选填写后续跟进安排"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="gp-drawer__foot">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="gpDrawerClose2">取消</button>
+                        <button type="submit" class="sc-btn sc-btn--primary" form="handleForm"><i class="bi bi-plus-lg"></i> 保存办理记录</button>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="gp-drawer-backdrop" id="gpTransitionBackdrop" hidden>
+                <div class="gp-drawer" role="dialog" aria-modal="true" aria-label="变更办理状态">
+                    <div class="gp-drawer__scroll">
+                        <div class="gp-drawer__head">
+                            <h3 class="gp-drawer__title"><span class="gp-card__bar gp-card__bar--cat2"></span>变更办理状态</h3>
+                            <button type="button" class="gp-drawer__close" id="gpTransitionClose1">✕</button>
+                        </div>
+                        <form class="gp-drawer__form" id="transitionForm">
+                            <input type="hidden" name="id" id="transitionId" value="0">
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionName">信访人</label>
+                                <input type="text" class="gp-drawer__input" id="transitionName" readonly>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionCurrent">当前状态</label>
+                                <input type="text" class="gp-drawer__input" id="transitionCurrent" readonly>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionTo">推进至<span class="sc-field__required">*</span></label>
+                                <select class="gp-drawer__input" name="to_status" id="transitionTo" required>
+                                    <option value="">请选择</option>
+                                </select>
+                            </div>
+                            
+                            <div class="d-none" id="transitionCloseWrap">
+                                <label class="gp-drawer__field-label" for="t_close_date">办结日期<span class="sc-field__required">*</span></label>
+                                <input type="date" class="gp-drawer__input gp-num" name="close_date" id="t_close_date">
+                                <label class="gp-drawer__field-label" for="t_reply" style="margin-top:12px">答复情况<span class="sc-field__required">*</span></label>
+                                <textarea class="gp-drawer__input" name="reply" id="t_reply" rows="2"
+                                          placeholder="向信访人正式答复的内容"></textarea>
+                            </div>
+                            <div class="gp-drawer__tip">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span class="gp-drawer__tip-text">流转合法性由后端校验：不合法返回 409 并给出原因，本面板保留可改选；选「已办结」需填写办结日期与答复情况，提交即与状态一次落库。</span>
+                            </div>
+                            <p class="gp-drawer__tip-text text-danger" id="transitionError" hidden></p>
+                        </form>
+                    </div>
+                    <div class="gp-drawer__foot">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="gpTransitionClose2">取消</button>
+                        <button type="submit" class="sc-btn sc-btn--primary" form="transitionForm">确认变更</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+            </div>
+        </main>
+    </div>
+    
+
+    <script src="/static/lib/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/crud.js"></script>
+    
+<script src="/static/js/pages/governance_petition.js"></script>
+
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="/static/js/spa.js"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="/static/js/shell.js"></script>
+    <script src="/static/lib/driver.js.iife.js"></script>
+    <script src="/static/js/tour_registry.js"></script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">admin</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">超级管理员</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>admin</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>-</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>超级管理员</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>__DATETIME__</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="/auth/logout" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>
+</body>
+</html>

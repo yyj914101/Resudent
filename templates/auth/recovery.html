@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恢复引导 · 村级村务综合管理系统</title>
+    <link href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/tokens.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/auth_common.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/auth_recovery.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="auth-shell">
+        <div class="auth-topbar"></div>
+        <main class="auth-main">
+            <section class="auth-panel auth-panel--recovery">
+                <div class="auth-card">
+                    <span class="auth-eyebrow">
+                        <span class="auth-eyebrow__dot auth-eyebrow__dot--warn"></span>
+                        R12-E7 · 加密备份恢复路径
+                    </span>
+                    <h1 class="auth-title">系统恢复引导</h1>
+                    <p class="auth-subtitle">用于口令遗忘或密钥数据损坏后的本机灾难恢复，将同时还原数据库与附件。</p>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                        <div class="auth-alert auth-alert--{{ 'danger' if category in ('danger', 'error') else 'success' }}" role="alert">
+                            <span>{{ message }}</span>
+                            <button type="button" class="auth-alert__close" aria-label="关闭" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <div class="auth-alert auth-alert--warning">
+                        <div>
+                            口令遗忘后数据无法直接解密（系统不提供自助重置）。请选择最近一份 <b>.wbak 加密备份包</b> 进行恢复，当前扫描目录：
+                            <code class="auth-path-box">{{ backup_dir }}</code>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="auth-step-title">
+                            <span class="auth-step-num">1</span>
+                            <span>选择加密备份包</span>
+                        </div>
+                        <div class="auth-backup-list">
+                            {% if backups %}
+                                {% for b in backups %}
+                                <label class="auth-backup-item{% if loop.first %} is-selected{% endif %}">
+                                    <input type="radio" name="wbak_path" value="{{ b.path }}" {% if loop.first %}checked{% endif %}>
+                                    <i class="bi bi-file-earmark-lock2" aria-hidden="true"></i>
+                                    <span class="auth-backup-item__name" title="{{ b.path }}">{{ b.path }}</span>
+                                    <span class="auth-backup-chip">{{ b.mtime }}</span>
+                                </label>
+                                {% endfor %}
+                            {% else %}
+                                <div class="auth-empty-backup">
+                                    备份目录中暂无 <b>.wbak</b> 加密备份包，当前无法自动恢复，请联系镇级管理员协助处理。
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="auth-step-title">
+                            <span class="auth-step-num">2</span>
+                            <span>验证启动口令并解密</span>
+                        </div>
+                        <div class="auth-field auth-field--last">
+                            <label class="auth-label" for="recoveryPwd">备份对应的启动口令</label>
+                            <div class="auth-input-wrap">
+                                <i class="bi bi-key auth-input-wrap__icon" aria-hidden="true"></i>
+                                <input type="password" id="recoveryPwd" class="auth-input auth-input--with-icon auth-input--with-toggle" name="password" placeholder="输入启动口令以解密所选备份" required>
+                                <button type="button" class="auth-eye" id="toggleRecoveryPwd" aria-label="显示或隐藏口令"><i class="bi bi-eye"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="auth-actions-stack">
+                            <button type="submit" class="auth-btn" {% if not backups %}disabled{% endif %}>
+                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                                <span>从所选备份恢复</span>
+                            </button>
+                            <a href="{{ url_for('auth.unlock') }}" class="auth-btn auth-btn--secondary">
+                                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                                <span>返回解锁页</span>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </main>
+        <footer class="auth-footer">村级村务综合管理平台 · 加密备份灾难恢复通道</footer>
+    </div>
+    <script>
+    (function () {
+        var pwd = document.getElementById('recoveryPwd');
+        var btn = document.getElementById('toggleRecoveryPwd');
+        if (pwd && btn) {
+            btn.addEventListener('click', function () {
+                var show = pwd.type === 'password';
+                pwd.type = show ? 'text' : 'password';
+                btn.innerHTML = show ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+            });
+        }
+        var items = document.querySelectorAll('.auth-backup-item');
+        items.forEach(function (item) {
+            var radio = item.querySelector('input[type="radio"]');
+            if (!radio) return;
+            radio.addEventListener('change', function () {
+                items.forEach(function (el) { el.classList.remove('is-selected'); });
+                if (radio.checked) item.classList.add('is-selected');
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

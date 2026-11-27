@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}走访记录连续补录{% endblock %}
+{# 077 存量回灌：标题由页头（sc-page-head）承担，顶栏标题留空（同 062 口径） #}
+{% block page_title %}{% endblock %}
+{% block content %}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">走访记录连续补录（T18-2）</h2>
+    </div>
+</header>
+
+{# 077 存量回灌：按 spec-02 通用页型换壳（无样图，走共享组件层回灌通道，仅换壳不逐字段重构；
+   全部 id 契约零改动，页面 JS 零适配；6/6 分栏走 .sc-grid--6-6（handoff 补丁 §二 映射）） #}
+<section class="sc-card" style="margin-bottom:var(--sp-4)">
+    <header class="sc-card__header d-flex justify-content-between align-items-center">
+        <h3 class="sc-card__title">选择走访计划</h3>
+        <span id="progressBadge" class="sc-badge sc-badge--muted">未选择计划</span>
+    </header>
+    <div class="sc-card__body d-flex align-items-center flex-wrap gap-3">
+        <select class="sc-select" id="planSelect" style="width:280px">
+            <option value="">请选择计划</option>
+        </select>
+        <div style="flex:1 1 260px; min-width:0">
+            <div class="progress" style="height:22px">
+                <div class="progress-bar" id="progressBar" role="progressbar" style="width:0%">0%</div>
+            </div>
+            <p class="sc-field__hint" id="progressText" style="margin-top:4px">已访 0 / 应访 0</p>
+        </div>
+    </div>
+</section>
+
+<div class="sc-grid sc-grid--6-6">
+    <!-- 待访清单 -->
+    <section class="sc-card h-100">
+        <header class="sc-card__header d-flex justify-content-between align-items-center">
+            <h3 class="sc-card__title">待访清单（应访对象）</h3>
+            <input type="text" class="sc-input" id="keyword" placeholder="搜索姓名/区域" style="width:180px">
+        </header>
+        <div class="sc-table-wrap">
+            <table class="sc-table sc-table--dense" id="candidateTable">
+                <thead>
+                    <tr>
+                        <th class="sc-table__th">姓名</th><th class="sc-table__th">性别</th><th class="sc-table__th">年龄</th><th class="sc-table__th">区域</th><th class="sc-table__th">标签</th><th class="sc-table__th">状态</th><th class="sc-table__th" style="width:70px"></th>
+                    </tr>
+                </thead>
+                <tbody id="candidateBody"></tbody>
+            </table>
+        </div>
+    </section>
+    <!-- 本次补录队列 -->
+    <section class="sc-card h-100">
+        <header class="sc-card__header d-flex justify-content-between align-items-center">
+            <h3 class="sc-card__title">本次补录（{{ visit_types|join(' / ') }}）</h3>
+            <button class="sc-btn sc-btn--primary" onclick="submitBatch()">
+                <i class="bi bi-save"></i> 保存全部
+            </button>
+        </header>
+        <div class="sc-card__body">
+            <div id="entryRows"></div>
+            <div id="batchErrors"></div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__PAGE_CFG__ = { visitTypes: {{ visit_types | tojson }} };
+</script>
+<script src="{{ url_for('static', filename='js/pages/visit_record_entry.js') }}"></script>
+{% endblock %}

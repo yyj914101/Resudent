@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% from 'components/_macros/settings_shell.html' import settings_head_actions %}
+{% block title %}数据联动与补贴口径 - 设置中心{% endblock %}
+{% block page_title %}数据联动与补贴口径{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/settings_linkage.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="sc-settings-page" data-sc-settings="form">
+{% call settings_head_actions('数据联动与补贴口径', '零代码配置居民详情政策性补贴汇总口径与主档跨模块联动字段') %}
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnResetLinkage">恢复出厂默认</button>
+    <button type="button" class="sc-btn sc-btn--primary" id="btnSaveLinkage">保存当前配置</button>
+{% endcall %}
+
+<div class="sl-tabs" role="tablist" aria-label="配置分区">
+    <button type="button" class="sl-tab is-active" id="tabPolicy" role="tab" aria-selected="true">
+        <i class="bi bi-wallet2" aria-hidden="true"></i> 政策性补贴口径
+    </button>
+    <button type="button" class="sl-tab" id="tabSync" role="tab" aria-selected="false">
+        <i class="bi bi-arrow-left-right" aria-hidden="true"></i> 居民主档联动字段
+    </button>
+</div>
+
+{# 分区一：政策性补贴聚合口径 #}
+<div id="panePolicy">
+    <section class="sc-card">
+        <div class="sl-toolbar-row">
+            <div>
+                <h3 class="sc-card__title" style="margin:0">固定台账政策性补贴映射</h3>
+                <p class="sl-toolbar-row__hint">开启的项目会按身份证实时汇总到「居民详情 → 在享政策性补贴」，后期更换生产字段时可直接下拉切换金额列。</p>
+            </div>
+            <span class="sc-badge" id="policyStatusBadge">出厂默认</span>
+        </div>
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th" style="width:68px">启用</th>
+                        <th class="sc-table__th" style="width:130px">来源模块</th>
+                        <th class="sc-table__th" style="width:200px">详情页展示名称</th>
+                        <th class="sc-table__th" style="width:180px">金额字段列</th>
+                        <th class="sc-table__th" style="width:160px">周期字段列</th>
+                        <th class="sc-table__th" style="width:120px">计价单位</th>
+                    </tr>
+                </thead>
+                <tbody id="policyBody">
+                    <tr><td colspan="6" class="text-center text-muted py-4">加载中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="sc-card sl-soft-card">
+        <div class="sl-toolbar-row">
+            <div>
+                <h3 class="sc-card__title" style="margin:0">扩展：接入软表补贴台账</h3>
+                <p class="sl-toolbar-row__hint">若在「台账建表」上传了新的小体量补贴名册，可在此指定身份证列与金额列，零代码纳入居民详情总览。</p>
+            </div>
+        </div>
+        <div class="sl-soft-form" id="softAddForm">
+            <div class="sc-field">
+                <label class="sc-field__label" for="sfPickTable">选择软表</label>
+                <select class="sc-select" id="sfPickTable"><option value="">请选择已建软表</option></select>
+            </div>
+            <div class="sc-field">
+                <label class="sc-field__label" for="sfPickIdentity">身份证列（加密）</label>
+                <select class="sc-select" id="sfPickIdentity"><option value="">先选软表</option></select>
+            </div>
+            <div class="sc-field">
+                <label class="sc-field__label" for="sfPickAmount">金额列</label>
+                <select class="sc-select" id="sfPickAmount"><option value="">先选软表</option></select>
+            </div>
+            <div class="sc-field">
+                <label class="sc-field__label" for="sfPickName">展示名称</label>
+                <input type="text" class="sc-input" id="sfPickName" placeholder="例如：高龄补贴">
+            </div>
+            <div class="sc-field">
+                <label class="sc-field__label" for="sfPickUnit">单位</label>
+                <select class="sc-select" id="sfPickUnit">
+                    <option value="元/月">元/月</option>
+                    <option value="元/户">元/户</option>
+                    <option value="元/季">元/季</option>
+                    <option value="元/年">元/年</option>
+                    <option value="元/次">元/次</option>
+                </select>
+            </div>
+            <button type="button" class="sc-btn sc-btn--secondary" id="btnAddSoftSubsidy">添加</button>
+        </div>
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th">软表名称（标识）</th>
+                        <th class="sc-table__th">详情页展示名</th>
+                        <th class="sc-table__th">身份证列</th>
+                        <th class="sc-table__th">金额列</th>
+                        <th class="sc-table__th">单位</th>
+                        <th class="sc-table__th" style="width:90px">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="softSubsidyBody"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+{# 分区二：居民主档跨模块联动字段 #}
+<div id="paneSync" hidden>
+    <section class="sc-card">
+        <div class="sl-toolbar-row">
+            <div>
+                <h3 class="sc-card__title" style="margin:0">主档修改跨模块联动开关</h3>
+                <p class="sl-toolbar-row__hint">修改居民基本信息（单条编辑或批量导入更新）时，自动按勾选字段回写至下方已启用的业务台账；低保详情同时实时读取主档联系电话。</p>
+            </div>
+            <span class="sc-badge" id="syncStatusBadge">出厂默认</span>
+        </div>
+        <div class="sc-table-wrap">
+            <table class="sc-table">
+                <thead class="sc-table__head">
+                    <tr>
+                        <th class="sc-table__th" style="width:68px">启用</th>
+                        <th class="sc-table__th" style="width:150px">业务模块</th>
+                        <th class="sc-table__th" style="width:130px">定位方式</th>
+                        <th class="sc-table__th">参与联动的居民主档字段</th>
+                    </tr>
+                </thead>
+                <tbody id="syncBody">
+                    <tr><td colspan="4" class="text-center text-muted py-4">加载中…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/settings_linkage.js') }}"></script>
+{% endblock %}

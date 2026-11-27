@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs, toolbar_actions %}
+{% block title %}公益岗查询{% endblock %}
+{% block page_title %}公益岗查询{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{# 075 RC-06：副标题统一为样图口径（村名走 village_name 设置项，未配置回退不带村名） #}
+{% set civil_subtitle = (village_name ~ ' · ' if village_name else '') ~ '10 类民政对象 · 在册 ' ~ (civil_headcount or 0) ~ ' 人' %}
+{% call page_head('公益岗查询', civil_subtitle) %}
+    <button type="button" class="sc-btn sc-btn--primary" onclick="openAddModal()"><i class="bi bi-plus-lg"></i> 新增</button>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="openImportModal()"><i class="bi bi-upload"></i> 批量导入</button>
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnExport" data-export-url="{{ url_for('welfare.api_export') }}"><i class="bi bi-download"></i> 导出</button>
+{% endcall %}
+{{ civil_tabs('welfare') }}
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="name" placeholder="姓名" style="width:130px">
+        <input type="text" class="sc-input" name="id_card" placeholder="身份证号" style="width:170px">
+        <select class="sc-select" name="village_group" id="searchVillageGroup" style="width:130px">
+            <option value="">全部所在组</option>
+        </select>
+        <select class="sc-select" name="job_type" id="searchJobType" style="width:150px">
+            <option value="">全部岗位类型</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        {{ toolbar_actions() }}
+    </form>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:50px">序号</th>
+                    <th class="sc-table__th">姓名</th>
+                    <th class="sc-table__th">所在组</th>
+                    <th class="sc-table__th">身份证号</th>
+                    <th class="sc-table__th">电话</th>
+                    <th class="sc-table__th">岗位类型</th>
+                    <th class="sc-table__th">上岗日期</th>
+                    <th class="sc-table__th">离岗日期</th>
+                    <th class="sc-table__th">月补贴(元)</th>
+                    <th class="sc-table__th">银行信息</th>
+                    <th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- Add/Edit Modal（name/id 契约零改动；2026-11 分组表单式改版） -->
+{% from 'components/_macros/icon.html' import icon %}
+<div class="modal fade" id="formModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal sc-fmodal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="editId" value="0">
+                <header class="sc-modal__header sc-dheader">
+                    <div class="sc-dheader__main">
+                        <div class="sc-dheader__name-row">
+                            <span class="sc-dheader__name" id="formModalTitle">新增公益岗</span>
+                        </div>
+                        <div class="sc-fmodal__meta" id="formModalMeta">新增公益岗记录</div>
+                    </div>
+                    <button type="button" class="sc-dheader__close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 22) }}</button>
+                </header>
+                <div class="sc-modal__body sc-fmodal__body">
+                    <div class="sc-fgroups">
+                        <div class="sc-fgroups__col">
+                            <section class="sc-fgroup">
+                                <h4 class="sc-fgroup__title">基本信息</h4>
+                                <div class="sc-fgroup__fields">
+                                    <div class="sc-field"><label class="sc-field__label">姓名<span class="sc-field__required">*</span></label>
+                                        <input type="text" class="sc-input" name="name" required></div>
+                                    <div class="sc-field"><label class="sc-field__label">所在组</label>
+                                        <select class="sc-select" name="village_group" id="formVillageGroup">
+                                            <option value="">请选择</option>
+                                        </select></div>
+                                    <div class="sc-field"><label class="sc-field__label">身份证号</label>
+                                        <input type="text" class="sc-input" name="id_card"></div>
+                                    <div class="sc-field"><label class="sc-field__label">电话</label>
+                                        <input type="text" class="sc-input" name="phone"></div>
+                                </div>
+                            </section>
+                            <section class="sc-fgroup">
+                                <h4 class="sc-fgroup__title">发放账户</h4>
+                                <div class="sc-fgroup__fields">
+                                    <div class="sc-field sc-fgroup__field--full"><label class="sc-field__label">银行信息</label>
+                                        <input type="text" class="sc-input" name="bank_info"></div>
+                                </div>
+                            </section>
+                        </div>
+                        <div class="sc-fgroups__col">
+                            <section class="sc-fgroup">
+                                <h4 class="sc-fgroup__title">岗位信息</h4>
+                                <div class="sc-fgroup__fields">
+                                    <div class="sc-field"><label class="sc-field__label">岗位类型</label>
+                                        <select class="sc-select" name="job_type" id="formJobType">
+                                            <option value="">请选择</option>
+                                        </select></div>
+                                    <div class="sc-field"><label class="sc-field__label">月补贴金额(元)</label>
+                                        <input type="number" step="0.01" class="sc-input" name="monthly_amount"></div>
+                                    <div class="sc-field"><label class="sc-field__label">上岗日期</label>
+                                        <input type="date" class="sc-input" name="start_date"></div>
+                                    <div class="sc-field"><label class="sc-field__label">离岗日期</label>
+                                        <input type="date" class="sc-input" name="end_date"></div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- 批量导入弹窗 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="detailModalTitle">公益岗详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="detailBody"></div>
+            <footer class="sc-modal__footer" id="detailBtns"></footer>
+        </div>
+    </div>
+</div>
+<!-- 批量导入弹窗（原） -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="importModalTitle">批量导入公益岗</h3>
+                    <p class="pw-modal__sub">支持标准公益岗名单 Excel 模板上传，按身份证自动关联居民信息</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">公益岗名单导入模板</span>
+                    </div>
+                    <a href="{{ url_for('welfare.api_template') }}" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+                </div>
+
+                <div>
+                    <p class="pw-mode-label" id="welfareModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="welfareModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">仅新增</span>
+                                    <span class="pw-radio-card__desc">重复身份证号自动跳过，仅录入新档案</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="importMode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖更新</span>
+                                    <span class="pw-radio-card__desc">重复身份证号用表格最新信息覆盖原有档案</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="welfareImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="importFile" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none">
+                    <div class="pw-drop" id="welfareImpDrop" role="button" tabindex="0" aria-labelledby="welfareImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+                    </div>
+                    <div class="pw-staged d-none" id="welfareImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="welfareImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="welfareImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="welfareImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="welfareImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="importProgress" class="d-none">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    <span class="text-muted small">正在导入...</span>
+                </div>
+                <div id="importResult" class="d-none"></div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnImportSubmit" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/welfare_job_list.js') }}"></script>
+{% endblock %}

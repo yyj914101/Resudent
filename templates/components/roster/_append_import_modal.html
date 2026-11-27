@@ -1,0 +1,105 @@
+{# 已有软表二次批量导入弹窗（ADR-022 紧凑单屏弹窗 + 标准 File Drop Zone）
+   供 roster_page.html 与 dynatable/list.html 共用，由 static/js/pages/roster_append_import.js 驱动。 #}
+<style>
+.st-append-drop {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; min-height: 148px; padding: 20px; border: 1.5px dashed var(--c-line-3);
+    border-radius: var(--r-md, 8px); background: var(--c-bg); color: var(--c-ink-2);
+    text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.st-append-drop:hover, .st-append-drop.is-dragover {
+    border-color: var(--c-ink); background: var(--c-surface);
+}
+.st-append-drop__input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.st-append-drop__title { font-weight: 600; font-size: 14px; color: var(--c-ink); }
+.st-append-drop__hint { font-size: 12px; color: var(--c-muted); }
+.st-append-summary {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 12px; margin-bottom: 10px; border: 1px solid var(--c-line-2);
+    border-radius: var(--r-sm, 6px); background: var(--c-bg); font-size: 12px; color: var(--c-ink-2);
+}
+.st-append-map-wrap { max-height: 230px; overflow-y: auto; border: 1px solid var(--c-line-2); border-radius: var(--r-sm, 6px); }
+.st-append-progress {
+    height: 8px; border-radius: 999px; background: var(--c-line-2); overflow: hidden; margin: 12px 0;
+}
+.st-append-progress__bar {
+    height: 100%; width: 0%; background: var(--c-ink); transition: width .2s ease;
+}
+.st-append-alert {
+    padding: 8px 12px; margin-top: 8px; border-radius: var(--r-sm, 6px);
+    border: 1px solid var(--c-line-3); background: var(--c-bg); font-size: 12px; color: var(--c-ink-2);
+}
+</style>
+
+<div class="modal fade" id="appendImportModal" tabindex="-1" aria-labelledby="appendImportTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="appendImportTitle">批量导入数据</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                {# 步骤 1：选择文件 #}
+                <div id="appendStepUpload">
+                    <div class="st-append-drop" id="appendDropZone">
+                        <i class="bi bi-file-earmark-spreadsheet" style="font-size:28px" aria-hidden="true"></i>
+                        <span class="st-append-drop__title">点击或拖拽 Excel / CSV 文件到此处</span>
+                        <span class="st-append-drop__hint">支持 .xlsx / .csv，≤20MB；将按表头自动匹配当前台账字段并追加写入</span>
+                        <input type="file" class="st-append-drop__input" id="appendFileInput" accept=".xlsx,.xls,.xlsb,.csv,.xlsm">
+                    </div>
+                    <p class="sc-field__hint" id="appendUploadStatus" style="margin-top:8px"></p>
+                </div>
+
+                {# 步骤 2：列映射确认 #}
+                <div id="appendStepMap" hidden>
+                    <div class="st-append-summary">
+                        <span id="appendFileSummary"></span>
+                        <button type="button" class="sc-btn sc-btn--text" id="appendReselectBtn">重新选文件</button>
+                    </div>
+                    <div class="st-append-map-wrap">
+                        <table class="sc-table">
+                            <thead class="sc-table__head">
+                                <tr>
+                                    <th class="sc-table__th" style="width:45%">台账字段</th>
+                                    <th class="sc-table__th">对应 Excel 列</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appendMapBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="st-append-alert" id="appendAsyncNotice" hidden>
+                        数据量超过 2000 行，提交后将在后台分批导入，不阻塞当前页面。
+                    </div>
+                    <div class="st-append-alert" id="appendMissingNotice" hidden></div>
+                    <label style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;cursor:pointer">
+                        <input type="checkbox" class="form-check-input" id="appendSkipErrors" checked>
+                        <span>跳过格式错误行并继续导入其余合规数据</span>
+                    </label>
+                </div>
+
+                {# 步骤 3：进度与结果回执 #}
+                <div id="appendStepProgress" hidden>
+                    <p id="appendProgressText" style="margin:0;font-weight:600">正在提交导入任务…</p>
+                    <div class="st-append-progress">
+                        <div class="st-append-progress__bar" id="appendProgressBar"></div>
+                    </div>
+                    <p class="sc-field__hint" id="appendProgressDetail"></p>
+                    <div id="appendErrorActions" hidden style="margin-top:10px">
+                        <a class="sc-btn sc-btn--secondary" id="appendDownloadFailed" href="#">
+                            <i class="bi bi-download"></i> 下载失败行清单
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal" id="appendCancelBtn">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="appendExecuteBtn" hidden>确认导入</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="appendDoneBtn" hidden data-bs-dismiss="modal">完成</button>
+            </footer>
+        </div>
+    </div>
+</div>

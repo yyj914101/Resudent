@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}店铺信息{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/pages/shop_list.css') }}" rel="stylesheet">
+{% endblock %}
+
+{# 062 P2 v4.0：标题由页头（sc-page-head）承担，顶栏标题留空（同 055/组织架构口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('resident', 'shop') }}
+
+<header class="sc-page-head shop-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">店铺信息</h2>
+        <p class="sc-page-head__meta">登记本辖区街道店铺及其商户信息，支持手动录入与 Excel 批量导入。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        {% if fee_ctx %}
+        <button type="button" class="sc-btn sc-btn--secondary" id="feeBatchButton"><i class="bi bi-calendar-check"></i> 按年度批量登记</button>
+        {% endif %}
+        <a class="sc-btn sc-btn--secondary" id="feeUploadLink" href="/shop/roster/shop_annual_fee/upload"><i class="bi bi-box-arrow-in-up"></i> Excel 上传</a>
+        <a class="sc-btn sc-btn--secondary" id="feePivotLink" href="/shop/annual-fee/"><i class="bi bi-table"></i> 缴费透视</a>
+        <button type="button" class="sc-btn sc-btn--secondary" id="importButton"><i class="bi bi-upload"></i> 批量导入</button>
+        <a class="sc-btn sc-btn--secondary" id="templateLink" href="/shop/api/template"><i class="bi bi-download"></i> 下载模板</a>
+        <a class="sc-btn sc-btn--secondary" id="exportLink"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</a>
+        <button type="button" class="sc-btn sc-btn--primary" id="addButton"><i class="bi bi-plus-circle"></i> 新增店铺</button>
+    </div>
+</header>
+
+{# 字段真源：docs/design/照单施工-6页字段清单-2026-10-28.md §二（8 列 + 搜索 2 项 + 2 弹窗） #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="店铺名称 / 街道 / 商户姓名 / 电话" style="width:260px">
+        <input type="text" class="sc-input" name="id_card" placeholder="身份证号精确查询" style="width:200px">
+        {% if fee_ctx %}
+        <select class="sc-select" name="fee_status" id="feeStatusFilter" style="width:150px" aria-label="年度缴费状态筛选">
+            <option value="">年度缴费：全部</option>
+            <option value="paid">已缴</option>
+            <option value="unpaid">未缴</option>
+        </select>
+        {% endif %}
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">店铺名称</th>
+                    <th class="sc-table__th">街道名</th>
+                    <th class="sc-table__th" style="width:100px">门牌号</th>
+                    <th class="sc-table__th">商户姓名</th>
+                    <th class="sc-table__th" style="width:170px">身份证号</th>
+                    <th class="sc-table__th" style="width:130px">电话</th>
+                    {% if fee_ctx %}<th class="sc-table__th" style="width:130px">{{ fee_ctx.item_display }}（{{ fee_ctx.year }}）</th>{% endif %}
+                    <th class="sc-table__th" style="width:130px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 新增/编辑弹窗（组件-handoff §2.8）；BS 5 JS 共存：外层 .modal.fade，data-bs-dismiss 可用。
+   字段 id/name 与冻结约定一致（saveForm/recordId/formTitle + f_* name），页面 JS 零改动。 #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增店铺</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_name">店铺名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="f_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_street">街道名</label>
+                        <input type="text" class="sc-input" name="street" id="f_street">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_house_number">门牌号</label>
+                        <input type="text" class="sc-input" name="house_number" id="f_house_number">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_owner_name">商户姓名</label>
+                        <input type="text" class="sc-input" name="owner_name" id="f_owner_name">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_id_card">身份证号</label>
+                        <input type="text" class="sc-input" name="id_card" id="f_id_card">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_phone">电话</label>
+                        <input type="text" class="sc-input" name="phone" id="f_phone">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 批量导入弹窗（§二：文件 .xlsx / 导入方式 append|overwrite；❌ 前端 accept 不再照抄 .xls 矛盾） #}
+{# 2026-11-19：换壳对齐 ADR-022 v4.0 导入弹窗组件（import_modal_v2.css + wireImportDropzone）。
+   #importForm FormData 提交链路不变（name="file"/name="mode" 序列化契约保留）；
+   f_mode 下拉改双单选卡；f_file 隐藏化进投放区（required 移除——提交按钮由暂存态门控）。 #}
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="importModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="importModalTitle">批量导入店铺信息</h3>
+                    <p class="pw-modal__sub">支持店铺信息 Excel 模板上传，重复记录可跳过或覆盖</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <form id="importForm" enctype="multipart/form-data">
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">店铺信息导入模板</span>
+                    </div>
+                    <a href="/shop/api/template" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 下载导入模板 (.xlsx)</a>
+                </div>
+
+                <div>
+                    <p class="pw-mode-label" id="shopModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="shopModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="mode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">追加</span>
+                                    <span class="pw-radio-card__desc">重复记录自动跳过，仅录入新店铺</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="mode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖</span>
+                                    <span class="pw-radio-card__desc">重复记录用表格最新信息更新</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="shopImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="f_file" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none" name="file">
+                    <div class="pw-drop" id="shopImpDrop" role="button" tabindex="0" aria-labelledby="shopImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+                    </div>
+                    <div class="pw-staged d-none" id="shopImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="shopImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="shopImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="shopImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="shopImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="submit" class="sc-btn sc-btn--primary" id="shopImportSubmit" disabled>开始导入</button>
+            </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{# 101 年度缴费融合：详情（历年记录+登记）与按年度批量登记两弹窗；fee_ctx 仅就绪态注入 #}
+{% if fee_ctx %}
+<div class="modal fade" id="feeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="feeModalTitle">年度缴费</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="sc-table-wrap" style="max-height:260px;overflow:auto;margin-bottom:var(--sp-3)">
+                    <table class="sc-table sc-table--dense" id="feeHistoryTable">
+                        <thead class="sc-table__head"><tr id="feeHistoryHead"></tr></thead>
+                        <tbody id="feeHistoryBody"></tbody>
+                    </table>
+                </div>
+                <form id="feeRegisterForm" class="sc-toolbar" style="flex-wrap:wrap">
+                    <input type="hidden" name="shop_name" id="feeShopName">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="feeYear">缴费年度<span class="sc-field__required">*</span></label>
+                        <input type="number" class="sc-input" name="year" id="feeYear" min="2000" max="2100" style="width:110px" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="feeAmount">实缴金额（元）<span class="sc-field__required">*</span></label>
+                        <input type="number" class="sc-input" name="amount" id="feeAmount" min="0" step="0.01" style="width:140px" required>
+                    </div>
+                    <button type="submit" class="sc-btn sc-btn--primary" style="align-self:flex-end">登记缴费</button>
+                </form>
+                <p class="sc-field__hint" style="margin:6px 0 0">收费项目固定为{{ fee_ctx.item_display }}；同店铺同年度重复登记将被拦截。</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="feeBatchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="feeBatchForm">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">按年度批量登记（{{ fee_ctx.item_display }}）</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="feeBatchYear">缴费年度<span class="sc-field__required">*</span></label>
+                        <input type="number" class="sc-input" name="year" id="feeBatchYear" min="2000" max="2100" value="{{ fee_ctx.year }}" style="width:110px;flex:0 0 auto" required>
+                    </div>
+                    <p class="sc-field__hint" style="margin-bottom:8px">填写金额的店铺将被登记，留空跳过；已缴店铺重复提交将被唯一规则拦截并计入跳过。</p>
+                    <div class="sc-table-wrap" style="max-height:320px;overflow:auto">
+                        <table class="sc-table sc-table--dense">
+                            <thead class="sc-table__head"><tr>
+                                <th class="sc-table__th" style="width:48px">序号</th>
+                                <th class="sc-table__th">店铺名称</th>
+                                <th class="sc-table__th" style="width:110px">当年状态</th>
+                                <th class="sc-table__th" style="width:160px">实缴金额（元）</th>
+                            </tr></thead>
+                            <tbody id="feeBatchBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">开始批量登记</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- 店铺详情弹窗（2026-11-17 Master–Detail 全站统一） -->
+<div class="modal fade" id="shopDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="shopDetailTitle">店铺详情</h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="shopDetailBody"></div>
+            <footer class="sc-modal__footer" id="shopDetailBtns"></footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if fee_ctx %}<script type="application/json" id="feeCtx">{{ {'year': fee_ctx.year, 'item_display': fee_ctx.item_display} | tojson }}</script>{% endif %}
+<script src="{{ url_for('static', filename='js/pages/shop_list.js') }}"></script>
+{% endblock %}

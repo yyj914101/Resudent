@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+{% block title %}证明开具{% endblock %}
+{% block page_title %}证明开具{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/workflow_shared.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<style>
+/* 061 S6 换壳：裸色值全部令牌化；.card/.btn/.modal/.form/.pagination 通用件由
+   workflow_shared.css 作用域接管；旧 cert-page-header/cert-mode-tabs 已被
+   sc-page-head + sc-chips 取代（规则随标记删除）。唯一保留裸值：
+   .cert-paper 的 color:#000 / background 白（--c-surface 即 #FFFFFF，打印纯黑纯白）
+   与纸阴影 rgba(32,48,64,.12)（无阴影令牌，A4 纸拟物必要件）。 */
+.cert-page { color: var(--c-ink-3); }
+.cert-command-bar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+}
+.cert-command-main { display: flex; align-items: end; gap: 10px; flex-wrap: wrap; }
+.cert-command-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cert-field-label { display: block; margin-bottom: 4px; color: var(--c-muted); font-size: 12px; font-weight: 600; }
+.cert-issue-grid {
+    display: grid;
+    grid-template-columns: minmax(300px, 350px) minmax(0, 1fr);
+    min-height: 650px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.cert-side-panel {
+    padding: 12px;
+    border-right: 1px solid var(--c-line-3);
+    background: var(--c-active);
+    overflow: auto;
+}
+.cert-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--c-line-3);
+}
+.cert-panel-heading strong { font-size: 14px; }
+.cert-form-section { margin-bottom: 14px; }
+.cert-form-section-title {
+    margin-bottom: 8px;
+    color: var(--c-ink-2);
+    font-size: 12px;
+    font-weight: 700;
+}
+.cert-dynamic-field { margin-bottom: 8px; }
+.cert-required { color: var(--c-danger); }
+.cert-resident-hint {
+    display: none;
+    margin: 5px 0 8px;
+    padding: 6px 8px;
+    color: var(--c-success);
+    background: var(--c-active);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+    font-size: 12px;
+}
+.cert-preview-panel { display: flex; min-width: 0; flex-direction: column; background: var(--c-rail); }
+.cert-preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 48px;
+    padding: 8px 12px;
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-line-3);
+}
+.cert-preview-meta { color: var(--c-muted); font-size: 12px; }
+.cert-paper-scroll { flex: 1; padding: 18px; overflow: auto; }
+.cert-paper {
+    position: relative;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 37mm 26mm 35mm 28mm;
+    color: #000;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-2);
+    box-shadow: 0 3px 12px rgba(32, 48, 64, 0.12);
+    box-sizing: border-box;
+    font-family: "仿宋_GB2312", FangSong, STFangsong, SimSun, serif;
+    font-size: 16pt;
+    line-height: 1.75;
+    overflow-wrap: anywhere;
+}
+.cert-paper:focus { outline: 2px solid var(--c-ink-2); outline-offset: 2px; }
+.cert-empty-state { padding: 80px 16px; color: var(--c-muted); text-align: center; font-size: 14px; }
+.cert-template-grid {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    min-height: 720px;
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+    overflow: hidden;
+}
+.cert-template-sidebar { padding: 10px; border-right: 1px solid var(--c-line-3); background: var(--c-rail); }
+.cert-template-sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+.cert-template-list { max-height: 640px; margin-top: 8px; overflow: auto; }
+.cert-template-item {
+    display: block;
+    width: 100%;
+    margin-bottom: 6px;
+    padding: 9px 10px;
+    color: var(--c-ink-3);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+    text-align: left;
+}
+.cert-template-item:hover { border-color: var(--c-ink-4); background: var(--c-hover); }
+.cert-template-item.active { border-color: var(--c-ink-2); box-shadow: inset 3px 0 0 var(--c-ink-2); }
+.cert-template-item-name { display: block; font-size: 13px; font-weight: 700; }
+.cert-template-item-meta { display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; color: var(--c-muted); font-size: 11px; }
+.cert-template-editor { display: flex; min-width: 0; flex-direction: column; }
+.cert-editor-meta {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.7fr) auto;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--c-line-3);
+}
+.cert-editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-height: 42px;
+    padding: 6px 10px;
+    background: var(--c-rail);
+    border-bottom: 1px solid var(--c-line-3);
+    flex-wrap: wrap;
+}
+.cert-editor-toolbar .btn { width: 30px; height: 29px; padding: 0; }
+.cert-editor-toolbar .toolbar-select { width: auto; min-width: 82px; max-width: 154px; height: 29px; padding-top: 2px; padding-bottom: 2px; font-size: 12px; }
+.cert-toolbar-separator { width: 1px; height: 22px; margin: 0 3px; background: var(--c-line-3); }
+.cert-color-control { width: 30px; height: 29px; padding: 3px; border: 1px solid var(--c-line-3); border-radius: 4px; background: var(--c-surface); }
+.cert-variable-bar { padding: 7px 10px; background: var(--c-surface); border-bottom: 1px solid var(--c-line-3); }
+.cert-variable-group { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; flex-wrap: wrap; }
+.cert-variable-group:last-child { margin-bottom: 0; }
+.cert-variable-title { flex: 0 0 66px; color: var(--c-muted); font-size: 11px; font-weight: 700; }
+.cert-variable-token {
+    padding: 3px 7px;
+    color: var(--c-ink-2);
+    background: var(--c-active);
+    border: 1px solid var(--c-line-3);
+    border-radius: 4px;
+    font-size: 11px;
+}
+.cert-variable-token:hover { color: var(--c-surface); background: var(--c-ink-2); border-color: var(--c-ink-2); }
+.cert-editor-canvas { min-height: 530px; padding: 16px; background: var(--c-rail); overflow: auto; }
+.cert-editor-canvas .cert-paper { min-height: 250mm; }
+.cert-editor-config { padding: 10px 12px; border-top: 1px solid var(--c-line-3); background: var(--c-surface); }
+.cert-config-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.cert-config-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.cert-field-table th, .cert-field-table td { padding: 5px 6px; vertical-align: middle; font-size: 12px; }
+.cert-field-table th { white-space: nowrap; background: var(--c-rail); }
+.cert-page-setting-grid { display: grid; grid-template-columns: repeat(2, minmax(90px, 1fr)); gap: 7px; }
+.cert-editor-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--c-line-3); background: var(--c-rail); }
+/* 067：cert-record-panel/filters/footer、cert-status-* 已被 sc-card/sc-toolbar/sc-pagination/sc-badge 替代，规则随标记删除 */
+.cert-record-table-wrap { overflow: auto; }
+.cert-record-table { min-width: 1160px; margin-bottom: 0; }
+.cert-record-table th, .cert-record-table td { padding: 8px 9px; white-space: nowrap; vertical-align: middle; font-size: 13px; }
+.cert-record-table .record-action { width: 54px; text-align: center; }
+.cert-record-menu .dropdown-menu { min-width: 138px; padding: 4px; border-radius: 6px; }
+.cert-record-menu .dropdown-item { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 4px; font-size: 13px; }
+.cert-record-menu .dropdown-item i { width: 15px; text-align: center; }
+.cert-resident-result { width: 100%; padding: 8px 10px; border: 0; border-bottom: 1px solid var(--c-line-3); background: var(--c-surface); text-align: left; }
+.cert-resident-result:hover { background: var(--c-active); }
+.cert-resident-result-name { font-weight: 700; }
+.cert-resident-result-meta { margin-top: 2px; color: var(--c-muted); font-size: 12px; }
+.cert-record-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.cert-record-summary div { padding: 7px 9px; background: var(--c-rail); border: 1px solid var(--c-line-3); border-radius: 4px; }
+.cert-record-summary small { display: block; color: var(--c-muted); }
+.cert-record-summary strong { display: block; margin-top: 2px; font-size: 13px; overflow-wrap: anywhere; }
+#certPrintRoot { display: none; }
+@media (max-width: 1199.98px) {
+    .cert-page-header { align-items: flex-start; flex-direction: column; }
+    .cert-issue-grid { grid-template-columns: 310px minmax(0, 1fr); }
+    .cert-template-grid { grid-template-columns: 1fr; }
+    .cert-template-sidebar { border-right: 0; border-bottom: 1px solid var(--c-line-3); }
+    .cert-template-list { max-height: 240px; }
+    .cert-config-grid { grid-template-columns: 1fr; }
+    .cert-record-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 991.98px) {
+    .cert-command-bar { align-items: stretch; flex-direction: column; }
+    .cert-issue-grid { grid-template-columns: 1fr; }
+    .cert-side-panel { border-right: 0; border-bottom: 1px solid var(--c-line-3); }
+    .cert-editor-meta { grid-template-columns: 1fr 1fr; }
+    .cert-record-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 767.98px) {
+    .cert-mode-tabs { width: 100%; }
+    .cert-mode-tabs .nav-link { min-width: 0; flex: 1; }
+    .cert-editor-meta, .cert-record-filters, .cert-page-setting-grid { grid-template-columns: 1fr; }
+    .cert-record-summary { grid-template-columns: 1fr; }
+    .cert-record-footer { align-items: stretch; flex-direction: column; }
+    .cert-record-footer > nav { width: 100%; overflow-x: auto; }
+    .cert-record-footer .pagination { min-width: max-content; justify-content: center; }
+    #recordTotal { white-space: nowrap; }
+    .cert-paper-scroll, .cert-editor-canvas { padding: 10px; }
+}
+@media print {
+    @page { size: A4; margin: 0; }
+    body.cert-printing * { visibility: hidden !important; }
+    body.cert-printing #certPrintRoot,
+    body.cert-printing #certPrintRoot * { visibility: visible !important; }
+    body.cert-printing #certPrintRoot {
+        display: block !important;
+        position: absolute !important;
+        inset: 0 auto auto 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    body.cert-printing #certPrintPaper { border: 0 !important; box-shadow: none !important; margin: 0 !important; zoom: 1 !important; }
+}
+/* 2026-11-02 三项改版：
+   ① 开具表单两列栅格（图1：短字段成对、长字段整行），侧栏加宽至 380，A4 预览不产生横向滚动；
+   ② 模板管理：画布与「页面设置」并排（cert-editor-main），填写字段整行沉底（图2 定位）；
+   ③ 居民来源字段去掉 readonly——支持自由填写，检索仅作便捷回填。 */
+.cert-issue-grid { grid-template-columns: minmax(340px, 380px) minmax(0, 1fr); }
+.cert-issue-fields { display: block; }
+.cert-issue-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-bottom: 8px; }
+.cert-issue-fields .cert-dynamic-field { margin-bottom: 8px; }
+.cert-issue-pair .cert-dynamic-field { margin-bottom: 0; }
+.cert-editor-main { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 12px; align-items: start; }
+.cert-pageset-side { padding: 12px; border: 1px solid var(--c-line-3); border-radius: 4px; background: var(--c-rail); }
+.cert-pageset-side .cert-page-setting-grid { grid-template-columns: 1fr; }
+.cert-pageset-side .cert-config-title { margin-bottom: 10px; }
+@media (max-width: 1199.98px) {
+    .cert-issue-grid { grid-template-columns: minmax(320px, 360px) minmax(0, 1fr); }
+    .cert-editor-main { grid-template-columns: 1fr; }
+    .cert-pageset-side .cert-page-setting-grid { grid-template-columns: repeat(2, minmax(90px, 1fr)); }
+}
+@media (max-width: 991.98px) {
+    .cert-issue-grid { grid-template-columns: 1fr; }
+}
+</style>
+
+<div class="cert-page sc-workflow-page">
+{# 061 S6：v4.0 换壳——页头 + 065 模块胶囊（tools 组）+ 3 页签换 sc-chips；
+   页签 JS 以 [data-bs-target] 属性选择器绑定（容器无关），钩子零改动 #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">证明开具</h2>
+        <p class="sc-page-head__meta">选择居民 → 填表 → A4 实时预览 → 开具后自动入台账</p>
+    </div>
+</header>
+<nav class="sc-subtabs" role="tablist" aria-label="证明工作台页签">
+    {# 2026-11-02（定稿）：工作台三页签改下划线式文字页签（sc-subtabs）。
+       2026-11-16：撤 tools 模块胶囊（死亡上报 / 导入批次已升为侧栏入口），本页只保留工作台页签。 #}
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#issuePane" type="button">证明开具</button>
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#templatePane" type="button">模板管理</button>
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#recordPane" type="button">开具记录</button>
+</nav>
+
+    <div class="tab-content">
+        <section class="tab-pane fade show active" id="issuePane">
+            <div class="cert-command-bar">
+                <div class="cert-command-main">
+                    <div style="min-width:300px;">
+                        <label class="cert-field-label" for="issueTemplateSelect">证明模板</label>
+                        <select class="sc-select" id="issueTemplateSelect"></select>
+                    </div>
+                    <div class="cert-preview-meta" id="issueTemplateMeta"></div>
+                </div>
+                <div class="cert-command-actions">
+                    <button type="button" class="sc-btn sc-btn--secondary" id="btnClearIssue"><i class="bi bi-arrow-counterclockwise"></i> 清空重填</button>
+                    <button type="button" class="sc-btn sc-btn--secondary" id="btnRefreshPreview"><i class="bi bi-eye"></i> 刷新预览</button>
+                    <button type="button" class="btn btn-success btn-sm" id="btnIssueCertificate"><i class="bi bi-check2-circle"></i> 确认开具</button>
+                </div>
+            </div>
+            <div class="cert-issue-grid">
+                <aside class="cert-side-panel">
+                    <div class="cert-panel-heading"><strong>填写证明信息</strong><span class="text-muted small">带 * 为必填</span></div>
+                    <div id="issueDynamicFields"></div>
+                    <div class="cert-form-section">
+                        <div class="cert-form-section-title">开具信息</div>
+                        <div class="cert-issue-fields">
+                            <div class="cert-dynamic-field"><label class="cert-field-label">开具人 <span class="cert-required">*</span></label><input class="sc-input issue-meta-input" id="issueIssuer" value="{{ current_user.real_name or current_user.username }}"></div>
+                            <div class="cert-dynamic-field"><label class="cert-field-label">开具单位</label><input class="sc-input issue-meta-input" id="issueUnit" list="issueUnitHistory"><datalist id="issueUnitHistory"></datalist></div>
+                            <div class="cert-dynamic-field"><label class="cert-field-label">开具日期</label><input type="date" class="sc-input issue-meta-input" id="issueDate"></div>
+                            <div class="cert-dynamic-field"><label class="cert-field-label">打印份数</label><input type="number" class="sc-input issue-meta-input" id="issueCopies" min="1" max="99" value="1"></div>
+                            <div class="cert-dynamic-field cert-dynamic-field--full"><label class="cert-field-label">申请用途</label><input class="sc-input issue-meta-input" id="issuePurpose" placeholder="例如：办理入学、社保等"></div>
+                        </div>
+                    </div>
+                </aside>
+                <section class="cert-preview-panel">
+                    <div class="cert-preview-toolbar">
+                        <strong><i class="bi bi-file-earmark-check me-1"></i>A4实时预览</strong>
+                        <span class="cert-preview-meta" id="issuePreviewStatus">尚未开具，证明编号将在确认后生成</span>
+                    </div>
+                    <div class="cert-paper-scroll"><article class="cert-paper" id="issuePaper"><div class="cert-empty-state">正在加载证明模板...</div></article></div>
+                </section>
+            </div>
+        </section>
+
+        <section class="tab-pane fade" id="templatePane">
+            <div class="cert-template-grid">
+                <aside class="cert-template-sidebar">
+                    <div class="cert-template-sidebar-head"><strong>证明模板</strong><button type="button" class="sc-btn sc-btn--primary" id="btnNewTemplate"><i class="bi bi-plus-lg"></i> 新建</button></div>
+                    <input class="sc-input" id="templateKeyword" placeholder="搜索模板或类别">
+                    <div class="cert-template-list" id="templateList"></div>
+                </aside>
+                <section class="cert-template-editor">
+                    <div class="cert-editor-meta">
+                        <div><label class="cert-field-label">模板名称</label><input class="sc-input" id="editorTemplateName"></div>
+                        <div><label class="cert-field-label">证明类别</label><input class="sc-input" id="editorCertType" list="certTypeHistory"><datalist id="certTypeHistory"></datalist></div>
+                        <div class="d-flex align-items-end pb-1"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="editorActive" checked><label class="form-check-label small" for="editorActive">启用模板</label></div></div>
+                    </div>
+                    <div class="cert-editor-toolbar" role="toolbar" aria-label="模板文字格式">
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="undo" title="撤销"><i class="bi bi-arrow-counterclockwise"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="redo" title="重做"><i class="bi bi-arrow-clockwise"></i></button>
+                        <span class="cert-toolbar-separator"></span>
+                        <select class="form-select form-select-sm toolbar-select" id="editorBlock" title="段落格式"><option value="p">正文</option><option value="h1">一级标题</option><option value="h2">二级标题</option></select>
+                        <select class="form-select form-select-sm toolbar-select" id="editorFontName" title="字体">
+                            <option value="方正小标宋简体">方正小标宋简体</option><option value="方正大标宋简体">方正大标宋简体</option><option value="仿宋_GB2312" selected>仿宋_GB2312</option><option value="方正仿宋_GBK">方正仿宋_GBK</option><option value="仿宋">仿宋</option><option value="宋体">宋体</option><option value="黑体">黑体</option><option value="楷体_GB2312">楷体_GB2312</option><option value="楷体">楷体</option><option value="华文中宋">华文中宋</option><option value="华文宋体">华文宋体</option><option value="华文仿宋">华文仿宋</option><option value="华文楷体">华文楷体</option><option value="微软雅黑">微软雅黑</option>
+                        </select>
+                        <select class="form-select form-select-sm toolbar-select" id="editorFontSize" title="字号">
+                            <option value="42">初号 42磅</option><option value="36">小初 36磅</option><option value="26">一号 26磅</option><option value="24">小一 24磅</option><option value="22">二号 22磅</option><option value="18">小二 18磅</option><option value="16" selected>三号 16磅</option><option value="15">小三 15磅</option><option value="14">四号 14磅</option><option value="12">小四 12磅</option><option value="10.5">五号 10.5磅</option><option value="9">小五 9磅</option><option value="7.5">六号 7.5磅</option><option value="6.5">小六 6.5磅</option><option value="5.5">七号 5.5磅</option><option value="5">八号 5磅</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="bold" title="加粗"><i class="bi bi-type-bold"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="italic" title="倾斜"><i class="bi bi-type-italic"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="underline" title="下划线"><i class="bi bi-type-underline"></i></button>
+                        <input type="color" class="cert-color-control" id="editorColor" value="#000000" title="文字颜色">
+                        <span class="cert-toolbar-separator"></span>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="justifyLeft" title="左对齐"><i class="bi bi-text-left"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="justifyCenter" title="居中"><i class="bi bi-text-center"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="justifyRight" title="右对齐"><i class="bi bi-text-right"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="justifyFull" title="两端对齐"><i class="bi bi-justify"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="indent" title="增加缩进"><i class="bi bi-text-indent-left"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="outdent" title="减少缩进"><i class="bi bi-text-indent-right"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="insertUnorderedList" title="项目符号"><i class="bi bi-list-ul"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm editor-command" data-command="removeFormat" title="清除格式"><i class="bi bi-eraser"></i></button>
+                    </div>
+                    <div class="cert-variable-bar" id="variableBar"></div>
+                    <div class="cert-editor-main">
+                        <div class="cert-editor-canvas"><article class="cert-paper" id="templateEditor" contenteditable="true" spellcheck="false" aria-label="证明模板正文编辑区"></article></div>
+                        <aside class="cert-pageset-side">
+                            <div class="cert-config-title"><strong>页面设置</strong><button type="button" class="sc-btn sc-btn--secondary" id="btnGovPagePreset" title="恢复公文常用页面参数"><i class="bi bi-file-earmark-text"></i> 公文默认</button></div>
+                            <div class="cert-page-setting-grid">
+                                <div><label class="cert-field-label">纸张方向</label><select class="form-select form-select-sm page-setting" id="pageOrientation"><option value="portrait">A4纵向</option><option value="landscape">A4横向</option></select></div>
+                                <div><label class="cert-field-label">默认字体</label><select class="form-select form-select-sm page-setting" id="pageFontName"><option>方正小标宋简体</option><option>方正大标宋简体</option><option selected>仿宋_GB2312</option><option>方正仿宋_GBK</option><option>仿宋</option><option>宋体</option><option>黑体</option><option>楷体_GB2312</option><option>楷体</option><option>华文中宋</option><option>华文宋体</option><option>华文仿宋</option><option>华文楷体</option><option>微软雅黑</option></select></div>
+                                <div><label class="cert-field-label">默认字号（磅）</label><input type="number" class="form-control form-control-sm page-setting" id="pageFontSize" min="5" max="42" step="0.5"></div>
+                                <div><label class="cert-field-label">默认行距（倍）</label><input type="number" class="form-control form-control-sm page-setting" id="pageLineHeight" min="1" max="3" step="0.05"></div>
+                                <div><label class="cert-field-label">上边距</label><input type="number" class="form-control form-control-sm page-setting" id="pageMarginTop" min="5" max="50"></div>
+                                <div><label class="cert-field-label">下边距</label><input type="number" class="form-control form-control-sm page-setting" id="pageMarginBottom" min="5" max="50"></div>
+                                <div><label class="cert-field-label">左边距</label><input type="number" class="form-control form-control-sm page-setting" id="pageMarginLeft" min="5" max="50"></div>
+                                <div><label class="cert-field-label">右边距</label><input type="number" class="form-control form-control-sm page-setting" id="pageMarginRight" min="5" max="50"></div>
+                            </div>
+                        </aside>
+                    </div>
+                    <div class="cert-editor-config">
+                        <div>
+                            <div class="cert-config-title"><strong>填写字段</strong><span class="text-muted small">正文中的占位符会自动成为开具字段</span></div>
+                            <div class="sc-table-wrap"><table class="sc-table sc-table--dense cert-field-table mb-2"><thead><tr><th class="sc-table__th">字段名称</th><th class="sc-table__th" style="width:110px;">输入类型</th><th class="sc-table__th sc-table__th--center" style="width:64px;">必填</th><th class="sc-table__th">下拉选项</th><th class="sc-table__th sc-table__th--center" style="width:42px;">操作</th></tr></thead><tbody id="editorFieldBody"></tbody></table></div>
+                            <div class="input-group input-group-sm"><input class="form-control" id="newFieldLabel" placeholder="新增自定义字段，例如：申请事项"><select class="form-select" id="newFieldType" style="max-width:110px;"><option value="text">单行文本</option><option value="textarea">多行文本</option><option value="date">日期</option><option value="number">数字</option><option value="select">下拉选择</option></select><button type="button" class="btn btn-outline-primary" id="btnAddField"><i class="bi bi-plus-lg"></i> 添加并插入</button></div>
+                        </div>
+                    </div>
+                    <div class="cert-editor-footer">
+                        <div class="text-muted small" id="editorTemplateVersion">新模板尚未保存</div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="btnCopyTemplate"><i class="bi bi-files"></i> 复制模板</button>
+                            <button type="button" class="btn btn-outline-warning btn-sm" id="btnToggleTemplate"><i class="bi bi-pause-circle"></i> 停用</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" id="btnDeleteTemplate"><i class="bi bi-trash"></i> 删除</button>
+                            <button type="button" class="sc-btn sc-btn--primary" id="btnSaveTemplate"><i class="bi bi-floppy"></i> 保存模板</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <section class="tab-pane fade" id="recordPane">
+            {# 067 换壳：sc-card（sc-toolbar + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+            <section class="sc-card">
+                <div class="sc-toolbar">
+                    <input class="sc-input" id="recordKeyword" placeholder="证明编号、姓名或身份证号" style="width:220px">
+                    <select class="sc-select" id="recordCertType" style="width:150px"><option value="">全部证明类型</option></select>
+                    <input class="sc-input" id="recordIssuer" placeholder="开具人" style="width:120px">
+                    <input type="date" class="sc-input" id="recordDateStart" title="开始日期" style="width:150px">
+                    <input type="date" class="sc-input" id="recordDateEnd" title="结束日期" style="width:150px">
+                    <select class="sc-select" id="recordStatus" style="width:110px;"><option value="">全部状态</option><option value="issued">正常</option><option value="voided">已作废</option></select>
+                    <button type="button" class="sc-btn sc-btn--primary" id="btnSearchRecords"><i class="bi bi-search"></i> 查询</button>
+                </div>
+                <div class="cert-record-table-wrap"><table class="sc-table cert-record-table"><thead class="sc-table__head"><tr><th class="sc-table__th">证明编号</th><th class="sc-table__th">证明对象</th><th class="sc-table__th">身份证号</th><th class="sc-table__th">证明类型</th><th class="sc-table__th">使用模板</th><th class="sc-table__th">开具人</th><th class="sc-table__th">开具单位</th><th class="sc-table__th">开具时间</th><th class="sc-table__th">份数</th><th class="sc-table__th">状态</th><th class="sc-table__th record-action">操作</th></tr></thead><tbody id="recordBody"></tbody></table></div>
+                <div class="sc-pagination">
+                    <span class="sc-pagination__stat" id="recordTotal"></span>
+                    <ul class="sc-pagination__pager" id="recordPagination"></ul>
+                </div>
+            </section>
+        </section>
+    </div>
+</div>
+
+<div class="modal fade" id="residentSelectModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="sc-modal" role="dialog" aria-modal="true"><header class="sc-modal__header"><h3 class="sc-modal__title"><i class="bi bi-people me-1"></i>选择居民</h3><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></header><div class="sc-modal__body p-0" id="residentResultList"></div></div></div></div>
+
+<div class="modal fade" id="issueSuccessModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="sc-modal" role="dialog" aria-modal="true"><header class="sc-modal__header"><h3 class="sc-modal__title"><i class="bi bi-check-circle me-1"></i>证明开具成功</h3><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></header><div class="sc-modal__divider"></div><div class="sc-modal__body"><div class="text-muted small">证明编号</div><div class="fs-4 fw-bold text-success" id="successSerialNo"></div><div class="mt-2 small" id="successSummary"></div></div><div class="sc-modal__divider"></div><footer class="sc-modal__footer"><button type="button" class="sc-btn sc-btn--secondary" id="btnSuccessPrint"><i class="bi bi-printer"></i> 打印</button><button type="button" class="sc-btn sc-btn--secondary" id="btnSuccessWord"><i class="bi bi-file-earmark-word"></i> 导出Word</button><button type="button" class="sc-btn sc-btn--primary" id="btnSuccessRecords"><i class="bi bi-journal-text"></i> 查看台账</button></footer></div></div></div>
+
+<div class="modal fade" id="recordDetailModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="sc-modal" role="dialog" aria-modal="true" style="max-width:none;width:auto;"><header class="sc-modal__header"><h3 class="sc-modal__title"><i class="bi bi-file-earmark-check me-1"></i>证明记录详情</h3><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></header><div class="sc-modal__divider"></div><div class="sc-modal__body"><div class="cert-record-summary" id="recordSummary"></div><div class="cert-paper-scroll" style="max-height:62vh;"><article class="cert-paper" id="recordPaper"></article></div></div><div class="sc-modal__divider"></div><footer class="sc-modal__footer"><button type="button" class="sc-btn sc-btn--secondary" id="btnRecordPrint"><i class="bi bi-printer"></i> 重新打印</button><button type="button" class="sc-btn sc-btn--secondary" id="btnRecordWord"><i class="bi bi-file-earmark-word"></i> 导出Word</button><button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button></footer></div></div></div>
+
+<div class="modal fade" id="voidModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="sc-modal" role="dialog" aria-modal="true"><header class="sc-modal__header"><h3 class="sc-modal__title text-danger"><i class="bi bi-slash-circle me-1"></i>作废证明</h3><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button></header><div class="sc-modal__divider"></div><form id="voidForm"><input type="hidden" id="voidRecordId"><div class="sc-modal__body"><p class="small text-muted">作废后记录仍会保留，不能恢复。请填写作废原因。</p><textarea class="sc-textarea" id="voidReason" rows="3" required></textarea></div><div class="sc-modal__divider"></div><footer class="sc-modal__footer"><button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button><button type="submit" class="sc-btn sc-btn--primary">确认作废</button></footer></form></div></div></div>
+
+<div id="certPrintRoot"><article class="cert-paper" id="certPrintPaper"></article></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const FIELD_CATALOG = {{ field_catalog|tojson }};
+const SYSTEM_PLACEHOLDERS = {{ system_placeholders|tojson }};
+const DEFAULT_PAGE_SETTINGS = {{ default_page_settings|tojson }};
+const CURRENT_OPERATOR = {{ (current_user.real_name or current_user.username)|tojson }};
+{% raw %}
+let certTemplates = [];
+let currentIssueTemplate = null;
+let editorTemplate = null;
+let editorFields = [];
+let residentTargets = {primary:null, secondary:null};
+let residentSnapshots = {primary:null, secondary:null};
+let pendingResidentGroup = 'primary';
+let currentIssuedRecord = null;
+let currentRecordDetail = null;
+let recordPage = 1;
+let paperResizeTimer = null;
+
+function esc(value){return $('<span>').text(value==null?'':String(value)).html();}
+function clone(value){return JSON.parse(JSON.stringify(value));}
+function todayValue(){return new Date().toISOString().slice(0,10);}
+function formatDateCn(value){if(!value)return'';let m=String(value).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);return m?m[1]+'年'+parseInt(m[2],10)+'月'+parseInt(m[3],10)+'日':value;}
+function idCardCheck(value){if(!/^\d{17}[\dX]$/.test(value))return false;let weights=[7,9,10,5,8,4,2,1,6,3,7,9,10,5,8,4,2],codes='10X98765432',total=0;for(let i=0;i<17;i++)total+=parseInt(value.charAt(i),10)*weights[i];return codes.charAt(total%11)===value.charAt(17);}
+function getModal(id){return bootstrap.Modal.getOrCreateInstance(document.getElementById(id));}
+function downloadUrl(url){window.location.href=url;}
+function pageSettings(value){return Object.assign({},DEFAULT_PAGE_SETTINGS,value||{});}
+function fitPaperPreview(element){let paper=$(element)[0];if(!paper||paper.closest('#certPrintRoot'))return;let container=paper.closest('.cert-paper-scroll,.cert-editor-canvas');if(!container||container.clientWidth<=0)return;paper.style.zoom='1';let style=getComputedStyle(container),available=container.clientWidth-parseFloat(style.paddingLeft||0)-parseFloat(style.paddingRight||0),natural=paper.getBoundingClientRect().width;if(!available||!natural)return;let scale=Math.min(1,Math.max(0.25,available/natural));paper.style.zoom=String(Math.round(scale*1000)/1000);paper.dataset.previewScale=String(Math.round(scale*100));}
+function refitVisiblePapers(){fitPaperPreview('#issuePaper');fitPaperPreview('#templateEditor');fitPaperPreview('#recordPaper');}
+function applyPaperSettings(element,raw,fitPreview){let s=pageSettings(raw),landscape=s.orientation==='landscape',paper=$(element);paper.css({zoom:1,width:(landscape?297:210)+'mm',minHeight:(landscape?210:297)+'mm',padding:s.margin_top+'mm '+s.margin_right+'mm '+s.margin_bottom+'mm '+s.margin_left+'mm',fontFamily:s.font_name+', FangSong, STFangsong, SimSun, serif',fontSize:s.font_size+'pt',lineHeight:s.line_height});if(fitPreview!==false)requestAnimationFrame(function(){fitPaperPreview(element);});}
+function replacePlaceholders(content,values){return String(content||'').replace(/{{\s*([^{}]+?)\s*}}/g,function(_,key){let value=values[key.trim()];if(value==null||String(value).trim()==='')value='______';return esc(value).replace(/\n/g,'<br>');});}
+
+function loadHistory(key,selector){let values=[];try{values=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}let html='';$.each(values,function(_,value){html+='<option value="'+esc(value)+'">';});$(selector).html(html);}
+function saveHistory(key,value,selector){value=String(value||'').trim();if(!value)return;let values=[];try{values=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}values=$.grep(values,function(item){return item!==value;});values.unshift(value);localStorage.setItem(key,JSON.stringify(values.slice(0,10)));loadHistory(key,selector);}
+
+
+function loadTemplates(preferredId){
+    return $.getJSON('/certificate/api/templates',{include_inactive:1}).then(function(resp){
+        if(!resp.success)return;
+        certTemplates=resp.data||[];
+        renderTemplateSelect(preferredId);
+        renderTemplateList();
+        renderCertTypeOptions();
+        if(!editorTemplate&&certTemplates.length)openTemplateEditor(certTemplates[0].id);
+    });
+}
+
+function renderTemplateSelect(preferredId){
+    let active=$.grep(certTemplates,function(item){return item.is_active;});
+    let currentId=preferredId||($('#issueTemplateSelect').val()?parseInt($('#issueTemplateSelect').val(),10):null)||(currentIssueTemplate&&currentIssueTemplate.id);
+    let html='';
+    $.each(active,function(_,item){html+='<option value="'+item.id+'">'+esc(item.name)+' · '+esc(item.cert_type)+'</option>';});
+    if(!html)html='<option value="">暂无启用模板</option>';
+    $('#issueTemplateSelect').html(html);
+    if(currentId&&active.some(function(item){return item.id===currentId;}))$('#issueTemplateSelect').val(String(currentId));
+    let selected=parseInt($('#issueTemplateSelect').val(),10);
+    currentIssueTemplate=active.find(function(item){return item.id===selected;})||active[0]||null;
+    renderIssueTemplate();
+}
+
+function renderCertTypeOptions(){
+    let types=[];
+    $.each(certTemplates,function(_,item){if(item.cert_type&&types.indexOf(item.cert_type)<0)types.push(item.cert_type);});
+    types.sort();
+    let options='<option value="">全部证明类型</option>',history='';
+    $.each(types,function(_,type){options+='<option value="'+esc(type)+'">'+esc(type)+'</option>';history+='<option value="'+esc(type)+'">';});
+    $('#recordCertType').html(options);$('#certTypeHistory').html(history);
+}
+
+function renderIssueTemplate(){
+    residentTargets={primary:null,secondary:null};
+    $('.cert-resident-hint').hide();
+    if(!currentIssueTemplate){$('#issueDynamicFields').html('<div class="text-muted small">暂无可用模板</div>');$('#issuePaper').html('<div class="cert-empty-state">请先在模板管理中启用模板</div>');return;}
+    $('#issueTemplateMeta').text('类别：'+currentIssueTemplate.cert_type+'　版本：V'+currentIssueTemplate.version);
+    let html='',lastGroup='',pairBuf=[];
+    function flushPair(){ if(pairBuf.length){ html+='<div class="cert-issue-pair">'+pairBuf.join('')+'</div>'; pairBuf=[]; } }
+    $.each(currentIssueTemplate.field_schema||[],function(index,field){
+        let group=field.resident_group||'custom';
+        if(group!==lastGroup){
+            flushPair();
+            if(lastGroup)html+='</div></div>';
+            let title=group==='primary'?'证明对象':group==='secondary'?'关系人信息':'补充信息';
+            html+='<div class="cert-form-section"><div class="cert-form-section-title">'+title+'</div>';
+            if(group==='primary'||group==='secondary')html+='<div class="cert-resident-hint" id="residentHint_'+group+'"></div>';
+            html+='<div class="cert-issue-fields">';
+            lastGroup=group;
+        }
+        let built=buildIssueField(field,index);
+        if(built.full){ flushPair(); html+=built.html; }
+        else { pairBuf.push(built.html); if(pairBuf.length===2) flushPair(); }
+    });
+    flushPair();
+    if(lastGroup)html+='</div></div>';
+    $('#issueDynamicFields').html(html||'<div class="text-muted small mb-3">该模板无需补充字段</div>');
+    updateIssuePreview();
+}
+
+function buildIssueField(field,index){
+    let required=field.required?' <span class="cert-required">*</span>':'';
+    // 2026-11-02（图1 版式）：长字段整行（居民检索/多行文本/地址证件姓名用途类），短字段两列成对；
+    // 居民来源字段一律可自由编辑（readonly 废弃）——检索台账仅作便捷回填，不做填写限制
+    let full=(field.type==='resident'||field.type==='textarea'||/(地址|住址|身份证|姓名|用途|情况|内容|原因|备注)/.test(field.label||field.key))?' cert-dynamic-field--full':'';
+    let common=' class="form-control form-control-sm issue-field" data-field-key="'+esc(field.key)+'" data-field-type="'+esc(field.type)+'" data-resident-group="'+esc(field.resident_group||'')+'" data-field-index="'+index+'"';
+    let control='';
+    if(field.type==='resident'){
+        control='<div class="input-group input-group-sm"><input'+common+' placeholder="可直接输入，或点右侧检索台账"><button type="button" class="btn btn-outline-primary resident-search-btn" data-group="'+esc(field.resident_group||'primary')+'" title="检索并回填"><i class="bi bi-search"></i></button></div>';
+    }else if(field.type==='textarea'){
+        control='<textarea'+common+' rows="2"></textarea>';
+    }else if(field.type==='select'){
+        control='<select'+common+'><option value="">请选择</option>';
+        $.each(field.options||[],function(_,option){control+='<option value="'+esc(option)+'">'+esc(option)+'</option>';});control+='</select>';
+    }else{
+        let type=field.type==='date'?'date':field.type==='number'?'number':'text';
+        control='<input type="'+type+'"'+common+'>';
+    }
+    return { full: !!full, html: '<div class="cert-dynamic-field'+full+'"><label class="cert-field-label">'+esc(field.label||field.key)+required+'</label>'+control+'</div>' };
+}
+
+function collectIssueValues(displayValues){
+    let values={};
+    $('#issueDynamicFields .issue-field').each(function(){let key=$(this).data('field-key'),type=$(this).data('field-type'),value=$(this).val()||'';values[key]=(displayValues&&type==='date')?formatDateCn(value):value;});
+    values['证明编号']=currentIssuedRecord?currentIssuedRecord.serial_no:'开具后自动生成';
+    values['开具人']=$('#issueIssuer').val();values['开具单位']=$('#issueUnit').val();values['开具日期']=displayValues?formatDateCn($('#issueDate').val()):$('#issueDate').val();values['申请用途']=$('#issuePurpose').val();values['份数']=$('#issueCopies').val()||1;
+    return values;
+}
+
+function updateIssuePreview(){
+    if(!currentIssueTemplate)return;
+    let values=collectIssueValues(true);
+    $('#issuePaper').html(replacePlaceholders(currentIssueTemplate.template_content,values));
+    applyPaperSettings('#issuePaper',currentIssueTemplate.page_settings);
+}
+
+function clearIssueForm(){
+    $('#issueDynamicFields .issue-field').val('');$('#issuePurpose').val('');$('#issueCopies').val(1);residentTargets={primary:null,secondary:null};residentSnapshots={primary:null,secondary:null};$('.cert-resident-hint').hide();currentIssuedRecord=null;$('#issuePreviewStatus').text('尚未开具，证明编号将在确认后生成');updateIssuePreview();
+}
+
+function searchResident(group){
+    let searchField=currentIssueTemplate.field_schema.find(function(field){return field.type==='resident'&&(field.resident_group||'primary')===group;});
+    let input=$('#issueDynamicFields .issue-field').filter(function(){return $(this).data('field-key')===(searchField&&searchField.key);});
+    let keyword=input.val().trim();if(!keyword){showToast('请输入姓名或身份证号','warning');return;}
+    $.getJSON('/certificate/api/residents',{keyword:keyword},function(resp){
+        if(!resp.success||!resp.data||!resp.data.length){showResidentHint(group,'未匹配到台账，可直接手工填写');showToast('未找到该居民，可直接手工填写','warning');input.focus();return;}
+        pendingResidentGroup=group;
+        if(resp.data.length===1){applyResident(group,resp.data[0]);return;}
+        let html='';$.each(resp.data,function(_,item){html+='<button type="button" class="cert-resident-result" data-resident="'+encodeURIComponent(JSON.stringify(item))+'"><span class="cert-resident-result-name">'+esc(item.name)+'</span><div class="cert-resident-result-meta">'+esc(item.id_card||'未登记身份证号')+'　'+esc(item.village_group||'未登记所在组')+'　'+esc(item.address||'')+'</div></button>';});$('#residentResultList').html(html);getModal('residentSelectModal').show();
+    });
+}
+
+function showResidentHint(group,text){
+    let hint=$('#residentHint_'+group);
+    if(hint.length)hint.html('<i class="bi bi-info-circle me-1"></i>'+esc(text)).show();
+}
+
+function snapshotResidentGroup(group){
+    let snapshot={};
+    $('#issueDynamicFields .issue-field').each(function(){if(($(this).data('resident-group')||'')===group)snapshot[$(this).data('field-key')]=$(this).val()||'';});
+    residentSnapshots[group]=snapshot;
+}
+
+function releaseResident(group){
+    residentTargets[group]=null;residentSnapshots[group]=null;
+    showResidentHint(group,'手工填写（不再关联台账）');
+}
+
+function applyResident(group,resident){
+    residentTargets[group]=resident.id;
+    $.each(currentIssueTemplate.field_schema||[],function(_,field){if((field.resident_group||'')===group&&field.source){let input=$('#issueDynamicFields .issue-field').filter(function(){return $(this).data('field-key')===field.key;});input.val(resident[field.source]==null?'':resident[field.source]);}});
+    snapshotResidentGroup(group);
+    $('#residentHint_'+group).html('<i class="bi bi-check-circle me-1"></i>已关联台账：<strong>'+esc(resident.name)+'</strong>　'+esc(resident.id_card||'')).show();
+    updateIssuePreview();showToast('居民信息已填充','success');getModal('residentSelectModal').hide();
+}
+
+function confirmIssue(){
+    if(!currentIssueTemplate){showToast('请选择证明模板','warning');return;}
+    let raw=collectIssueValues(false),missing=[],invalid='';
+    $.each(currentIssueTemplate.field_schema||[],function(_,field){if(field.required&&!String(raw[field.key]||'').trim())missing.push(field.label||field.key);});
+    if(!$('#issueIssuer').val().trim())missing.push('开具人');
+    if(missing.length){showToast('请填写：'+missing.join('、'),'warning');return;}
+    $.each(currentIssueTemplate.field_schema||[],function(_,field){
+        let value=String(raw[field.key]||'').trim(),label=field.label||field.key;
+        if(!value)return;
+        if(String(field.key).endsWith('身份证号')){
+            value=value.toUpperCase();raw[field.key]=value;
+            if(value.length===15)invalid=label+'为 15 位旧号，请升位为 18 位';
+            else if(!idCardCheck(value))invalid=label+'格式或校验位不正确';
+        }else if(field.key==='出生日期'&&value>todayValue()){
+            invalid='出生日期不得晚于今天';
+        }
+        let limit=field.type==='textarea'?2000:200;
+        if(!invalid&&(value.length>limit||value.indexOf('{{')>=0||value.indexOf('}}')>=0))invalid=label+'内容不合规';
+    });
+    if(invalid){showToast(invalid,'warning');return;}
+    if(!confirm('确认开具该证明？确认后将生成证明编号并写入开具台账。'))return;
+    let payload={template_id:currentIssueTemplate.id,values:raw,resident_ids:residentTargets,issuer_name:$('#issueIssuer').val(),issue_unit:$('#issueUnit').val(),issue_date:$('#issueDate').val(),purpose:$('#issuePurpose').val(),copies:$('#issueCopies').val()};
+    $('#btnIssueCertificate').prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-1"></span>正在开具');
+    $.ajax({url:'/certificate/api/issue/create',type:'POST',contentType:'application/json',data:JSON.stringify(payload),success:function(resp){if(resp.success){currentIssuedRecord=resp.data;$('#issuePaper').html(resp.data.rendered_content);applyPaperSettings('#issuePaper',resp.data.page_settings);$('#issuePreviewStatus').text('已开具：'+resp.data.serial_no);$('#successSerialNo').text(resp.data.serial_no);$('#successSummary').text(resp.data.template_name+' · '+resp.data.subject_name+' · '+resp.data.issued_at);saveHistory('certificate_issue_unit',$('#issueUnit').val(),'#issueUnitHistory');getModal('issueSuccessModal').show();loadRecords(1);}else showToast(resp.msg||'开具失败','danger');},error:function(xhr){showToast((xhr.responseJSON&&xhr.responseJSON.msg)||'开具失败，请检查服务状态','danger');},complete:function(){$('#btnIssueCertificate').prop('disabled',false).html('<i class="bi bi-check2-circle"></i> 确认开具');}});
+}
+
+function preparePrint(content,settings){$('#certPrintPaper').html(content||'');applyPaperSettings('#certPrintPaper',settings,false);$('body').addClass('cert-printing');let cleanup=function(){$('body').removeClass('cert-printing');window.removeEventListener('afterprint',cleanup);};window.addEventListener('afterprint',cleanup);window.print();setTimeout(cleanup,30000);}
+
+function renderVariableBar(){
+    let primary=[],secondary=[],system=[];
+    $.each(FIELD_CATALOG,function(key,field){(field.resident_group==='secondary'?secondary:primary).push(key);});
+    $.each(SYSTEM_PLACEHOLDERS,function(_,field){system.push(field.key);});
+    function row(title,items){let h='<div class="cert-variable-group"><span class="cert-variable-title">'+title+'</span>';$.each(items,function(_,key){h+='<button type="button" class="cert-variable-token" data-key="'+esc(key)+'">'+esc(key)+'</button>';});return h+'</div>';}
+    $('#variableBar').html(row('居民字段',primary)+row('关系人',secondary)+row('开具信息',system));
+}
+
+function renderTemplateList(){
+    let keyword=$('#templateKeyword').val().trim().toLowerCase(),html='';
+    $.each(certTemplates,function(_,item){if(keyword&&(item.name+' '+item.cert_type).toLowerCase().indexOf(keyword)<0)return;let active=editorTemplate&&editorTemplate.id===item.id?' active':'';html+='<button type="button" class="cert-template-item'+active+'" data-id="'+item.id+'"><span class="cert-template-item-name">'+esc(item.name)+'</span><span class="cert-template-item-meta"><span>'+esc(item.cert_type)+' · V'+item.version+'</span><span>'+(item.is_active?'启用':'停用')+' · 已开'+item.usage_count+'次</span></span></button>';});
+    $('#templateList').html(html||'<div class="text-muted small p-2">暂无匹配模板</div>');
+}
+
+function blankTemplate(){return {id:null,name:'新建证明模板',cert_type:'其他证明',template_content:'<div style="text-align:center;font-family:方正小标宋简体;font-size:22pt;font-weight:400;line-height:1.35;margin-bottom:32px;">证明</div><p style="font-size:16pt;line-height:1.75;text-indent:2em;">兹证明，{{姓名}}，身份证号码：{{身份证号}}，相关情况属实。</p><p style="font-size:16pt;line-height:1.75;text-indent:2em;">特此证明！</p><div style="text-align:right;font-size:16pt;line-height:1.75;margin-top:56px;"><div>经办人：{{开具人}}</div><div>{{开具单位}}</div><div>{{开具日期}}</div></div>',field_schema:[clone(FIELD_CATALOG['姓名']),clone(FIELD_CATALOG['身份证号'])],page_settings:clone(DEFAULT_PAGE_SETTINGS),is_custom:true,is_active:true,version:1,usage_count:0};}
+
+function openTemplateEditor(id){
+    let item=certTemplates.find(function(template){return template.id===parseInt(id,10);});
+    editorTemplate=item?clone(item):blankTemplate();editorFields=clone(editorTemplate.field_schema||[]);
+    $('#editorTemplateName').val(editorTemplate.name);$('#editorCertType').val(editorTemplate.cert_type);$('#editorActive').prop('checked',editorTemplate.is_active!==false);$('#templateEditor').html(editorTemplate.template_content||'');
+    let s=pageSettings(editorTemplate.page_settings);$('#pageOrientation').val(s.orientation);$('#pageFontName').val(s.font_name);$('#pageFontSize').val(s.font_size);$('#pageLineHeight').val(s.line_height);$('#pageMarginTop').val(s.margin_top);$('#pageMarginBottom').val(s.margin_bottom);$('#pageMarginLeft').val(s.margin_left);$('#pageMarginRight').val(s.margin_right);
+    $('#editorTemplateVersion').text(editorTemplate.id?'模板版本 V'+editorTemplate.version+'　最后修改：'+(editorTemplate.updated_at||''):'新模板尚未保存');$('#btnToggleTemplate,#btnDeleteTemplate').prop('disabled',!editorTemplate.id);$('#btnToggleTemplate').html(editorTemplate.is_active?'<i class="bi bi-pause-circle"></i> 停用':'<i class="bi bi-play-circle"></i> 启用');
+    renderEditorFields();updateEditorPaper();renderTemplateList();
+}
+
+function editorPageSettings(){return {orientation:$('#pageOrientation').val(),font_name:$('#pageFontName').val()||DEFAULT_PAGE_SETTINGS.font_name,font_size:parseFloat($('#pageFontSize').val())||DEFAULT_PAGE_SETTINGS.font_size,line_height:parseFloat($('#pageLineHeight').val())||DEFAULT_PAGE_SETTINGS.line_height,margin_top:parseFloat($('#pageMarginTop').val())||DEFAULT_PAGE_SETTINGS.margin_top,margin_bottom:parseFloat($('#pageMarginBottom').val())||DEFAULT_PAGE_SETTINGS.margin_bottom,margin_left:parseFloat($('#pageMarginLeft').val())||DEFAULT_PAGE_SETTINGS.margin_left,margin_right:parseFloat($('#pageMarginRight').val())||DEFAULT_PAGE_SETTINGS.margin_right};}
+function updateEditorPaper(){let settings=editorPageSettings();applyPaperSettings('#templateEditor',settings,true,true);}
+function applyGovPagePreset(){let s=pageSettings({orientation:DEFAULT_PAGE_SETTINGS.orientation});$('#pageOrientation').val(s.orientation);$('#pageFontName').val(DEFAULT_PAGE_SETTINGS.font_name);$('#pageFontSize').val(DEFAULT_PAGE_SETTINGS.font_size);$('#pageLineHeight').val(DEFAULT_PAGE_SETTINGS.line_height);$('#pageMarginTop').val(DEFAULT_PAGE_SETTINGS.margin_top);$('#pageMarginBottom').val(DEFAULT_PAGE_SETTINGS.margin_bottom);$('#pageMarginLeft').val(DEFAULT_PAGE_SETTINGS.margin_left);$('#pageMarginRight').val(DEFAULT_PAGE_SETTINGS.margin_right);updateEditorPaper();showToast('已恢复公文常用页面参数','info');}
+function applyEditorFontSize(size){size=parseFloat(size);if(!size)return;document.execCommand('fontSize',false,'7');$('#templateEditor font[size="7"]').each(function(){$(this).removeAttr('size').css('font-size',size+'pt');});$('#templateEditor').focus();}
+
+function renderEditorFields(){
+    let html='';$.each(editorFields,function(index,field){let options=(field.options||[]).join('，');html+='<tr data-index="'+index+'"><td><input class="form-control form-control-sm editor-field-label" value="'+esc(field.label||field.key)+'"'+(FIELD_CATALOG[field.key]?' readonly':'')+'><div class="text-muted" style="font-size:10px;">{{'+esc(field.key)+'}}</div></td><td><select class="form-select form-select-sm editor-field-type"'+(FIELD_CATALOG[field.key]?' disabled':'')+'><option value="text"'+(field.type==='text'?' selected':'')+'>单行文本</option><option value="textarea"'+(field.type==='textarea'?' selected':'')+'>多行文本</option><option value="date"'+(field.type==='date'?' selected':'')+'>日期</option><option value="number"'+(field.type==='number'?' selected':'')+'>数字</option><option value="select"'+(field.type==='select'?' selected':'')+'>下拉选择</option><option value="resident"'+(field.type==='resident'?' selected':'')+'>居民检索</option></select></td><td class="text-center"><input class="form-check-input editor-field-required" type="checkbox"'+(field.required?' checked':'')+'></td><td><input class="form-control form-control-sm editor-field-options" value="'+esc(options)+'" placeholder="下拉项用逗号分隔"'+(field.type==='select'?'':' disabled')+'></td><td class="text-center"><button type="button" class="btn btn-outline-danger btn-sm editor-field-delete" title="删除字段"><i class="bi bi-trash"></i></button></td></tr>';});
+    $('#editorFieldBody').html(html||'<tr><td colspan="5" class="text-center text-muted py-3">正文暂未使用填写字段</td></tr>');
+}
+
+function ensureEditorField(key){if(SYSTEM_PLACEHOLDERS.some(function(item){return item.key===key;})||editorFields.some(function(item){return item.key===key;}))return;if(FIELD_CATALOG[key])editorFields.push(clone(FIELD_CATALOG[key]));else editorFields.push({key:key,label:key,type:'text',source:'',resident_group:'',required:false,readonly:false,options:[]});renderEditorFields();}
+function insertVariable(key){$('#templateEditor').focus();document.execCommand('insertText',false,'{{'+key+'}}');ensureEditorField(key);}
+function editorTemplateContent(){let content=$('#templateEditor').clone();return content.html()||'';}
+function syncFieldsFromEditor(){let matches=editorTemplateContent().match(/{{\s*([^{}]+?)\s*}}/g)||[];$.each(matches,function(_,token){ensureEditorField(token.replace(/[{}]/g,'').trim());});}
+
+function saveTemplate(){
+    syncFieldsFromEditor();let payload={name:$('#editorTemplateName').val(),cert_type:$('#editorCertType').val(),template_content:editorTemplateContent(),field_schema:editorFields,page_settings:editorPageSettings(),is_active:$('#editorActive').is(':checked')};
+    let url=editorTemplate&&editorTemplate.id?'/certificate/api/template/update/'+editorTemplate.id:'/certificate/api/template/create';
+    $('#btnSaveTemplate').prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-1"></span>保存中');
+    $.ajax({url:url,type:'POST',contentType:'application/json',data:JSON.stringify(payload),success:function(resp){if(resp.success){showToast(resp.msg,'success');editorTemplate=resp.data;loadTemplates(resp.data.id).then(function(){openTemplateEditor(resp.data.id);});}else showToast(resp.msg||'保存失败','danger');},error:function(){showToast('保存失败','danger');},complete:function(){$('#btnSaveTemplate').prop('disabled',false).html('<i class="bi bi-floppy"></i> 保存模板');}});
+}
+
+function copyTemplate(){if(!editorTemplate)return;let copy=clone(editorTemplate);copy.id=null;copy.name=(copy.name||'证明模板')+'（副本）';copy.is_custom=true;copy.version=1;copy.usage_count=0;editorTemplate=copy;editorFields=clone(copy.field_schema||[]);$('#editorTemplateName').val(copy.name);$('#editorTemplateVersion').text('模板副本尚未保存');$('#btnToggleTemplate,#btnDeleteTemplate').prop('disabled',true);renderTemplateList();showToast('已建立副本，请修改后保存','info');}
+function toggleTemplate(){if(!editorTemplate||!editorTemplate.id)return;$.post('/certificate/api/template/status/'+editorTemplate.id,function(resp){if(resp.success){showToast(resp.msg,'success');loadTemplates(editorTemplate.id).then(function(){openTemplateEditor(editorTemplate.id);});}else showToast(resp.msg,'danger');});}
+function deleteTemplate(){if(!editorTemplate||!editorTemplate.id)return;if(!confirm('确定删除该模板？已有开具记录或系统默认模板不能删除。'))return;$.post('/certificate/api/template/delete/'+editorTemplate.id,function(resp){if(resp.success){showToast(resp.msg,'success');editorTemplate=null;loadTemplates();}else showToast(resp.msg,'danger');});}
+
+function buildRecordActions(item){let h='<div class="dropdown cert-record-menu"><button class="sc-btn sc-btn--text" type="button" data-bs-toggle="dropdown" aria-label="打开记录操作菜单" title="操作菜单"><i class="bi bi-chevron-down"></i></button><ul class="dropdown-menu dropdown-menu-end"><li><button class="dropdown-item" type="button" onclick="openRecordDetail('+item.id+')"><i class="bi bi-eye"></i>查看原证明</button></li><li><button class="dropdown-item" type="button" onclick="printRecord('+item.id+')"><i class="bi bi-printer"></i>重新打印</button></li><li><a class="dropdown-item" href="/certificate/api/issue/word/'+item.id+'"><i class="bi bi-file-earmark-word"></i>导出Word</a></li>';if(item.status==='issued')h+='<li><hr class="dropdown-divider my-1"></li><li><button class="dropdown-item text-danger" type="button" onclick="openVoidModal('+item.id+')"><i class="bi bi-slash-circle"></i>作废证明</button></li>';return h+'</ul></div>';}
+
+function initRecordMenus(){document.querySelectorAll('.cert-record-menu [data-bs-toggle="dropdown"]').forEach(function(toggle){bootstrap.Dropdown.getOrCreateInstance(toggle,{popperConfig:function(config){config.strategy='fixed';return config;}});});}
+function loadRecords(page){recordPage=page||1;let params={page:recordPage,limit:20,keyword:$('#recordKeyword').val(),cert_type:$('#recordCertType').val(),issuer:$('#recordIssuer').val(),date_start:$('#recordDateStart').val(),date_end:$('#recordDateEnd').val(),status:$('#recordStatus').val()};$('#recordBody').html('<tr><td colspan="11" class="text-center text-muted py-4">正在加载...</td></tr>');$.getJSON('/certificate/api/issues',params,function(resp){if(!resp.success){showToast(resp.msg||'读取失败','danger');return;}let data=resp.data||{},html='';$.each(data.items||[],function(_,item){
+// 067 §2.4 徽章映射：status 为真实字段（issued/voided），手工标记为 resident_id 缺席口径
+let status=item.status==='voided'?'<span class="sc-badge sc-badge--danger">已作废</span>':'<span class="sc-badge sc-badge--success">正常</span>';html+='<tr><td>'+esc(item.serial_no)+'</td><td>'+esc(item.subject_name)+(item.resident_id==null?' <span class="sc-badge sc-badge--muted">手工</span>':'')+'</td><td>'+esc(item.subject_id_card)+'</td><td>'+esc(item.cert_type)+'</td><td>'+esc(item.template_name)+' <span class="text-muted">V'+item.template_version+'</span></td><td>'+esc(item.issuer_name)+'</td><td>'+esc(item.issue_unit)+'</td><td>'+esc(item.issued_at)+'</td><td>'+item.copies+'</td><td>'+status+'</td><td class="record-action">'+buildRecordActions(item)+'</td></tr>';});if(!html)html='<tr><td colspan="11" class="text-center text-muted py-4">暂无开具记录</td></tr>';$('#recordBody').html(html);$('#recordTotal').text('共 '+(data.total||0)+' 条 · 每页 20 条');renderPagination('#recordPagination',data.pages||1,data.page||1,loadRecords);initRecordMenus();});}
+
+function fetchRecord(id,callback){if(currentRecordDetail&&currentRecordDetail.id===id){callback(currentRecordDetail);return;}$.getJSON('/certificate/api/issue/'+id,function(resp){if(resp.success){currentRecordDetail=resp.data;callback(resp.data);}else showToast(resp.msg||'记录不存在','danger');});}
+function renderRecordSummary(item){let status=item.status==='voided'?'已作废':'正常';let html='<div><small>证明编号</small><strong>'+esc(item.serial_no)+'</strong></div><div><small>证明对象</small><strong>'+esc(item.subject_name)+'　'+esc(item.subject_id_card)+'</strong></div><div><small>证明类型</small><strong>'+esc(item.template_name)+' V'+item.template_version+'</strong></div><div><small>开具信息</small><strong>'+esc(item.issuer_name)+'　'+esc(item.issued_at)+'</strong></div>';if(item.status==='voided')html+='<div style="grid-column:1/-1;"><small>作废信息</small><strong class="text-danger">'+esc(status)+' · '+esc(item.voided_by)+' · '+esc(item.voided_at)+' · '+esc(item.void_reason)+'</strong></div>';$('#recordSummary').html(html);}
+function openRecordDetail(id){fetchRecord(id,function(item){renderRecordSummary(item);$('#recordPaper').html(item.rendered_content);applyPaperSettings('#recordPaper',item.page_settings);$('#btnRecordPrint').data('id',item.id);$('#btnRecordWord').data('id',item.id);getModal('recordDetailModal').show();});}
+function printRecord(id){fetchRecord(id,function(item){preparePrint(item.rendered_content,item.page_settings);});}
+function openVoidModal(id){$('#voidRecordId').val(id);$('#voidReason').val('');getModal('voidModal').show();}
+
+$('#issueTemplateSelect').on('change',function(){currentIssueTemplate=certTemplates.find(item=>item.id===parseInt(this.value,10))||null;clearIssueForm();renderIssueTemplate();});
+$('#issueDynamicFields').on('click','.resident-search-btn',function(){searchResident($(this).data('group'));}).on('keydown','.issue-field',function(e){if(e.key==='Enter'&&$(this).data('field-type')==='resident'){e.preventDefault();searchResident($(this).data('resident-group')||'primary');}}).on('input change','.issue-field',function(){
+    updateIssuePreview();
+    let group=$(this).data('resident-group')||'primary';
+    if(!residentTargets[group]||!residentSnapshots[group])return;
+    let changed=false,snapshot=residentSnapshots[group];
+    $('#issueDynamicFields .issue-field').each(function(){let key=$(this).data('field-key');if(Object.prototype.hasOwnProperty.call(snapshot,key)&&($(this).val()||'')!==snapshot[key])changed=true;});
+    if(changed)releaseResident(group);
+}).on('change','.issue-field',function(){
+    let key=String($(this).data('field-key')||'');
+    if(!key.endsWith('身份证号'))return;
+    let value=String($(this).val()||'').trim().toUpperCase();
+    if(!idCardCheck(value))return;
+    $(this).val(value);
+    let group=$(this).data('resident-group')||'primary';
+    if(residentTargets[group])return;
+    $.getJSON('/certificate/api/residents',{keyword:value},function(resp){
+        let hit=(resp.data||[])[0];
+        if(hit&&confirm('台账已有：'+hit.name+'，是否回填？'))applyResident(group,hit);
+    });
+});
+$('#residentResultList').on('click','.cert-resident-result',function(){try{applyResident(pendingResidentGroup,JSON.parse(decodeURIComponent($(this).data('resident'))));}catch(e){showToast('居民数据读取失败','danger');}});
+$('.issue-meta-input').on('input change',function(){currentIssuedRecord=null;$('#issuePreviewStatus').text('内容已变化，需重新确认开具');updateIssuePreview();});
+$('#btnClearIssue').on('click',clearIssueForm);$('#btnRefreshPreview').on('click',updateIssuePreview);$('#btnIssueCertificate').on('click',confirmIssue);
+$('#btnSuccessPrint').on('click',function(){if(currentIssuedRecord)preparePrint(currentIssuedRecord.rendered_content,currentIssuedRecord.page_settings);});
+$('#btnSuccessWord').on('click',function(){if(currentIssuedRecord)downloadUrl('/certificate/api/issue/word/'+currentIssuedRecord.id);});
+$('#btnSuccessRecords').on('click',function(){getModal('issueSuccessModal').hide();bootstrap.Tab.getOrCreateInstance(document.querySelector('[data-bs-target="#recordPane"]')).show();loadRecords(1);});
+
+$('#templateKeyword').on('input',renderTemplateList);$('#templateList').on('click','.cert-template-item',function(){openTemplateEditor($(this).data('id'));});$('#btnNewTemplate').on('click',function(){openTemplateEditor(null);});
+$('.editor-command,.cert-variable-token').on('mousedown',function(e){e.preventDefault();});
+$('.cert-editor-toolbar').on('click','.editor-command',function(){document.execCommand($(this).data('command'),false,null);$('#templateEditor').focus();});
+$('#editorBlock').on('change',function(){document.execCommand('formatBlock',false,this.value);$('#templateEditor').focus();});$('#editorFontName').on('change',function(){document.execCommand('fontName',false,this.value);$('#templateEditor').focus();});$('#editorFontSize').on('change',function(){applyEditorFontSize(this.value);});$('#editorColor').on('input',function(){document.execCommand('foreColor',false,this.value);$('#templateEditor').focus();});
+$('#variableBar').on('mousedown','.cert-variable-token',function(e){e.preventDefault();}).on('click','.cert-variable-token',function(){insertVariable($(this).data('key'));});
+$('#btnAddField').on('click',function(){let label=$('#newFieldLabel').val().trim();if(!label){showToast('请输入字段名称','warning');return;}let key=label.replace(/[{}<>]/g,'').slice(0,40);if(editorFields.some(function(item){return item.key===key;})||SYSTEM_PLACEHOLDERS.some(function(item){return item.key===key;})){showToast('该字段已经存在','warning');return;}editorFields.push({key:key,label:key,type:$('#newFieldType').val(),source:'',resident_group:'',required:false,readonly:false,options:[]});renderEditorFields();insertVariable(key);$('#newFieldLabel').val('');});
+$('#editorFieldBody').on('input change','.editor-field-label,.editor-field-type,.editor-field-required,.editor-field-options',function(){let row=$(this).closest('tr'),index=parseInt(row.data('index'),10),field=editorFields[index];if(!field)return;field.label=row.find('.editor-field-label').val();field.type=row.find('.editor-field-type').val();field.required=row.find('.editor-field-required').is(':checked');field.options=row.find('.editor-field-options').val().split(/[,，\n]/).map(function(value){return value.trim();}).filter(Boolean);if($(this).hasClass('editor-field-type'))renderEditorFields();}).on('click','.editor-field-delete',function(){let index=parseInt($(this).closest('tr').data('index'),10),field=editorFields[index];if(!field)return;if(!confirm('删除字段“'+field.label+'”并从正文中移除对应占位符？'))return;let pattern=new RegExp('{{\\s*'+field.key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*}}','g');$('#templateEditor').html(editorTemplateContent().replace(pattern,''));editorFields.splice(index,1);renderEditorFields();updateEditorPaper();});
+$('.page-setting').on('input change',updateEditorPaper);$('#btnGovPagePreset').on('click',applyGovPagePreset);$('#btnSaveTemplate').on('click',saveTemplate);$('#btnCopyTemplate').on('click',copyTemplate);$('#btnToggleTemplate').on('click',toggleTemplate);$('#btnDeleteTemplate').on('click',deleteTemplate);
+
+$('#btnSearchRecords').on('click',function(){loadRecords(1);});$('#recordKeyword,#recordIssuer').on('keydown',function(e){if(e.key==='Enter')loadRecords(1);});
+$('#btnRecordPrint').on('click',function(){printRecord($(this).data('id'));});$('#btnRecordWord').on('click',function(){downloadUrl('/certificate/api/issue/word/'+$(this).data('id'));});
+$('#voidForm').on('submit',function(e){e.preventDefault();let id=$('#voidRecordId').val(),reason=$('#voidReason').val().trim();if(!reason)return;$.ajax({url:'/certificate/api/issue/void/'+id,type:'POST',contentType:'application/json',data:JSON.stringify({reason:reason}),success:function(resp){if(resp.success){getModal('voidModal').hide();showToast(resp.msg,'success');currentRecordDetail=null;loadRecords(recordPage);}else showToast(resp.msg||'作废失败','danger');}});});
+$('[data-bs-target="#recordPane"]').on('shown.bs.tab',function(){loadRecords(recordPage);});
+$('[data-bs-target="#issuePane"],[data-bs-target="#templatePane"]').on('shown.bs.tab',function(){requestAnimationFrame(refitVisiblePapers);});
+$('#recordDetailModal').on('shown.bs.modal',function(){fitPaperPreview('#recordPaper');});
+$(window).off('resize.certificatePaper').on('resize.certificatePaper',function(){clearTimeout(paperResizeTimer);paperResizeTimer=setTimeout(refitVisiblePapers,100);});
+
+$(function(){
+    $('#issueDate').val(todayValue());loadHistory('certificate_issue_unit','#issueUnitHistory');renderVariableBar();loadTemplates();loadRecords(1);
+});
+
+window.openRecordDetail=openRecordDetail;window.printRecord=printRecord;window.openVoidModal=openVoidModal;
+{% endraw %}
+</script>
+{% endblock %}

@@ -1,0 +1,150 @@
+/* ==========================================================================
+ * tokens.css — 三层令牌地基
+ * 层序（不可调换）：原始值 → 语义别名 → 组件令牌（三段标记见下方各节标题）
+ * 约束：只有原始值段可写裸色值；语义段与组件段一律 var() 引用。
+ *
+ * 基线：ADR-022 视觉基线 v4.0（中性灰阶 + 四色语义分组），取代 ADR-009 晴湖蓝。
+ * 迁移路线：G-01 路线 A「过渡别名」——旧变量名保留并指向中性新值，
+ *           零模板改动、零 app.css 改动；清理时点另立任务。
+ * 校验：scripts/checks/validate_tokens.py --schema
+ * 本文件只承载「值」；「用法」见 docs/design/组件-handoff-规格-2026-10-28.md。
+ * ========================================================================== */
+
+/* ===== PRIMITIVE（原始值 · 唯一可写裸值处） ===== */
+:root {
+  /* —— 中性阶（承载 90% 界面） —— */
+  --c-ink: #0A0A0A;        /* 主文字 / 大数值 */
+  --c-ink-2: #171717;      /* 主操作色（黑按钮、激活、进度填充） */
+  --c-ink-3: #404040;      /* 侧栏一级项文字 */
+  --c-ink-4: #4A4A4A;      /* 图标描边（深） */
+  --c-ink-5: #525252;      /* 文本按钮 / 行内操作文字（组件规格 §2.2 字面量） */
+  --c-muted: #737373;      /* 次文字 / 标签 / 副标题（对白 4.74:1） */
+  --c-muted-2: #6F6F6F;    /* 侧栏分组标签（对 #FAFAFA 4.8:1） */
+  --c-faint: #8C8C8C;      /* 图标描边（浅）/ 占位符（3.5:1，禁作正文） */
+
+  /* —— 面与线 —— */
+  --c-surface: #FFFFFF;    /* 卡片 / 顶栏 / 主区底 */
+  --c-bg: #FFFFFF;         /* 页面底（全白，无晴空底） */
+  --c-side: #FAFAFA;       /* 侧栏底 */
+  --c-hover: #F3F3F3;      /* hover / 激活底 / 次级页签 */
+  --c-active: #F0F0F0;     /* 侧栏激活底 */
+  --c-rail: #F5F5F5;       /* 表头底 / 进度轨 */
+  --c-line: rgba(226, 232, 240, 0.7);   /* 卡片描边（视觉等价 0.8px） */
+  --c-line-2: rgba(226, 232, 240, 0.55); /* 行分割 / 组内分隔 */
+  --c-line-3: #E5E5E5;     /* 强分隔（侧栏底边、系统管理上分隔线） */
+
+  /* —— 四色 · 仅作分类标识（不得当状态色） —— */
+  --c-cat-1: #16A34A;      /* 绿 */
+  --c-cat-2: #0891B2;      /* 青 */
+  --c-cat-3: #6366F1;      /* 靛 */
+  --c-cat-4: #D97706;      /* 琥珀 */
+  --c-cat-1-weak: #DCFCE7; /* 10% 底的实色等价（不支持 alpha 的场景） */
+  --c-cat-2-weak: #CFFAFE; /* 基线 §2.1 只列 1/3 两档，此处按同阶补齐四档 */
+  --c-cat-3-weak: #E0E7FF;
+  --c-cat-4-weak: #FEF3C7;
+
+  /* —— 状态 · 独立一套，不与四色混用 —— */
+  --c-success: #2F9F3D;
+  --c-warning: #B45309;
+  --c-danger: #E7000B;
+  --c-warning-bg: #FDF7EC; /* 提示条底 */
+  /* AUD-12：徽章流程档底/字（组件规格 §2.4 字面量收敛，供 components.css 引用） */
+  --c-badge-danger-bg: #FDECEC;
+  --c-badge-primary-bg: #DBEAFE;
+  --c-badge-primary-fg: #2563EB;
+  --c-badge-info-bg: #E0F2FE;
+  --c-badge-info-fg: #0891B2;
+  /* 136：信息类深字色（对比度 5.17:1 on badge-info-bg，优于 info-fg 的 3.21——
+     dynatable_v2.css 的 dtv2-tag--info 沿用，全站此前仅该处硬写） */
+  --c-info-strong: #0369A1;
+
+  /* —— 间距（4px 基数） —— */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 28px;
+  --sp-8: 32px;
+  --sp-9: 36px;
+  --sp-10: 40px;
+  --sp-11: 48px;
+  --sp-12: 56px;
+  --sp-13: 64px;
+  --sp-14: 72px;
+
+  /* —— 圆角 —— */
+  --r-card: 10px;
+  --r-ctrl: 8px;
+  --r-badge: 7px;
+  --r-full: 9999px;
+
+  /* —— 字体 —— */
+  --ff-base: "Noto Sans SC", -apple-system, "Segoe UI", sans-serif;
+  --ff-num: "Inter", "Noto Sans SC", sans-serif;
+}
+
+/* ===== 过渡别名（ADR-022 迁移期 · G-01 路线 A） =====
+ * 旧变量名全部保留、值指向中性新值：app.css 转发层不断裂、模板零改动。
+ * 段位置必须在 SEMANTIC 之前（门禁只允许 PRIMITIVE 段出现裸色值）。
+ * 删除时点：蓝系硬编码清理任务落地后整段移除，届时全站 grep 归零。
+ */
+:root {
+  /* 被删色值变量 → 中性新值（《令牌迁移引用清单》§五） */
+  --c-blue: var(--c-ink-2);        /* 主操作色 */
+  --c-blue-dark: var(--c-ink);     /* hover 深一档 */
+  --c-blue-light: var(--c-hover);  /* hover 浅底 */
+  --c-sky: var(--c-bg);            /* 全白底 */
+  --c-white: var(--c-surface);
+  --c-gray: var(--c-muted);        /* 次文字 */
+  --c-green: var(--c-success);
+  --c-amber: var(--c-warning);
+  --c-red: var(--c-danger);
+  --c-teal: var(--c-muted);        /* info 并入次文字色 */
+
+  /* 被删圆角变量 */
+  --r-sm: var(--r-badge);
+  --r-md: var(--r-ctrl);
+  --r-lg: var(--r-card);
+
+  /* 被删字号变量（全站无外部引用，保留为零成本别名） */
+  --fs-sm: 0.875rem;
+  --fs-base: 1rem;
+  --fs-lg: 1.125rem;
+}
+
+/* ===== SEMANTIC（语义别名 · 只 var() 引用 PRIMITIVE） ===== */
+:root {
+  --color-primary: var(--c-ink-2);   /* 主操作色：中性黑（非蓝） */
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-text: var(--c-ink);
+  --color-text-muted: var(--c-muted);
+  --color-border: var(--c-line);
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-danger: var(--c-danger);
+  /* --color-info 不删除：app.css 有 1 处外部引用，删则 undefined（056 验收 2）。
+     值并入次文字色，语义上「中性提示」不再占用一个色相。 */
+  --color-info: var(--c-muted);
+  /* 详情弹窗 v2（.d2-*）专用蓝语义：2026-11-11 ui1.md 设计，**限弹窗作用域**，
+     不参与 ADR-022 中性主色（--color-primary）。复用原语，不新增字面值。 */
+  --color-accent-blue: var(--c-badge-primary-fg);
+}
+
+/* ===== COMPONENT（组件令牌 · 只 var() 引用） ===== */
+:root {
+  --sidebar-w: 260px;              /* 折叠态 64px，由 shell.js 切换 data-collapsed */
+  --sidebar-w-collapsed: 64px;
+  --sidebar-bg: var(--c-side);
+  --sidebar-fg: var(--color-text);
+  /* 顶栏必须 64px（基线 §2.3）：取 --sp-13，不得跟随 --sp-14（72px） */
+  --navbar-h: var(--sp-13);
+  --banner-h: 34px;                /* 不在 4px 阶梯上，设计稿实测值 */
+  --card-radius: var(--r-card);
+  --card-border: 1px solid var(--c-line);
+  --card-shadow: none;             /* 全站零阴影，唯浮层例外 */
+  --btn-primary-bg: var(--color-primary);
+  --btn-primary-fg: var(--c-surface);
+}

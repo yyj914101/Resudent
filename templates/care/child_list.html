@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs, care_tabs %}
+{% block title %}事实无人抚养儿童 - 关爱对象{% endblock %}
+{% block page_title %}关爱对象{% endblock %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{# 075 RC-06：副标题统一为样图口径（村名走 village_name 设置项，未配置回退不带村名） #}
+{% set civil_subtitle = (village_name ~ ' · ' if village_name else '') ~ '10 类民政对象 · 在册 ' ~ (civil_headcount or 0) ~ ' 人' %}
+{% call page_head('事实无人抚养儿童', civil_subtitle) %}
+    <button type="button" class="sc-btn sc-btn--primary" id="btnAdd"><i class="bi bi-plus"></i> 新增</button>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="exportChildData()"><i class="bi bi-download"></i> 导出</button>
+    <a href="/care/api/child/template" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 模板</a>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="$('#impModal').data('tpl','child').modal('show')"><i class="bi bi-upload"></i> 导入</button>
+{% endcall %}
+{{ civil_tabs('care') }}
+{{ care_tabs('child') }}
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <input type="text" class="sc-input" id="sName" placeholder="儿童姓名" style="width:140px">
+        <input type="text" class="sc-input" id="sIdCard" placeholder="身份证号" style="width:170px">
+        <button type="button" class="sc-btn sc-btn--primary" id="btnSearch"><i class="bi bi-search"></i> 查询</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">详情 12 字段（含出生日期）</span>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="childTable">
+            <thead class="sc-table__head">
+                <tr><th class="sc-table__th">所在组</th><th class="sc-table__th sc-table__th--num">发放金额</th><th class="sc-table__th">儿童姓名</th><th class="sc-table__th">身份证号</th><th class="sc-table__th">性别</th><th class="sc-table__th">父亲情况</th><th class="sc-table__th">母亲情况</th><th class="sc-table__th">身体情况</th><th class="sc-table__th">持卡人关系</th><th class="sc-table__th">联系电话</th><th class="sc-table__th">家庭地址</th><th class="sc-table__th">操作</th></tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pg"></ul>
+    </div>
+</section>
+
+<!-- Detail Modal（2026-11 详情改版：分组卡片式，正文由 care_child_list.js 回填） -->
+{% from 'components/_macros/icon.html' import icon %}
+<div class="modal fade" id="dtModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="d2-shell" role="dialog" aria-modal="true">
+            <header class="d2-header">
+                <div class="d2-header__main">
+                    <div class="d2-header__row1">
+                        <h2 class="d2-name" id="dtName">儿童详情</h2>
+                        <div class="d2-tags" id="dtTags"></div>
+                    </div>
+                    <div class="d2-subtitle" id="dtSubtitle"></div>
+                </div>
+                <div class="d2-kpis" id="dtKpis"></div>
+                <button type="button" class="d2-close" data-bs-dismiss="modal" aria-label="关闭">{% from 'components/_macros/icon.html' import icon %}{{ icon('x', 20) }}</button>
+            </header>
+            <div class="d2-risk" id="dtRisk" hidden></div>
+            <div class="d2-body" id="dtBody"></div>
+            <footer class="d2-footer">
+                <label class="d2-privacy"><input type="checkbox" id="d2Privacy"><span>隐私脱敏显示（隐藏身份证号码中间位）</span></label>
+                <div class="d2-footer__btns" id="dtBtns"></div>
+            </footer>
+        </div>
+    </div>
+</div>
+<script src="/static/js/detail_v2.js"></script>
+<!-- Form Modal（fmBody 由 JS 构建分组表单字段；name/id 契约零改动；2026-11 分组表单式改版） -->
+{% from 'components/_macros/icon.html' import icon %}
+<div class="modal fade" id="fmModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal sc-fmodal" role="dialog" aria-modal="true">
+            <form id="fm"><input type="hidden" name="id" id="fid">
+                <header class="sc-modal__header sc-dheader">
+                    <div class="sc-dheader__main">
+                        <div class="sc-dheader__name-row">
+                            <span class="sc-dheader__name" id="fmTitle">新增</span>
+                        </div>
+                        <div class="sc-fmodal__meta" id="fmMeta"></div>
+                    </div>
+                    <button type="button" class="sc-dheader__close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 22) }}</button>
+                </header>
+                <div class="sc-modal__body sc-fmodal__body"><div id="fmBody"></div></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Import Modal -->
+<div class="modal fade" id="impModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="impModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="impModalTitle">批量导入关爱儿童</h3>
+                    <p class="pw-modal__sub">上传 Excel 名单批量建立关爱儿童档案，按身份证自动关联居民信息</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div>
+                    <p class="pw-mode-label" id="careChildModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="careChildModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="impMode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">仅新增</span>
+                                    <span class="pw-radio-card__desc">重复身份证号自动跳过，仅录入新档案</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="impMode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖更新</span>
+                                    <span class="pw-radio-card__desc">重复身份证号用表格最新信息覆盖原有档案</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="careChildImpFileLabel">名单文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="impFile" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none">
+                    <div class="pw-drop" id="careChildImpDrop" role="button" tabindex="0" aria-labelledby="careChildImpFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿</span>
+                    </div>
+                    <div class="pw-staged d-none" id="careChildImpStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="careChildImpStagedName"></div>
+                                <div class="pw-staged__meta"><span id="careChildImpStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="careChildImpReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="careChildImpRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="impRes" class="small"></div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="impSubmit" onclick="startImport()" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/care_child_list.js') }}"></script>
+<!-- Child Edit Modal（2026-11-11 编辑功能补齐：ui.md 四列栅格三段式模式（ed2-*）；
+     name 契约与 /care/api/child/save 对齐；三段=个人信息/家庭与保障信息/联系与地址） -->
+<div class="modal fade" id="childFmModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="ed2-shell" role="dialog" aria-modal="true">
+            <form id="childFm"><input type="hidden" name="id" id="childFid">
+                <header class="ed2-header">
+                    <div class="ed2-header__main">
+                        <div class="ed2-header__row1">
+                            <span class="ed2-title" id="childFmTitle">新增儿童</span>
+                            <span class="ed2-meta" id="childFmMeta">修改后保存生效</span>
+                        </div>
+                    </div>
+                    <button type="button" class="ed2-close" data-bs-dismiss="modal" aria-label="关闭">{% from 'components/_macros/icon.html' import icon %}{{ icon('x', 20) }}</button>
+                </header>
+                <div class="ed2-body"><div id="childFmBody"></div></div>
+                <footer class="ed2-footer">
+                    <button type="button" class="ed2-btn ed2-btn--ghost" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="ed2-btn ed2-btn--primary"><i class="bi bi-check-lg"></i> 保存修改</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

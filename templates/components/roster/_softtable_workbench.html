@@ -1,0 +1,194 @@
+{# _softtable_workbench.html — 软表 V2.5 补丁 B-2 统一双视图工作台共享片段
+   同时被 templates/dynatable/list.html 与 templates/components/roster/roster_page.html 引用。 #}
+<style id="dtV2PageStyle">@page { size: A4 landscape; margin: 15mm; }</style>
+
+<div class="sc-card" id="dtV2MainCard" style="min-width:0">
+        <!-- 卡片头部：左侧分段视图切换 + 右侧模式徽章与次级操作 -->
+        <div class="dtv2-wb-head" id="dtV2SwitchBar">
+            <div class="dtv2-chips-seg">
+                <button type="button" class="dtv2-chip-btn active" data-dtv2-mode="list">列表查询视图（分页 · 加密脱敏）</button>
+                <button type="button" class="dtv2-chip-btn" data-dtv2-mode="a4">A4 版式视图（所见即所得 · 合页编辑）</button>
+                <button type="button" class="dtv2-chip-btn" data-dtv2-mode="format">版式微调（行高 / 列宽 / 文字）</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span id="dtV2ModeBadges" style="display:inline-flex;gap:5px;flex-wrap:wrap"></span>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnClonePeriod" style="padding:4px 10px;font-size:12px">期次结转</button>
+                <a class="sc-btn sc-btn--secondary" href="/dynatable/api/t/{{ table.code }}/export?styled=1" style="padding:4px 10px;font-size:12px">导出原样 .xlsx</a>
+                {% if table.group_name %}
+                <a class="sc-btn sc-btn--secondary" href="/dynatable/api/group/{{ table.group_name | urlencode }}/export" style="padding:4px 10px;font-size:12px">导出整本</a>
+                {% endif %}
+                {% if not (is_builtin or (is_builtin_roster_code is defined and is_builtin_roster_code(table.module_key, table.code))) %}
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnDeleteTable" style="padding:4px 10px;font-size:12px;color:var(--c-danger,#B91C1C)">删除当前表</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 列表视图顶部：独立软表分区切换 + 容错增行/减行/增列/减列 -->
+        <div class="dtv2-list-bar" id="dtV2ListBar">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--c-muted-2)" id="dtV2ListPartLabel" hidden>独立软表分区：</span>
+                <div id="dtV2ListPartitions" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
+            <div id="dtV2ListOps" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListAddRow" style="padding:3px 9px;font-size:12px">＋ 增行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListDelRow" style="padding:3px 9px;font-size:12px">－ 减行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListAddCol" style="padding:3px 9px;font-size:12px">＋ 增列</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListDelCol" style="padding:3px 9px;font-size:12px">－ 减列</button>
+            </div>
+        </div>
+
+        <!-- A4 版式与版式微调区域 -->
+        <div id="dtV2A4Wrap" hidden>
+            <div class="dtv2-bar" id="dtV2FillBar">
+                <input type="text" class="sc-input dtv2-fixed-ctrl" id="dtV2ResidentQuery" style="width:165px;height:30px;padding:0 8px" placeholder="搜居民姓名...">
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2ResidentSelect" data-no-custom-select="1" style="width:210px;height:30px;padding:0 8px" aria-label="选择回填居民"></select>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2BackfillTarget" data-no-custom-select="1" hidden style="width:130px;height:30px;padding:0 6px" aria-label="回填目标表"></select>
+                <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnBackfill" style="padding:4px 10px;font-size:12px">一键回填新增行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnAddRow" style="padding:4px 10px;font-size:12px">＋ 末行增行</button>
+                <span class="dtv2-fill"></span>
+                <span id="dtV2CountHint" style="color:var(--c-muted-2)"></span>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnToggleReveal" style="padding:4px 10px;font-size:12px">查看明文（当前页数据）</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnPrint" style="padding:4px 10px;font-size:12px">A4 套打预览</button>
+            </div>
+            <div class="dtv2-bar dtv2-bar--rail" id="dtV2FmtBar" hidden>
+                <strong id="dtV2FmtLabel">点击单元格调格式 · 拖拽边框调列宽/行高</strong>
+                <span>字体</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2FmtFont" style="width:98px;height:30px;padding:0 6px" aria-label="字体">
+                    <option value="SimSun, '宋体', serif">宋体</option>
+                    <option value="FangSong, '仿宋', serif">仿宋</option>
+                    <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                    <option value="SimHei, '黑体', sans-serif">黑体</option>
+                </select>
+                <span>字号</span>
+                <input type="number" class="sc-input dtv2-fixed-ctrl" id="dtV2FmtSize" min="10" max="28" value="12" style="width:58px;height:30px;padding:0 6px" aria-label="字号">
+                <label style="display:inline-flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="dtV2FmtBold"> 加粗</label>
+                <span>水平</span>
+                <span class="dtv2-seg" id="dtV2FmtHAlign"><button type="button" data-val="left">左</button><button type="button" class="active" data-val="center">中</button><button type="button" data-val="right">右</button></span>
+                <span>垂直</span>
+                <span class="dtv2-seg" id="dtV2FmtVAlign"><button type="button" data-val="top">顶</button><button type="button" class="active" data-val="middle">中</button><button type="button" data-val="bottom">底</button></span>
+                <span>行高</span>
+                <input type="number" class="sc-input dtv2-fixed-ctrl" id="dtV2FmtRowH" min="22" max="180" step="2" value="32" style="width:62px;height:30px;padding:0 6px" aria-label="行高">
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnRowAll" style="padding:4px 9px;font-size:12px">全表统一行高</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnSaveLayout" style="padding:4px 10px;font-size:12px">保存版式</button>
+            </div>
+            <div class="dtv2-bar dtv2-bar--bg">
+                <span>固定纸张</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2PaperOrient" style="width:175px;height:30px;padding:0 8px" aria-label="A4方向">
+                    <option value="portrait">A4 纵向（210mm）</option>
+                    <option value="landscape" selected>A4 横向（297mm）</option>
+                </select>
+                <span>页边距</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2PaperMargin" style="width:155px;height:30px;padding:0 8px" aria-label="页边距">
+                    <option value="narrow">窄边距（10mm）</option>
+                    <option value="normal" selected>标准边距（15mm）</option>
+                    <option value="wide">宽松边距（20mm）</option>
+                </select>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnFitA4" style="padding:4px 9px;font-size:12px">适配 A4 单页宽</button>
+                <span class="dtv2-fill"></span>
+                <span id="dtV2PaperHint"></span>
+            </div>
+            <div class="dtv2-stage">
+                <div class="dtv2-a4-paper is-landscape margin-normal" id="dtV2Canvas"></div>
+            </div>
+        </div>
+</div>
+
+<!-- ADR-022 页内弹窗：套打预览 / 期次结转 / 安全删除 / 增列减列 -->
+<div class="dtv2-print-overlay" id="dtV2PrintOverlay" hidden>
+    <div class="dtv2-print-dialog">
+        <div class="dtv2-print-head">
+            <strong>A4 套打预览（跨页自动重复表头）</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2PrintOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body"><div class="dtv2-a4-paper" id="dtV2PrintPaper"></div></div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnDoPrint">调用浏览器打印</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2CloneOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:460px">
+        <div class="dtv2-print-head">
+            <strong>台账期次结转</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2CloneOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <div class="dtv2-field" style="margin-bottom:10px">
+                <label class="dtv2-field__label" for="dtV2ClonePeriodIn">新期次 / 届次标签（例如：2026-02）</label>
+                <input type="text" class="sc-input" id="dtV2ClonePeriodIn">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer">
+                <input type="checkbox" id="dtV2CloneCopyChk" checked> 沿用当前期次的全部记录名单
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="dtV2CloneGroupChk" checked> 整组结转同工作簿下的全部子表
+            </label>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2CloneOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnConfirmClone">立即生成新期次</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2DelOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:460px">
+        <div class="dtv2-print-head">
+            <strong>确认安全删除当前台账</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2DelOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <p style="margin:0 0 10px;color:var(--c-ink-2)">即将删除台账「{{ table.name }}」（<code>{{ table.code }}</code>）。</p>
+            <div style="background:var(--c-rail);border:1px solid var(--c-line-2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--c-muted-2)">
+                删前系统自动生成双份加密快照备份，并事务级联清理记录、字段定义、导入日志、安全节点与版式 JSON。
+            </div>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2DelOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--danger" id="dtV2BtnConfirmDel">确认安全删除</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2ColOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:440px">
+        <div class="dtv2-print-head">
+            <strong id="dtV2ColTitle">新增字段列</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2ColOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <div id="dtV2ColAddBox">
+                <div class="dtv2-field" style="margin-bottom:10px">
+                    <label class="dtv2-field__label" for="dtV2NewColName">列名</label>
+                    <input type="text" class="sc-input" id="dtV2NewColName" placeholder="例如：银行卡号 / 复核人">
+                </div>
+                <div class="dtv2-field" style="margin-bottom:10px">
+                    <label class="dtv2-field__label" for="dtV2NewColType">数据类型</label>
+                    <select class="sc-select" id="dtV2NewColType" data-no-custom-select="1">
+                        <option value="text">文本 (text)</option>
+                        <option value="number">数值 (number)</option>
+                        <option value="date">日期 (date)</option>
+                    </select>
+                </div>
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="dtV2NewColSens">敏感脱敏级别</label>
+                    <select class="sc-select" id="dtV2NewColSens" data-no-custom-select="1">
+                        <option value="none">普通字段</option>
+                        <option value="identity">身份敏感（加密脱敏）</option>
+                    </select>
+                </div>
+            </div>
+            <div id="dtV2ColDelBox" hidden>
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="dtV2DelColSelect">选择要移除的列（至少保留 1 列）</label>
+                    <select class="sc-select" id="dtV2DelColSelect" data-no-custom-select="1"></select>
+                </div>
+            </div>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2ColOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnConfirmCol">确定</button>
+        </div>
+    </div>
+</div>

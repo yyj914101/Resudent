@@ -1,0 +1,91 @@
+    /* T15-3 防误发清单（D4：村名+标题+清单明细+签字栏+生成时间，A4 纵向分页） */
+    .checklist-sheet {
+        max-width: 190mm;
+        margin: 0 auto;
+        padding: 12mm 10mm;
+        font-family: "SimSun", "宋体", serif;
+        color: #000;
+        background: var(--color-surface);
+    }
+    .checklist-sheet .sheet-title {
+        text-align: center;
+        font-size: 22pt;
+        font-weight: bold;
+        letter-spacing: 4px;
+        margin: 4mm 0 8mm 0;
+    }
+    .checklist-sheet .sheet-village {
+        text-align: center;
+        font-size: 11pt;
+        margin-bottom: 6mm;
+    }
+    .checklist-sheet .sheet-meta {
+        font-size: 10.5pt;
+        line-height: 1.9;
+        margin-bottom: 4mm;
+    }
+    .checklist-sheet table.sheet-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5pt;
+        margin-bottom: 5mm;
+    }
+    .checklist-sheet table.sheet-table th,
+    .checklist-sheet table.sheet-table td {
+        border: 1px solid #000;
+        padding: 2.5mm 2mm;
+        text-align: center;
+        line-height: 1.5;
+    }
+    .checklist-sheet table.sheet-table thead th {
+        background: #f2f2f2;
+        font-weight: bold;
+    }
+    .checklist-sheet .sheet-sign {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 14mm;
+        font-size: 11pt;
+    }
+    .checklist-sheet .sheet-sign span {
+        display: inline-block;
+        min-width: 45mm;
+    }
+    .no-print { display: block; }
+    .toolbar {
+        max-width: 190mm;
+        margin: 8mm auto 0;
+        text-align: right;
+    }
+    @media print {
+        @page {
+            size: A4 portrait;
+            margin: 12mm;
+        }
+        body {
+            background: var(--color-surface) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .no-print, .toolbar, .tab-bar, .navbar, .app-sidebar, .card-header,
+        .modal, .modal-backdrop, .dropdown-menu {
+            display: none !important;
+        }
+        #contentArea, .container-fluid {
+            padding: 0 !important;
+            max-width: none !important;
+        }
+        .checklist-sheet {
+            padding: 0;
+            max-width: none;
+        }
+        table.sheet-table {
+            page-break-inside: auto;
+        }
+        table.sheet-table tr {
+            page-break-inside: avoid;
+        }
+        table.sheet-table thead {
+            display: table-header-group;  /* 跨页重复表头 */
+        }
+    }

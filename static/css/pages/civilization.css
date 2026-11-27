@@ -1,0 +1,240 @@
+/* ==========================================================================
+ * civilization.css — 089 文明实践站门面页（ADR-022 视觉基线 v4.0 · 高密度去噪版）
+ * 对齐 code_artifact2.html 设计稿：页头 / 三指标卡 / 公约内容盒 / 附件上传与表格。
+ *
+ * 项目规范：零外链（不引 Tailwind CDN）、零裸色值（颜色 / 圆角 / 间距一律 var()
+ * 引用 tokens.css）、BEM cv-* 前缀、组件按钮复用 .sc-btn 语义档。
+ *
+ * 交互纪律（ui-adjustments-20261101.md 第十六节）：自定义内容层若继承
+ * pointer-events: none 会让按钮与表单「看着正常、点击全失效」。本页所有交互层
+ * 显式恢复 auto，禁用态保留 none，并由 tests/test_civilization_ui_guard.py 钉住。
+ * ========================================================================== */
+
+/* ── 页面容器：最大宽度 1152px，四模块统一 24px 纵向间距 ── */
+.cv-page {
+    display: grid;
+    gap: var(--sp-6);
+    max-width: 1152px;
+    margin-inline: auto;
+    padding: var(--sp-2) 0 var(--sp-8);
+    pointer-events: auto;
+}
+
+/* 可交互层兜底：无论祖先层如何设置，控件自身一律可命中 */
+.cv-page button,
+.cv-page a,
+.cv-page label,
+.cv-page input,
+.cv-page select,
+.cv-page textarea,
+.cv-page summary,
+.cv-page .cv-stat__help {
+    pointer-events: auto;
+}
+.cv-page button:disabled,
+.cv-page .is-disabled { pointer-events: none; }
+
+/* ── 按钮：复用 .sc-btn 语义档，仅补版式 ── */
+.cv-btn { flex: none; white-space: nowrap; }
+
+/* ── 页头 ── */
+.cv-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--sp-4);
+    padding-bottom: var(--sp-2);
+}
+.cv-head__name {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--c-ink);
+}
+.cv-head__meta { margin: 6px 0 0; font-size: 14px; color: var(--c-muted); }
+.cv-head__actions { display: flex; gap: var(--sp-3); flex: none; }
+
+/* ── 指标卡：标签 + 口径帮助图标 + 等宽数字大数值 ── */
+.cv-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--sp-5);
+}
+.cv-stat {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--sp-5);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-card);
+}
+.cv-stat__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: var(--sp-2);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--c-muted);
+}
+.cv-stat__help {
+    display: inline-flex;
+    font-size: 16px;
+    line-height: 1;
+    color: var(--c-faint);
+    cursor: help;
+}
+.cv-stat__value {
+    font-family: var(--ff-num);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--c-ink);
+}
+
+/* ── 通用卡片 ── */
+.cv-card {
+    padding: var(--sp-6);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-card);
+}
+.cv-card--flush { padding: 0; overflow: hidden; }
+.cv-card__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--sp-4);
+    margin-bottom: var(--sp-5);
+}
+.cv-card__head--flush { margin-bottom: 0; padding: var(--sp-6) var(--sp-6) var(--sp-4); }
+.cv-card__title { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--c-ink); }
+.cv-card__meta { margin: 0; font-size: 14px; color: var(--c-muted); }
+.cv-card__actions { display: flex; gap: var(--sp-3); flex: none; }
+.cv-placeholder { margin: 0; font-size: 14px; color: var(--c-muted); }
+
+/* ── 公约内容盒：浅底区分 + 版本元数据 + 有序条款列表 ── */
+.cv-convention {
+    padding: var(--sp-5);
+    background: var(--c-side);
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-ctrl);
+}
+.cv-convention__meta {
+    margin: 0 0 var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-line-2);
+    font-size: 12px;
+    color: var(--c-muted);
+}
+.cv-convention__meta strong { font-weight: 500; color: var(--c-ink-3); }
+.cv-convention__num { font-family: var(--ff-num); }
+.cv-convention__list {
+    margin: 0;
+    padding-left: 20px;
+    list-style: decimal;
+    font-size: 14px;
+    line-height: 1.625;
+    color: var(--c-ink);
+}
+.cv-convention__list li + li { margin-top: var(--sp-2); }
+.cv-convention__list li::marker {
+    font-family: var(--ff-num);
+    font-weight: 500;
+    color: var(--c-muted);
+}
+.cv-convention__attachment { margin-top: var(--sp-3); }
+
+/* ── 折叠区（历史版本 / 台账指引）：默认收起，展开后仍可交互 ── */
+.cv-fold {
+    margin-top: var(--sp-4);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--c-line-2);
+}
+.cv-fold[hidden] { display: none; }
+.cv-fold__summary {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    list-style: none;
+    font-size: 13px;
+    color: var(--c-muted);
+    cursor: pointer;
+}
+.cv-fold__summary::-webkit-details-marker { display: none; }
+.cv-fold[open] > .cv-fold__summary { margin-bottom: var(--sp-3); color: var(--c-ink-3); }
+.cv-fold__hint { margin-left: auto; font-size: 12px; color: var(--c-faint); }
+.cv-fold__body { pointer-events: auto; }
+.cv-guide { margin-top: 0; }
+.cv-guide__body { padding-bottom: var(--sp-2); }
+.cv-guide__line { margin: 0 0 var(--sp-2); font-size: 13px; line-height: 1.6; color: var(--c-muted); }
+.cv-guide__line strong { color: var(--c-ink-3); }
+.cv-guide .sc-btn { margin-top: var(--sp-1); }
+
+/* ── 上传控件：label 包裹隐藏 file input，点击任意位置均可唤起选择窗口 ── */
+.cv-upload-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    padding: 0 var(--sp-6) var(--sp-4);
+}
+.cv-upload {
+    position: relative;
+    overflow: hidden;
+    flex: none;
+    cursor: pointer;
+}
+.cv-upload__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.cv-upload-hint { font-size: 12px; color: var(--c-muted); }
+
+/* ── 数据表：表头浅底 + 上下描边，空态居中图标 ── */
+.cv-table { font-size: 13px; }
+.cv-table thead th {
+    padding: 12px 16px;
+    border-top: 1px solid var(--c-line);
+    border-bottom: 1px solid var(--c-line);
+    background: var(--c-rail);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--c-muted);
+}
+.cv-table tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--c-line);
+    font-size: 13px;
+    color: var(--c-ink);
+}
+.cv-table__op { text-align: right; }
+.cv-table tbody td.cv-empty-cell { padding: var(--sp-13) 0; text-align: center; }
+.cv-empty { display: inline-flex; flex-direction: column; align-items: center; gap: var(--sp-3); }
+.cv-empty__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--r-full);
+    background: var(--c-hover);
+    color: var(--c-faint);
+    font-size: 20px;
+}
+.cv-empty__text { font-size: 14px; color: var(--c-muted); }
+
+/* ── 窄屏：页头 / 卡片操作纵向堆叠，指标卡单列 ── */
+@media (max-width: 991.98px) {
+    .cv-head { flex-direction: column; }
+    .cv-stats { grid-template-columns: 1fr; }
+    .cv-card__head { flex-direction: column; }
+    .cv-upload-row { flex-wrap: wrap; }
+}

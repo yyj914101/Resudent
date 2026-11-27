@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/death_checklist.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}防误发检查清单{% endblock %}
+{% block content %}
+<div class="toolbar no-print">
+    <button class="btn btn-sm btn-primary" onclick="printChecklist()"><i class="bi bi-printer"></i> 打印清单</button>
+    <button class="btn btn-sm btn-success" onclick="exportChecklist()"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</button>
+    <a class="btn btn-sm btn-secondary" href="javascript:history.back()">返回</a>
+</div>
+
+<div class="checklist-sheet">
+    <div class="sheet-title">防误发检查清单</div>
+    <div class="sheet-village">{{ village_title }}</div>
+
+    <div class="sheet-meta">
+        <div>死者姓名：{{ dr.deceased_name }}　对象类型：{{ dr.person_type or '—' }}　死亡时间：{{ dr.death_date.strftime('%Y-%m-%d') if dr.death_date else '—' }}</div>
+        <div>清单生成时间：{{ checklist.generated_at.strftime('%Y-%m-%d %H:%M') if checklist and checklist.generated_at else '—' }}</div>
+    </div>
+
+    {% if affected.get('subsidies') %}
+    <table class="sheet-table">
+        <thead>
+            <tr>
+                <th>序号</th>
+                <th>停发补贴项目</th>
+                <th>最近发放日期</th>
+                <th>金额（元）</th>
+                <th>适用标签</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in affected.get('subsidies', []) %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ s.get('project_name', '') }}</td>
+                <td>{{ s.get('issue_date', '') }}</td>
+                <td>{{ s.get('amount', '') }}</td>
+                <td>{{ s.get('target_tags') or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <table class="sheet-table">
+        <thead>
+            <tr><th>说明</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>该对象名下无在发补贴，本次级联未触发补贴停发。</td></tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% set counts = affected.get('counts', {}) %}
+    {% if counts.dibao or counts.disabled or counts.care_target or counts.special_support or affected.get('tags') %}
+    <table class="sheet-table">
+        <thead>
+            <tr>
+                <th>台账影响（低保）</th>
+                <th>台账影响（残疾）</th>
+                <th>台账影响（特困/其他）</th>
+                <th>受影响标签</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ counts.dibao or 0 }}</td>
+                <td>{{ counts.disabled or 0 }}</td>
+                <td>{{ (counts.care_target or 0) + (counts.special_support or 0) }}</td>
+                <td>{% for t in affected.get('tags', []) %}{{ t.get('tag_name', '') }}{% if not loop.last %}、{% endif %}{% else %}—{% endfor %}</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="sheet-sign">
+        <span>经办人签字：____________</span>
+        <span>村（社区）盖章：____________</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+window.__PAGE_CFG__ = {
+    checklistId: {{ checklist.id if checklist else 0 }},
+    drId: {{ dr.id }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/pages/death_checklist.js') }}"></script>
+{% endblock %}

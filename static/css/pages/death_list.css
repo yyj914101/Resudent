@@ -1,0 +1,13 @@
+/* 062 P5：本文件只保留页面级打印规则（可编辑单元格样式已上移 components.css）。
+ * 旧版本首 16 行为误粘的 JS 字符串残片，随 P5 换壳一并清除。 */
+@media print {
+    .app-sidebar,
+    .navbar,
+    .sc-topbar,
+    .sc-page-head,
+    .sc-toolbar,
+    .sc-pagination,
+    .sc-btn { display: none !important; }
+    .sc-card { border: none !important; box-shadow: none !important; }
+    #templateTable { font-size: 11px !important; }
+}

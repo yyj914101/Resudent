@@ -1,0 +1,51 @@
+/* settings_center.css — 设置中心入口页（057a / 060 对齐 / 068 收口）
+ * 依据：A 方案 §4.2 规格；只服务 templates/settings/index.html。
+ * 068 起：返回链接 / 页头 / 设置页容器等公共件已收口到 components.css（全局层），
+ * 本文件只承载入口页 4×3 子模格的入口卡。
+ * 注意：本页是整页跳转（侧栏「设置」不在 .sidebar-menu 内，spa.js 不拦截），
+ *       extra_css 能正常加载；若将来改为 SPA 内可达，须迁移到全局层（GLB-02）。
+ */
+
+.sc-set-group { margin-bottom: var(--sp-6); }
+.sc-set-group__label {
+  margin: 0 0 var(--sp-3);
+  height: 20px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-muted-2);
+}
+
+.sc-set-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+
+.sc-set-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 88px;
+  padding: var(--sp-4);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  background: var(--c-surface);
+  box-shadow: none;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: border-color .15s, background .15s;
+}
+.sc-set-card:hover {
+  border-color: #D4D4D4;
+  background: var(--c-side);
+}
+.sc-set-card__top { display: flex; align-items: center; gap: var(--sp-2); color: var(--c-muted); }
+.sc-set-card__title { font-size: 14px; font-weight: 500; color: var(--c-ink-2); }
+.sc-set-card__desc { font-size: 12px; color: var(--c-muted); line-height: 18px; }
+
+@media (max-width: 991.98px) {
+  .sc-set-grid { grid-template-columns: 1fr; }
+}

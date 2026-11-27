@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}自定义查询{% endblock %}
+{# 077 存量回灌：标题由页头（sc-page-head）承担，顶栏标题留空（同 062 口径） #}
+{% block page_title %}{% endblock %}
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">自定义查询</h2>
+    </div>
+</header>
+
+{# 077 存量回灌：按 spec-02 通用页型换壳（无样图，走共享组件层回灌通道，仅换壳不逐字段重构；
+   id 契约零改动：condRoot/queryMsg/resultCount/resultBody，页面 JS 零适配） #}
+<section class="sc-card" style="margin-bottom:var(--sp-4)">
+    <header class="sc-card__header">
+        <h3 class="sc-card__title"><i class="bi bi-funnel"></i> 查询条件（多条件 AND/OR 组合）</h3>
+    </header>
+    <div class="sc-card__body">
+        <div id="condRoot"></div>
+        <div class="mt-3">
+            <button class="sc-btn sc-btn--secondary" onclick="addConditionRow($('#condRoot'), 'AND')"><i class="bi bi-plus-lg"></i> 添加条件</button>
+            <button class="sc-btn sc-btn--primary" onclick="doQuery()"><i class="bi bi-search"></i> 查询预览</button>
+            <button class="sc-btn sc-btn--secondary" onclick="doExport()"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</button>
+            <span class="text-muted small ms-3">示例：第3网格 · 低保 · 男 · 60岁以上（AND 组合）</span>
+        </div>
+        <div id="queryMsg" class="mt-2 small text-danger"></div>
+    </div>
+</section>
+
+<section class="sc-card">
+    <header class="sc-card__header">
+        <h3 class="sc-card__title"><i class="bi bi-table"></i> 预览结果（脱敏）
+            <span class="sc-badge sc-badge--muted ms-2" id="resultCount">0 行</span>
+        </h3>
+    </header>
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense">
+            <thead>
+                <tr><th class="sc-table__th">姓名</th><th class="sc-table__th">身份证</th><th class="sc-table__th">性别</th><th class="sc-table__th">年龄</th><th class="sc-table__th">状态</th><th class="sc-table__th">所在组</th></tr>
+            </thead>
+            <tbody id="resultBody">
+                <tr><td colspan="6" class="text-center text-muted py-4">设置条件后点击「查询预览」</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/report_custom_query.js') }}"></script>
+{% endblock %}

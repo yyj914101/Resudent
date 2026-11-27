@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="__CSRF__">
+    <title>数据库管理面板 - 村级村务综合管理系统</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="/static/lib/adminlte/css/adminlte.min.css" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="/static/css/tokens.css" rel="stylesheet">
+    <link href="/static/css/app.css" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="/static/css/shell.css" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="/static/css/components.css" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="/static/css/skeleton.css" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="/static/lib/driver.css" rel="stylesheet">
+    <link href="/static/css/tour.css" rel="stylesheet">
+    
+    <link href="/static/css/pages/db_admin.css" rel="stylesheet">
+
+
+<script src="/static/js/nav_labels_boot.js"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: true,
+    menuRules: [
+        ['a[href="/resident/"]', true],
+        ['a[href="/resident/add"]', true],
+        ['a[href="/shop/"]', true],
+        ['a[href="/dibao/"]', true],
+        ['a[href="/disabled/"]', true],
+        ['a[href="/care/"]', true],
+        ['a[href="/organization/"]', true],
+        ['a[href="/party/"]', true],
+        ['a[href="/party/dues"]', true],
+        ['a[href="/veteran/"]', true],
+        ['a[href="/todo/"]', true],
+        ['a[href="/welfare/"]', true],
+        ['a[href="/mediation/"]', true],
+        ['a[href="/governance/roster/gov_special_visit/"]', true],
+        ['a[href="/governance/roster/gov_stability_risk/"]', true],
+        ['a[href="/governance/roster/gov_mental_health/"]', true],
+        ['a[href="/governance/roster/gov_security_committee/"]', true],
+        ['a[href="/safety/"]', true],
+        ['a[href="/notice/"]', true],
+        ['a[href="/word-form/"]', true],
+        ['a[href="/medical-insurance/"]', true],
+        ['a[href="/certificate/"]', true],
+        ['a[href="/death-report/"]', true],
+        ['a[href="/visit/"]', true],
+        ['a[href="/visit/history"]', true],
+        ['a[href="/reconcile/"]', true]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    
+
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            
+            <nav class="sc-topbar">
+                
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left-close"></use></svg>
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left"></use></svg>
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="/resident/">
+                    <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#search"></use></svg>
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">0</span> 人在线
+                    </span>
+                    <span class="sc-sync" id="syncStatus" title="单机模式：数据保存在本机，未启用同步">
+                        <span class="sc-dot sc-dot--muted"></span>本机数据
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">a</span>
+                            <span class="sc-usermenu__name">admin</span>
+                            <svg class="sc-icon sc-icon--14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#chevron-down"></use></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">超级管理员</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+
+
+
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo"><svg class="sc-icon sc-icon--20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg></span>
+        <span class="sc-sidebar__title" id="systemTitle">村级村务综合管理系统</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+
+            
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dashboard/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#house"></use></svg><span>首页</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/todo/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-todo"></use></svg><span>待办提醒</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/organization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#building-2"></use></svg><span>机构管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/election/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#check2-square"></use></svg><span>选举管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/civilization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg><span>文明实践站</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/medical-insurance/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-pulse"></use></svg><span>社会保障</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dibao/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>民政对象管理</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/resident/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#users"></use></svg><span>居民管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/mediation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#messages-square"></use></svg><span>综治管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/visit/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>走访关爱</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#folder-open"></use></svg><span>安全工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/emergency">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-checks"></use></svg><span>应急管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/sanitation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#wrench"></use></svg><span>环卫工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/death-report/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#book-open"></use></svg><span>死亡上报</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/veteran/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#shield-check"></use></svg><span>退役军人服务</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/certificate/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#scroll-text"></use></svg><span>证明开具</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/demand/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#inbox"></use></svg><span>民生诉求</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/notice/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#megaphone"></use></svg><span>补贴公示</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dynatable/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database"></use></svg><span>台账建表</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/import/batches">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database-zap"></use></svg><span>导入批次</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        
+        <a class="nav-link sc-nav-item"
+           href="/settings/center">
+            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#settings"></use></svg><span>设置</span>
+        </a>
+        
+        <div class="sc-user-card">
+            <span class="sc-avatar">a</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">admin</span>
+                <span class="sc-user-card__role">超级管理员</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="/auth/logout" aria-label="退出登录">
+                <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#log-out"></use></svg>
+            </a>
+        </div>
+    </div>
+</aside>
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+            <!-- 顶部标签栏 -->
+            <div class="tab-bar" id="tabBar">
+                <div class="tab-scroll" id="tabScroll"></div>
+            </div>
+            
+            <h1 id="pageTitle">数据库管理面板</h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+                
+                
+                
+                
+
+<div class="sc-settings-page" data-sc-settings="special">
+
+<a class="sc-backlink" href="/settings/center">← 返回设置中心</a>
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">数据库管理面板</h2>
+    <p class="sc-page-head__meta">通俗化数据表目录、可视化建表改表与体检中心</p>
+  </div>
+  
+</header>
+
+
+<!-- 紧凑风险提示横幅 -->
+<div class="db-banner" role="alert">
+    <div class="db-banner__main">
+        <i class="bi bi-shield-exclamation db-banner__icon" aria-hidden="true"></i>
+        <span>
+            <b>安全保护已开启：</b>系统核心业务表一律只读，防误改；所有<span class="sc-badge sc-badge--warning">黄级</span>与<span class="sc-badge sc-badge--danger">红级</span>修改前都会<b>自动生成加密备份（.wbak）</b>。
+        </span>
+    </div>
+    <button type="button" class="sc-btn sc-btn--secondary sc-btn--sm" id="btnShowNotice">查看须知</button>
+</div>
+
+<!-- 顶部紧凑 4 联统计卡 -->
+<div class="db-stat-grid">
+    <div class="db-stat-card"><div class="stat-label">数据库体积</div><div class="stat-value" id="ovSize">-</div></div>
+    <div class="db-stat-card"><div class="stat-label">数据表 / 总记录数</div><div class="stat-value" id="ovTables">-</div></div>
+    <div class="db-stat-card"><div class="stat-label">存储页 / 空间碎片</div><div class="stat-value" id="ovPages">-</div></div>
+    <div class="db-stat-card"><div class="stat-label">最近加密备份（.wbak）</div><div class="stat-value" id="ovBackup">-</div></div>
+</div>
+
+<!-- 单屏三标签页导航（告别长距离滚动） -->
+<div class="db-tabs" role="tablist" aria-label="数据库管理功能分区">
+    <button type="button" class="db-tab is-active" role="tab" aria-selected="true" data-db-tab="tables">
+        <i class="bi bi-table" aria-hidden="true"></i>
+        <span>数据表目录</span>
+        <span class="db-tab__count" id="tabCountTables">0</span>
+    </button>
+    <button type="button" class="db-tab" role="tab" aria-selected="false" data-db-tab="ops">
+        <i class="bi bi-sliders" aria-hidden="true"></i>
+        <span>建表与结构维护</span>
+        <span class="db-tab__count" id="tabCountCustom">0 张自建</span>
+    </button>
+    <button type="button" class="db-tab" role="tab" aria-selected="false" data-db-tab="diag">
+        <i class="bi bi-heart-pulse" aria-hidden="true"></i>
+        <span>系统体检与审计</span>
+    </button>
+</div>
+
+<!-- Tab 1：通俗化表目录（固定视口滚动 + 吸顶表头） -->
+<div class="db-pane" id="pane-tables">
+    <section class="sc-card">
+        <header class="sc-card__header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h3 class="sc-card__title">数据表清单 <span class="sc-badge sc-badge--success">绿级 · 只读安全</span></h3>
+                <p class="sc-card__subtitle">点击任意一行即可查看该表的字段说明与数据概况</p>
+            </div>
+            <div class="db-search-box">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input type="text" class="sc-input" id="tableSearch" placeholder="搜中文名、用途或英文表名…">
+            </div>
+        </header>
+        <div class="db-filter-bar">
+            <div class="db-pills" id="modulePills" aria-label="按业务模块筛选">
+                <button type="button" class="db-pill is-active" data-mod="all">全部</button>
+                <button type="button" class="db-pill" data-mod="custom">自建扩展表</button>
+                <button type="button" class="db-pill" data-mod="人口户籍">人口户籍</button>
+                <button type="button" class="db-pill" data-mod="民生保障">民生保障</button>
+                <button type="button" class="db-pill" data-mod="党建工作">党建工作</button>
+                <button type="button" class="db-pill" data-mod="综治安全">综治安全</button>
+                <button type="button" class="db-pill" data-mod="台账导入">台账导入</button>
+                <button type="button" class="db-pill" data-mod="系统运维">系统运维</button>
+            </div>
+            <span class="small text-muted" id="tableFilterStat">共 0 张表</span>
+        </div>
+        <div class="sc-table-wrap db-table-scroll">
+            <table class="sc-table">
+                <thead>
+                    <tr>
+                        <th class="sc-table__th">业务表名称与用途</th>
+                        <th class="sc-table__th">归属模块</th>
+                        <th class="sc-table__th sc-table__th--num">记录数</th>
+                        <th class="sc-table__th sc-table__th--num">列数</th>
+                        <th class="sc-table__th sc-table__th--num">查询加速</th>
+                        <th class="sc-table__th sc-table__th--num">占用空间</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<!-- Tab 2：可视化结构管理（黄级 + 红级一屏总览） -->
+<div class="db-pane" id="pane-ops" hidden>
+    <div class="db-ops-layout">
+        <!-- 黄级操作 -->
+        <section class="sc-card">
+            <header class="sc-card__header">
+                <h3 class="sc-card__title">常用表结构管理 <span class="sc-badge sc-badge--warning">黄级 · 执行前自动备份</span></h3>
+                <p class="sc-card__subtitle">全程表单点选，无需手写 SQL 代码；仅对「自建扩展表」开放修改</p>
+            </header>
+            <div class="sc-card__body">
+                <div class="db-op-grid">
+                    <button type="button" class="db-op-card" id="btnCreateTable">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-plus-square"></i></span>新建数据表</span>
+                        <span class="db-op-card__desc">可视化添加列与类型，支持套用常用村务模板</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnAddColumn">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-layout-text-sidebar"></i></span>新增一列（加字段）</span>
+                        <span class="db-op-card__desc">为已有自建表补充登记项，下拉选表与类型</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnCopyTable">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-files"></i></span>复制数据表</span>
+                        <span class="db-op-card__desc">快速克隆一份测试或年度备份表，可选带数据</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnRenameTable">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-input-cursor-text"></i></span>修改表名</span>
+                        <span class="db-op-card__desc">调整自建表的英文标识名称，不影响现有记录</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnCreateIndex">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-lightning-charge"></i></span>建查询加速（建索引）</span>
+                        <span class="db-op-card__desc">勾选常用查询列，加快大数据量筛选速度</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnDropIndex">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-eraser"></i></span>移除查询加速（删索引）</span>
+                        <span class="db-op-card__desc">删除不再需要的自定义索引，释放占用空间</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnAnalyze">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-speedometer2"></i></span>查询优化（ANALYZE）</span>
+                        <span class="db-op-card__desc">刷新全库统计信息，让日常查询更流畅</span>
+                    </button>
+                    <button type="button" class="db-op-card" id="btnVacuum">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-recycle"></i></span>空间碎片整理（VACUUM）</span>
+                        <span class="db-op-card__desc">回收已删除数据占用的磁盘空间（建议非高峰执行）</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 红级操作（026：三重闸） -->
+        <section class="sc-card">
+            <header class="sc-card__header">
+                <h3 class="sc-card__title">高风险清理与改表 <span class="sc-badge sc-badge--danger">红级 · 不可逆 · 三重闸</span></h3>
+                <p class="sc-card__subtitle">仅限自建扩展表；执行前自动备份 + 核对影响行数并手输表名确认 + 全程审计</p>
+            </header>
+            <div class="sc-card__body">
+                <div class="db-op-grid">
+                    <button type="button" class="db-op-card db-op-card--danger" id="btnRedAlterCol">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-pencil-square"></i></span>修改字段属性</span>
+                        <span class="db-op-card__desc">调整已有列的类型、是否必填或默认值（自动重建表）</span>
+                    </button>
+                    <button type="button" class="db-op-card db-op-card--danger" id="btnRedDropCol">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-dash-square"></i></span>删除字段</span>
+                        <span class="db-op-card__desc">永久移除自建表中的某一列及其全部历史值</span>
+                    </button>
+                    <button type="button" class="db-op-card db-op-card--danger" id="btnRedTruncate">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-trash3"></i></span>清空表内数据</span>
+                        <span class="db-op-card__desc">保留表结构，一键清空该自建表中的所有记录</span>
+                    </button>
+                    <button type="button" class="db-op-card db-op-card--danger" id="btnRedDropTable">
+                        <span class="db-op-card__head"><span class="db-op-card__icon"><i class="bi bi-x-octagon"></i></span>彻底删除整表</span>
+                        <span class="db-op-card__desc">删除整张自建表及其全部数据（不可撤销）</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Tab 3：系统体检与审计（绿级只读诊断中心） -->
+<div class="db-pane" id="pane-diag" hidden>
+    <section class="sc-card">
+        <header class="sc-card__header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h3 class="sc-card__title">数据库体检与操作留痕 <span class="sc-badge sc-badge--success">绿级 · 只读</span></h3>
+                <p class="sc-card__subtitle">随时检查数据文件是否完整、表结构是否齐全，以及查看历史改表记录</p>
+            </div>
+            <div class="db-diag-bar">
+                <button type="button" class="sc-btn sc-btn--secondary" id="btnCheck"><i class="bi bi-check2-circle"></i> 完整性体检</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="btnReconcile"><i class="bi bi-list-check"></i> 结构完整性对账</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="btnAudit"><i class="bi bi-clock-history"></i> 查看修改审计记录</button>
+            </div>
+        </header>
+        <div class="sc-card__body" id="diagPlaceholder">
+            <div class="small text-muted">点击上方任意按钮开始检查，结果将直接显示在此区域。</div>
+        </div>
+    </section>
+
+    <!-- 完整性检查 / 对账 / 审计 结果区 -->
+    <section class="sc-card d-none" id="reportCard" style="margin-top:var(--sp-3)">
+        <header class="sc-card__header"><h3 class="sc-card__title" id="reportTitle">报告</h3></header>
+        <div class="sc-card__body"><pre class="report-pre mb-0" id="reportBody"></pre></div>
+    </section>
+</div>
+
+<!-- 单表详情 Modal -->
+<div class="modal fade" id="tableDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="sc-modal sc-modal--lg" style="width:auto" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="tdTitle">表详情</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div id="tdMeta" style="margin-bottom:var(--sp-3)"></div>
+                <h3 class="sc-card__title" style="font-size:14px;margin-top:var(--sp-2)">包含字段（列清单）</h3>
+                <div class="sc-table-wrap"><table class="sc-table sc-table--dense"><thead><tr><th class="sc-table__th">#</th><th class="sc-table__th">字段名</th><th class="sc-table__th">数据类型</th><th class="sc-table__th">必填</th><th class="sc-table__th">默认值</th><th class="sc-table__th">主键</th></tr></thead><tbody id="tdCols"></tbody></table></div>
+                <h3 class="sc-card__title" style="font-size:14px;margin-top:var(--sp-3)">查询加速（索引）</h3>
+                <div class="sc-table-wrap"><table class="sc-table sc-table--dense"><thead><tr><th class="sc-table__th">索引名</th><th class="sc-table__th">唯一约束</th><th class="sc-table__th">来源</th><th class="sc-table__th">加速列</th><th class="sc-table__th">类型</th></tr></thead><tbody id="tdIdx"></tbody></table></div>
+                <details class="db-sql-details">
+                    <summary>查看底层建表 SQL（供技术人员核对）</summary>
+                    <pre class="report-pre mb-0" id="tdSql"></pre>
+                </details>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 黄级操作表单 Modal -->
+<div class="modal fade" id="opModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" style="width:100%" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="opTitle">操作</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="opBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--warning" id="opNext">下一步（确认变更）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 黄级执行确认 Modal（第二层：白话摘要 + 可折叠 SQL） -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">执行确认（黄级操作）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div id="confirmWarn" class="alert alert-danger d-none"></div>
+                <div class="db-summary-box" id="confirmSummary">执行前将自动生成 <b>.wbak</b> 加密备份，备份失败则自动中止。</div>
+                <details class="db-sql-details">
+                    <summary>展开查看即将执行的 SQL 语句（供技术人员核对）</summary>
+                    <pre class="report-pre mb-0" id="confirmSql"></pre>
+                </details>
+                <div class="form-check" style="margin-top:var(--sp-3)">
+                    <input class="form-check-input" type="checkbox" id="confirmAck">
+                    <label class="form-check-label" for="confirmAck">我已核对变更内容，确认执行</label>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--warning" id="confirmGo" disabled>确认执行</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级表单 Modal -->
+<div class="modal fade" id="redModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="redTitle">红级操作</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="redBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--danger" id="redNext">下一步（查看影响范围）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级三重闸确认 Modal -->
+<div class="modal fade" id="confirmRedModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg sc-modal--danger" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">高风险操作确认（三重闸）</h3>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="alert alert-danger">
+                    闸 1：执行前将<b>自动生成 .wbak 加密备份</b>（备份失败将中止操作）。<br>
+                    闸 2：请核对下方<b>影响面</b>，并<b>输入目标表名</b>确认。<br>
+                    闸 3：执行后展示结果与<b>恢复指引</b>。
+                </div>
+                <div class="db-summary-box" id="redImpact"></div>
+                <details class="db-sql-details" style="margin-bottom:var(--sp-3)">
+                    <summary>展开查看底层 SQL（供技术人员核对）</summary>
+                    <pre class="report-pre mb-0" id="redSql"></pre>
+                </details>
+                <div style="margin-bottom:var(--sp-2)">
+                    <label class="sc-field__label" for="redConfirmName" style="display:block;line-height:20px;margin-bottom:var(--sp-1)">输入目标表名以确认（<b id="redTarget"></b>）</label>
+                    <input type="text" class="sc-input" id="redConfirmName" placeholder="请准确输入上方加粗的表名">
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--danger" id="redGo" disabled>执行（我很确定）</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 红级执行结果 Modal（闸 3） -->
+<div class="modal fade" id="redResultModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">执行结果（闸 3）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="redResultBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- 入口须知 Modal（风险提醒第一层） -->
+<div class="modal fade" id="noticeModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg sc-modal--warning" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">使用须知（请先阅读）</h3>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <ul>
+                    <li><b>绿级（只读）</b>：查看表清单、字段说明、完整性体检与审计记录，不会改动任何数据，可放心使用。</li>
+                    <li><b>黄级（常规维护）</b>：新建自建表、新增列、复制/重命名表、查询加速与空间整理——全程可视化表单，执行前自动生成 <b>.wbak</b> 加密备份。</li>
+                    <li><b>红级（高风险清理）</b>：改字段、删字段、清空数据、删表——三重闸（自动备份 → 核对影响面并输入表名 → 结果与恢复指引），仅对自建扩展表开放。</li>
+                    <li><b>系统核心表只读保护</b>：户籍、低保、党员、综治等系统内置表无法在面板内误改或误删。</li>
+                    <li><b>出问题如何恢复</b>：随时前往「设置 → 数据库安全」使用操作前自动生成的 <b>.wbak</b> 加密备份一键还原。</li>
+                </ul>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--warning" id="noticeAck">我已阅读，进入面板</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+
+
+            </div>
+        </main>
+    </div>
+    
+
+    <script src="/static/lib/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/crud.js"></script>
+    
+<script src="/static/js/pages/db_admin.js"></script>
+
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="/static/js/spa.js"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="/static/js/shell.js"></script>
+    <script src="/static/lib/driver.js.iife.js"></script>
+    <script src="/static/js/tour_registry.js"></script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">admin</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">超级管理员</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>admin</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>-</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>超级管理员</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>__DATETIME__</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="/auth/logout" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>
+</body>
+</html>

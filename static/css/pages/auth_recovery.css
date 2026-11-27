@@ -1,0 +1,109 @@
+/* auth_recovery.css — 加密备份恢复引导页（ADR-022 v4.0，零裸色值） */
+.auth-panel--recovery {
+  width: min(580px, 100%);
+}
+
+.auth-path-box {
+  display: block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  border-radius: var(--r-badge);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  color: var(--c-ink-2);
+  font-family: var(--ff-num);
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.auth-step-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c-ink-2);
+  margin: 0 0 var(--sp-2);
+}
+.auth-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-full);
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+  font-family: var(--ff-num);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.auth-backup-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+
+.auth-backup-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-ctrl);
+  background: var(--c-surface);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.auth-backup-item:hover {
+  border-color: var(--c-faint);
+  background: var(--c-side);
+}
+.auth-backup-item.is-selected,
+.auth-backup-item:has(input:checked) {
+  border-color: var(--c-ink-2);
+  background: var(--c-hover);
+}
+.auth-backup-item input[type="radio"] {
+  accent-color: var(--c-ink-2);
+  margin: 0;
+  flex: none;
+}
+.auth-backup-item__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auth-backup-chip {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: var(--c-rail);
+  border: 1px solid var(--c-line-3);
+  color: var(--c-ink-3);
+  font-family: var(--ff-num);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.auth-empty-backup {
+  padding: var(--sp-4);
+  border-radius: var(--r-ctrl);
+  border: 1px dashed var(--c-line-3);
+  background: var(--c-side);
+  color: var(--c-muted);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.auth-actions-stack {
+  display: grid;
+  gap: var(--sp-2);
+}

@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}矛盾纠纷化解{% endblock %}
+
+{# 062 P3 v4.0：标题由页头承担，顶栏标题留空（同 055/组织架构口径） #}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/governance_shared.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('governance', 'mediation') }}
+
+{# 字段/弹窗真源：docs/design/照单施工-6页字段清单-2026-10-28.md §六（14 列 + 4 弹窗） #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">矛盾纠纷化解</h2>
+        {# 075 RC-19：副标题对齐样图 v7-36「共 N 件 · 调解中 M 件」 #}
+        <p class="sc-page-head__meta">共 {{ head_total or 0 }} 件 · 调解中 {{ head_current or 0 }} 件</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a href="{{ url_for('mediation.api_export', **request.args) }}" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 导出 ZIP</a>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="openAddModal()"><i class="bi bi-plus-circle"></i> 新增案件</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="case_no" placeholder="案件编号" style="width:140px">
+        <select class="sc-select" name="status" style="width:120px">
+            <option value="">全部状态</option>
+            <option value="mediating">调解中</option>
+            <option value="closed">已办结</option>
+            <option value="returned">已退回</option>
+        </select>
+        <input type="text" class="sc-input" name="applicant" placeholder="申请人" style="width:120px">
+        <input type="text" class="sc-input" name="respondent" placeholder="被申请人" style="width:120px">
+        <input type="text" class="sc-input" name="dispute_type" placeholder="纠纷类型" style="width:120px">
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 查询</button>
+    </form>
+
+    {# table-responsive 供 crudTable 列设置菜单（F9）定位插入；sc-table-wrap 提供 v4.0 横滚 #}
+    <div class="sc-table-wrap table-responsive">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">案件编号</th>
+                    <th class="sc-table__th">纠纷类型</th>
+                    <th class="sc-table__th">申请人</th>
+                    <th class="sc-table__th" style="width:170px">身份证号</th>
+                    <th class="sc-table__th" style="width:80px">所在组</th>
+                    <th class="sc-table__th">被申请人</th>
+                    <th class="sc-table__th" style="width:170px">被申请人身份证</th>
+                    <th class="sc-table__th" style="width:70px">人数</th>
+                    <th class="sc-table__th" style="width:90px">调解人</th>
+                    <th class="sc-table__th" style="width:110px">开始日期</th>
+                    <th class="sc-table__th" style="width:90px">状态</th>
+                    <th class="sc-table__th" style="width:70px">附件</th>
+                    <th class="sc-table__th" style="width:200px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 新增/编辑（13 字段 + 图片附件；§六 主表单无必填，附件支持 jpg/png/gif/webp） #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg gs-form-modal" role="dialog" aria-modal="true">
+            <form id="saveForm" enctype="multipart/form-data">
+                <input type="hidden" name="id" id="editId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formModalTitle"></h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field"><label class="sc-field__label" for="f_dispute_type">纠纷类型</label><input type="text" class="sc-input" name="dispute_type" id="f_dispute_type"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_location">事发地点</label><input type="text" class="sc-input" name="location" id="f_location"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="applicantInput">申请人姓名</label><input type="text" class="sc-input" name="applicant" id="applicantInput" autocomplete="off"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="applicantIdCard">身份证号码</label><input type="text" class="sc-input" name="applicant_id_card" id="applicantIdCard" maxlength="18"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="applicantVillageGroup">所在组</label><input type="text" class="sc-input" name="applicant_village_group" id="applicantVillageGroup"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_respondent">被申请人</label><input type="text" class="sc-input" name="respondent" id="f_respondent"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="respondentIdCard">被申请人身份证</label><input type="text" class="sc-input" name="respondent_id_card" id="respondentIdCard" maxlength="18"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_people_count">涉及人数</label><input type="number" class="sc-input" name="people_count" id="f_people_count" value="1" min="1"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_mediator">调解人</label><input type="text" class="sc-input" name="mediator" id="f_mediator"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_start_date">开始日期</label><input type="date" class="sc-input" name="start_date" id="f_start_date"></div>
+                    <div class="sc-field"><label class="sc-field__label" for="f_mediation_date">调解日期</label><input type="date" class="sc-input" name="mediation_date" id="f_mediation_date"></div>
+                    <div class="sc-field sc-field--full sc-field--top"><label class="sc-field__label" for="f_content">纠纷内容</label><textarea class="sc-textarea" name="content" id="f_content" rows="3"></textarea></div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="attachmentsInput">图片附件</label>
+                        <div style="flex:1;min-width:0">
+                            <input type="file" class="sc-input" name="attachments" id="attachmentsInput" accept="image/*" multiple data-sc-dropzone data-dz-hint="支持多张 jpg/png/gif/webp 图片 · 点击或拖拽" style="width:100%">
+                            <p class="sc-field__hint">支持 jpg、png、gif、webp，可一次选择多张；编辑时会追加保存新图片。</p>
+                            <div id="currentAttachments" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 办结（§六：办结日期 + 办结结果★；仅「调解中」可操作） #}
+<div class="modal fade" id="closeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="closeForm">
+                <input type="hidden" id="closeId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">办结案件</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field"><label class="sc-field__label" for="f_end_date">办结日期</label><input type="date" class="sc-input" name="end_date" id="f_end_date" value="{{ now().strftime('%Y-%m-%d') }}"></div>
+                    <div class="sc-field sc-field--top"><label class="sc-field__label" for="f_result">办结结果<span class="sc-field__required">*</span></label><textarea class="sc-textarea" name="result" id="f_result" rows="3" required></textarea></div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">确认办结</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 退回（§六：退回原因★；仅「调解中」可操作） #}
+<div class="modal fade" id="returnModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="returnForm">
+                <input type="hidden" id="returnId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">退回案件</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field sc-field--top"><label class="sc-field__label" for="f_return_reason">退回原因<span class="sc-field__required">*</span></label><textarea class="sc-textarea" name="return_reason" id="f_return_reason" rows="3" required></textarea></div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">确认退回</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 详情（§六：全字段只读；closed 追加办结结果、returned 追加退回原因、底部附件缩略图） #}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal gs-shell" role="dialog" aria-modal="true">
+            <header class="gs-header">
+                <div class="gs-header__main">
+                    <h2 class="gs-header__name" id="medDetailTitle">案件详情</h2>
+                    <span class="sc-badge sc-badge--muted" id="medDetailBadge" hidden></span>
+                    <span class="gs-header__sep"></span>
+                    <span class="gs-header__meta" id="medDetailMeta"></span>
+                </div>
+                <div class="gs-header__actions">
+                    <button type="button" class="sc-btn sc-btn--secondary" id="medDetailEditBtn" hidden><i class="bi bi-pencil"></i> 编辑</button>
+                    <span class="gs-header__vline"></span>
+                    <button type="button" class="gs-header__close" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </header>
+            <div class="gs-body" id="detailBody"></div>
+            <footer class="gs-footer">
+                <div class="gs-footer__sync">
+                    <span class="gs-footer__dot"></span>
+                    <span>矛盾纠纷化解 · 档案视图</span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/mediation_list.js') }}"></script>
+{% endblock %}

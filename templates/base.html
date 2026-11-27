@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}村级村务综合管理系统{% endblock %}</title>
+    <link href="{{ url_for('static', filename='lib/bootstrap.min.css') }}" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="{{ url_for('static', filename='lib/adminlte/css/adminlte.min.css') }}" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="{{ url_for('static', filename='css/tokens.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="{{ url_for('static', filename='css/shell.css') }}" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="{{ url_for('static', filename='css/components.css') }}" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="{{ url_for('static', filename='css/skeleton.css') }}" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="{{ url_for('static', filename='lib/driver.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/tour.css') }}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+{# 2026-11-16 闪烁修复：菜单自定义名须在首帧绘制前生效。<head> 同步加载，
+   菜单节点插入 DOM 的同一微任务内完成覆盖；shell.js 的 apply() 幂等兜底。 #}
+<script src="{{ url_for('static', filename='js/nav_labels_boot.js') }}"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: {{ 'true' if current_user and current_user.role_id == 1 else 'false' }},
+    menuRules: [
+        ['a[href="{{ url_for('resident.list') }}"]', {{ 'true' if has_perm('resident.view') else 'false' }}],
+        ['a[href="{{ url_for('resident.add') }}"]', {{ 'true' if has_perm('resident.add') else 'false' }}],
+        ['a[href="{{ url_for('shop.list_page') }}"]', {{ 'true' if has_perm('shop.view') else 'false' }}],
+        ['a[href="{{ url_for('dibao.dibao_list') }}"]', {{ 'true' if has_perm('dibao.view') else 'false' }}],
+        ['a[href="{{ url_for('disabled.disabled_list') }}"]', {{ 'true' if has_perm('disabled.view') else 'false' }}],
+        ['a[href="{{ url_for('care.care_list') }}"]', {{ 'true' if has_perm('care.view') else 'false' }}],
+        ['a[href="{{ url_for('organization.list') }}"]', {{ 'true' if has_perm('organization.view') else 'false' }}],
+        ['a[href="{{ url_for('party.party_list') }}"]', {{ 'true' if has_perm('party.view') else 'false' }}],
+        ['a[href="{{ url_for('party.dues_list') }}"]', {{ 'true' if has_perm('party.view') else 'false' }}],
+        ['a[href="{{ url_for('veteran.page_list') }}"]', {{ 'true' if has_perm('veteran.view') else 'false' }}],
+        ['a[href="{{ url_for('todo.list') }}"]', {{ 'true' if has_perm('todo.view') else 'false' }}],
+        ['a[href="{{ url_for('welfare.page_list') }}"]', {{ 'true' if has_perm('welfare.view') else 'false' }}],
+        ['a[href="{{ url_for('mediation.list') }}"]', {{ 'true' if has_perm('mediation.view') else 'false' }}],
+        ['a[href="{{ url_for('governance.roster_page', code='gov_special_visit') }}"]', {{ 'true' if has_perm('mediation.view') else 'false' }}],
+        ['a[href="{{ url_for('governance.roster_page', code='gov_stability_risk') }}"]', {{ 'true' if has_perm('mediation.view') else 'false' }}],
+        ['a[href="{{ url_for('governance.roster_page', code='gov_mental_health') }}"]', {{ 'true' if has_perm('mediation.view') else 'false' }}],
+        ['a[href="{{ url_for('governance.roster_page', code='gov_security_committee') }}"]', {{ 'true' if has_perm('mediation.view') else 'false' }}],
+        ['a[href="{{ url_for('safety.index') }}"]', {{ 'true' if has_perm('safety.view') else 'false' }}],
+        ['a[href="{{ url_for('notice.list_page') }}"]', {{ 'true' if has_perm('notice.view') else 'false' }}],
+        ['a[href="{{ url_for('word_form.index') }}"]', {{ 'true' if has_perm('notice.view') else 'false' }}],
+        ['a[href="{{ url_for('medical_insurance.list') }}"]', {{ 'true' if has_perm('medical_insurance.view') else 'false' }}],
+        ['a[href="{{ url_for('certificate.list') }}"]', {{ 'true' if has_perm('certificate.view') else 'false' }}],
+        ['a[href="/death-report/"]', {{ 'true' if has_perm('death_report.view') else 'false' }}],
+        ['a[href="{{ url_for('visit.list_page') }}"]', {{ 'true' if has_perm('visit.view') else 'false' }}],
+        ['a[href="{{ url_for('visit.history') }}"]', {{ 'true' if has_perm('visit.view') else 'false' }}],
+        ['a[href="{{ url_for('reconcile.index') }}"]', {{ 'true' if has_perm('reconcile.view') else 'false' }}]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    {% if current_user %}
+{% from 'components/_macros/icon.html' import icon %}
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            {% if shell_banner and shell_banner.count %}
+            <div class="sc-banner" id="scBanner" role="status">
+                {{ icon('triangle-alert', 14, 'sc-banner__icon') }}
+                <span class="sc-banner__text">{{ shell_banner.text }}</span>
+                <a class="sc-banner__link" href="{{ shell_banner.href }}">{{ shell_banner.link_text }}</a>
+                <button class="sc-banner__close" type="button" id="scBannerClose" aria-label="关闭提示">{{ icon('x', 14) }}</button>
+            </div>
+            {% endif %}
+            <nav class="sc-topbar">
+                {# 折叠按钮常驻顶栏左侧：桌面改 body.sc-sidebar-collapsed（64px），移动走 off-canvas。
+                   不放在侧栏品牌区——260px 内放不下 40px logo + 10 字标题 + 28px 按钮（D-6）。 #}
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    {{ icon('panel-left-close', 18) }}
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    {{ icon('panel-left', 18) }}
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="{{ url_for('resident.list') }}">
+                    {{ icon('search', 16) }}
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    {# 在线人数：数据源由 057b（/api/online-count + 心跳）提供；未接入时按 0 渲染，不做假数 #}
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">{{ online_count|default(0) }}</span> 人在线
+                    </span>
+                    {# 同步状态（064）：单机灰点「本机数据」；LAN 由 utils/sync_status.py provider 升级，模板零改动 #}<span class="sc-sync" id="syncStatus" title="{{ sync_status.title }}">
+                        <span class="sc-dot sc-dot--{{ sync_status.tone }}"></span>{{ sync_status.text }}
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">{{ (current_user.real_name or current_user.username)[:1] }}</span>
+                            <span class="sc-usermenu__name">{{ current_user.real_name or current_user.username }}</span>
+                            {{ icon('chevron-down', 14) }}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">{{ current_user.role.name if current_user.role else '' }}</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+{% include 'components/_partials/sidebar_menu.html' %}
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+{% include 'components/_partials/tabbar.html' %}
+            {# 页面标题（071）：移出顶栏对齐样图 §1.2（顶栏无标题）；保留 #pageTitle 仅供 spa.js
+               读取 SPA 标签标题（spa.js L184/L388/L390/L504、party_list.js L315 依赖），视觉隐藏。 #}
+            <h1 id="pageTitle">{% block page_title %}{% endblock %}</h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+{% include 'components/_partials/flash_messages.html' %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+    {% block full_content %}{% endblock %}
+    {% endif %}
+
+    <script src="{{ url_for('static', filename='lib/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/crud.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="{{ url_for('static', filename='js/spa.js') }}"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="{{ url_for('static', filename='js/shell.js') }}"></script>
+    <script src="{{ url_for('static', filename='lib/driver.js.iife.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/tour_registry.js') }}"></script>
+
+{% include 'components/_partials/profile_modal.html' %}
+</body>
+</html>

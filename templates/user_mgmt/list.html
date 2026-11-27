@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}用户管理 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}用户管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="list">
+{{ settings_head('用户管理', '账号、所属角色与状态', '新增用户', 'showAdd()') }}
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="keyword" placeholder="用户名/真实姓名" style="width:220px">
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 搜索</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th class="sc-table__th">用户名</th>
+                    <th class="sc-table__th">真实姓名</th>
+                    <th class="sc-table__th">角色</th>
+                    <th class="sc-table__th" style="width:90px">状态</th>
+                    <th class="sc-table__th">最后登录</th>
+                    <th class="sc-table__th">创建时间</th>
+                    <th class="sc-table__th" style="width:180px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat">共 0 条 · 每页 20 条</span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 弹窗骨架对组件-handoff §2.8（sc-modal）；BS 5 JS 共存：外层 .modal.fade。
+   字段 id/name 与页面 JS 回填约定一致（saveForm/formTitle/editId/roleSelect）。 #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="editId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增用户</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_username">用户名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" id="f_username" name="username" placeholder="登录账号" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_real_name">真实姓名</label>
+                        <input type="text" class="sc-input" id="f_real_name" name="real_name" placeholder="请输入真实姓名">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="roleSelect">角色</label>
+                        <select class="sc-select" name="role_id" id="roleSelect"></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_password">密码</label>
+                        <input type="password" class="sc-input" id="f_password" name="password" placeholder="新增必填，编辑不填则不修改">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/user_mgmt_list.js') }}"></script>
+{% endblock %}

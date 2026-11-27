@@ -1,0 +1,31 @@
+/* ==========================================================================
+ * organization_list.css — 组织架构页页面级样式（062）
+ * 组件样式在 components.css（sc-* 通用层）；本文件只放本页专属尺寸/布局。
+ * 字段真源：docs/design/照单施工-6页字段清单-2026-10-28.md §一
+ * ========================================================================== */
+
+/* 卡内搜索工具条：与表格以 1px 分隔（对齐 §2.6 工具条形态） */
+.org-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    border-bottom: 1px solid var(--c-line-2);
+}
+
+/* 工具条内控件定宽（sc-input 默认 flex:1 是为表单栅格服务，工具条不跟随拉伸） */
+.org-toolbar .sc-input,
+.org-toolbar .sc-select {
+    flex: 0 0 auto;
+}
+
+/* 两列复杂表单弹窗 640 档（§2.8；BS .modal-dialog 用 max-width 控宽） */
+.org-modal-dialog { max-width: 672px; }
+
+/* 现任复选框：整行左对齐，label 跟随 */
+.org-check-label {
+    font-size: 14px;
+    color: var(--c-ink-2);
+    cursor: pointer;
+}

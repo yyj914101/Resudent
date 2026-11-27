@@ -1,0 +1,95 @@
+<!-- Detail Modal（067 换壳；2026-11-11 详情 v2：ui1.md 只读规范四层结构——T1 标题+身份标签组+KPI 药丸 /
+     T2 业务风险横幅（条件显示）/ T3 三段式四列只读栅格（dibao_list.js openDetail 组装 cfg，渲染器 detail_v2.js）/
+     T4 隐私脱敏开关 + 删除/关闭/编辑资料） -->
+{% from 'components/_macros/icon.html' import icon %}
+<div class="modal fade" id="dibaoDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="d2-shell" role="dialog" aria-modal="true">
+            <header class="d2-header">
+                <div class="d2-header__main">
+                    <div class="d2-header__row1">
+                        <h2 class="d2-name" id="dibaoDetailName">低保详情</h2>
+                        <div class="d2-tags" id="dibaoDetailTags"></div>
+                    </div>
+                    <div class="d2-subtitle" id="dibaoDetailSubtitle"></div>
+                </div>
+                <div class="d2-kpis" id="dibaoDetailKpis"></div>
+                <button type="button" class="d2-close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 20) }}</button>
+            </header>
+            <div class="d2-risk" id="dibaoDetailRisk" hidden></div>
+            <div class="d2-body" id="dibaoDetailBody"></div>
+            <footer class="d2-footer">
+                <label class="d2-privacy"><input type="checkbox" id="d2Privacy"><span>隐私脱敏显示（隐藏身份证/银行卡号中间位）</span></label>
+                <div class="d2-footer__btns" id="dibaoDetailBtns"></div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Form Modal（2026-11-11 编辑 v2：ui.md 四列栅格三段式模式，同医保编辑 mi2 模式，ed2-* 样式；
+     name/id 契约零改动，JS 按 name 回填；三段=个人与户籍信息/保障与认定信息/发放账户信息） -->
+<div class="modal fade" id="dibaoFormModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="ed2-shell" role="dialog" aria-modal="true">
+            <form id="dibaoForm">
+                <input type="hidden" name="id" id="dibaoFormId">
+                <header class="ed2-header">
+                    <div class="ed2-header__main">
+                        <div class="ed2-header__row1">
+                            <span class="ed2-title" id="dibaoFormTitle">低保信息</span>
+                            <span class="ed2-meta" id="dibaoFormMeta">修改后保存生效</span>
+                        </div>
+                    </div>
+                    <button type="button" class="ed2-close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 20) }}</button>
+                </header>
+                <div class="ed2-body">
+                    <section class="ed2-section"><div class="ed2-sechead"><span class="ed2-sechead__bar"></span><h4 class="ed2-sechead__title">个人与户籍信息</h4><span class="ed2-sechead__line"></span></div>
+                        <div class="ed2-grid">
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>所属地区</span></label><input type="text" class="sc-input" name="region"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>户主姓名</span></label><input type="text" class="sc-input" name="household_name"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>户主身份证号</span></label><input type="text" class="sc-input" name="household_id_card"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>成员姓名<span class="sc-field__required">*</span></span></label><input type="text" class="sc-input" name="name" required></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>成员身份证号</span></label><input type="text" class="sc-input" name="id_card"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>是否户主</span></label><select class="sc-select" name="is_head"><option>否</option><option>是</option></select></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>与户主关系</span></label><input type="text" class="sc-input" name="relationship"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>建档立卡贫困对象</span></label><input type="text" class="sc-input" name="poverty_registered"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>是否死亡成员</span></label><select class="sc-select" name="is_deceased"><option value="">否</option><option>是</option></select></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>健康状况</span></label><input type="text" class="sc-input" name="health_status"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>残疾类型</span></label><input type="text" class="sc-input" name="disability_type"></div>
+                            <div class="sc-field ed2-field ed2-span2"><label class="sc-field__label"><span>家庭地址</span></label><input type="text" class="sc-input" name="address"></div>
+                            <div class="sc-field ed2-field ed2-span2"><label class="sc-field__label"><span>户籍地址</span></label><input type="text" class="sc-input" name="registered_address"></div>
+                        </div>
+                    </section>
+                    <section class="ed2-section"><div class="ed2-sechead"><span class="ed2-sechead__bar"></span><h4 class="ed2-sechead__title">保障与认定信息</h4><span class="ed2-sechead__line"></span></div>
+                        <div class="ed2-grid">
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>救助类别</span></label><select class="sc-select" name="dibao_type"><option value="">请选择</option></select></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>救助细类</span></label><select class="sc-select" name="sub_category"><option value="">请选择</option></select></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>享受人口数</span></label><input type="number" class="sc-input" name="beneficiary_count" value="1" min="1"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>户救助金额（元）</span></label><input type="number" step="0.01" class="sc-input" name="household_amount" value="0"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>发放月份</span></label><input type="text" class="sc-input" name="payment_month" placeholder="如: 2026-06"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>保障状态</span></label><select class="sc-select" name="support_status"><option>已认定</option><option>复审中</option><option>待核实</option></select></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>开始享受时间</span></label><input type="date" class="sc-input" name="start_date"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>变更时间</span></label><input type="date" class="sc-input" name="change_time"></div>
+                        </div>
+                    </section>
+                    <section class="ed2-section"><div class="ed2-sechead"><span class="ed2-sechead__bar"></span><h4 class="ed2-sechead__title">发放账户信息</h4><span class="ed2-sechead__line"></span></div>
+                        <div class="ed2-grid">
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>开户人</span></label><input type="text" class="sc-input" name="account_holder"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>开户人身份</span></label><input type="text" class="sc-input" name="account_holder_identity"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>开户人身份证号</span></label><input type="text" class="sc-input" name="account_holder_id_card"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>银行账号</span></label><input type="text" class="sc-input" name="bank_card"></div>
+                            <div class="sc-field ed2-field"><label class="sc-field__label"><span>开户银行种类</span></label><input type="text" class="sc-input" name="bank_type"></div>
+                            <div class="sc-field ed2-field ed2-span2"><label class="sc-field__label"><span>备注</span></label><input type="text" class="sc-input" name="remark" placeholder="请填写需要说明的情况"></div>
+                        </div>
+                    </section>
+                </div>
+                <footer class="ed2-footer">
+                    <button type="button" class="ed2-btn ed2-btn--ghost" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="ed2-btn ed2-btn--primary"><i class="bi bi-check-lg"></i> 保存修改</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/detail_v2.js"></script>

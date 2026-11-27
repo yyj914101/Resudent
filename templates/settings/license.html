@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}授权管理{% endblock %}
+{% block page_title %}授权管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="form">
+{{ settings_head('授权管理', '授权码与到期时间') }}
+
+<section class="sc-card">
+    <div class="sc-card__body">
+        <div class="sc-kv"><span class="sc-kv__label">授权状态</span><span class="sc-kv__value" id="colStatus">加载中...</span></div>
+        <div class="sc-kv"><span class="sc-kv__label">授权类型</span><span class="sc-kv__value" id="colType">-</span></div>
+        <div class="sc-kv"><span class="sc-kv__label">机器码</span><span class="sc-kv__value" id="colMachine"><code id="machineCode" style="font-family:monospace;letter-spacing:1px">-</code></span></div>
+        <div class="sc-kv"><span class="sc-kv__label">到期时间</span><span class="sc-kv__value" id="colExpire">-</span></div>
+        <div class="sc-kv"><span class="sc-kv__label">授权对象</span><span class="sc-kv__value" id="colOwner">-</span></div>
+        <div class="sc-kv"><span class="sc-kv__label">说明</span><span class="sc-kv__value" id="colDesc">-</span></div>
+    </div>
+</section>
+
+<div class="sc-row-actions" style="margin:var(--sp-3) 0">
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnCopyCode">复制机器码</button>
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnExport">导出配置</button>
+    <button type="button" class="sc-btn sc-btn--primary" id="btnImport">导入授权文件</button>
+    <button type="button" class="sc-btn sc-btn--secondary" id="btnRefresh">刷新状态</button>
+</div>
+
+<div id="statusTip" class="mt-2 p-3 rounded" style="display:none;font-size:14px;line-height:1.6;"></div>
+
+{# 导入授权文件（v9-03） #}
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">导入授权文件</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="sc-field">
+                    <label class="sc-field__label" for="licenseFile">授权文件</label>
+                    <input type="file" class="sc-input" id="licenseFile" accept=".key,.json" data-sc-dropzone data-dz-hint="支持 .key / .json 授权文件 · 点击或拖拽">
+                </div>
+                <div class="sc-field" style="margin-top:var(--sp-2)">
+                    <label class="sc-field__label" for="licenseFormat">支持格式</label>
+                    <input type="text" class="sc-input" id="licenseFormat" value=".key / .json，≤2MB" readonly>
+                </div>
+                <div id="importResult" class="mt-2 small"></div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnImportSubmit">上传并校验</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/settings_license.js') }}"></script>
+{% endblock %}

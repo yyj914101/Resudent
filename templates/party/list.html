@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block extra_css %}
+    <link href="{{ url_for('static', filename='css/pages/party_list.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/party_list_v2.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/pages/import_modal_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}党员管理{% endblock %}
+{% block page_title %}{% endblock %}
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('org', 'party') }}
+
+{# 069 换壳：v7-12 页头（标题/副标题/操作钮）；§2.2 主按钮唯一 → 新增党员自品牌卡上移至此 #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">党员管理</h2>
+        <p class="sc-page-head__meta">自动关联本村中共党员，维护流动 / 任职 / 党费</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--primary" id="btnAdd"><i class="bi bi-plus-circle"></i> 新增党员</button>
+    </div>
+</header>
+
+<div class="pw-page">
+{# 2026-11-19 按《党员管理与批量导入工作台》设计稿换壳（party_list_v2.css）：
+   品牌卡长说明收进 ? 气泡、8 格汇总改对称 4×2 白卡、支部 chip 改可点药丸、
+   下载模板移入导入弹窗。DOM 契约零改动（summaryXxx / partyBranchSummary /
+   btnSyncResidents / impModal 三 id），JS 契约见 test_069 / test_party_roster_layout。
+   旧类名 party-summary-grid/item/value/label、party-branch-summary 均保留作为
+   结构测试锚点（test_party_roster_layout），外观由 .pw-* 覆盖。 #}
+<section class="party-page-header sc-card pw-overview">
+    <div class="pw-overview__top">
+        <div class="pw-overview__brand">
+            <span class="pw-overview__emblem" aria-hidden="true"><i class="bi bi-star-fill"></i></span>
+            <h1 class="pw-overview__title">党员名册</h1>
+            <div class="party-page-description pw-help">
+                <button type="button" class="pw-help__btn" aria-label="关联与建档规则说明" aria-expanded="false">?</button>
+                <div class="pw-help__bubble" role="tooltip">
+                    <strong>关联与建档规则说明</strong>
+                    本村党员档案按身份证号自动关联居民基础信息库。保存或打开本页时，正式党员自动写入居民政治面貌“中共党员”，预备党员自动写入“中共预备党员”；非本村户籍或未在居民信息中登记的党员，可点击右上角“新增党员”手工建立档案。
+                </div>
+            </div>
+        </div>
+        <div class="party-page-actions pw-overview__ops">
+            <button class="sc-btn sc-btn--secondary" id="btnSyncResidents" title="按党员档案身份证号批量更新居民政治面貌"><i class="bi bi-arrow-repeat"></i> 同步居民政治面貌</button>
+            <button class="sc-btn sc-btn--secondary" onclick="$('#impModal').modal('show')"><i class="bi bi-upload"></i> 批量导入</button>
+            <button class="sc-btn sc-btn--secondary" onclick="window.location='/party/api/export'"><i class="bi bi-download"></i> 导出名册</button>
+        </div>
+    </div>
+
+    <div class="party-summary-panel" aria-live="polite">
+        <div class="pw-summary-head">
+            <span class="pw-summary-head__label"><i class="bi bi-bar-chart-line" aria-hidden="true"></i>党员情况汇总</span>
+            <span class="pw-summary-head__note">在册党员统计口径不含已转出人员</span>
+        </div>
+        <div class="party-summary-grid pw-kpis">
+            <div class="party-summary-item pw-kpi pw-kpi--primary"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--ink"></span>在册党员</span><span class="party-summary-value pw-kpi__value" id="summaryTotal">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c1"></span>正式党员</span><span class="party-summary-value pw-kpi__value" id="summaryFormal">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c2"></span>预备党员</span><span class="party-summary-value pw-kpi__value" id="summaryProbationary">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c3"></span>流动党员</span><span class="party-summary-value pw-kpi__value" id="summaryFloating">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--ink"></span>退休党员</span><span class="party-summary-value pw-kpi__value" id="summaryRetired">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c2"></span>居民自动关联</span><span class="party-summary-value pw-kpi__value" id="summaryAutoLinked">--</span></div></div>
+            <div class="party-summary-item pw-kpi"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c1"></span>已建档党员</span><span class="party-summary-value pw-kpi__value" id="summaryManual">--</span></div></div>
+            <div class="party-summary-item pw-kpi pw-kpi--alert"><div><span class="pw-kpi__label"><span class="pw-kpi__dot pw-kpi__dot--c4"></span>已转出</span><span class="party-summary-value pw-kpi__value" id="summaryTransferred">--</span></div></div>
+        </div>
+        <div class="party-branch-summary pw-branches">
+            <span class="pw-branches__label party-branch-summary-label"><i class="bi bi-diagram-3" aria-hidden="true"></i>党支部人数汇总：</span>
+            <div class="party-branch-list" id="partyBranchSummary"><span class="text-muted small">正在加载...</span></div>
+        </div>
+    </div>
+</section>
+
+{# 069 换壳：sc-toolbar / sc-table / sc-pagination；JS 契约 id 不变
+   （sName/sIdCard/sType/sBranch/btnSearch/btnReset + tb/fi/pg + 行内 col-* 类） #}
+<section class="sc-card party-list-card pw-list-card">
+    <form class="sc-toolbar" onsubmit="return false;">
+        <input type="text" class="sc-input" id="sName" placeholder="姓名" style="width:128px">
+        <input type="text" class="sc-input" id="sIdCard" placeholder="身份证号" style="width:176px">
+        <select class="sc-select" id="sType" style="width:128px"><option value="">党员身份</option></select>
+        <select class="sc-select" id="sBranch" style="width:208px"><option value="">党支部</option></select>
+        <button type="button" class="sc-btn sc-btn--primary" id="btnSearch"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnReset"><i class="bi bi-arrow-repeat"></i> 重置</button>
+        <label class="pw-privacy" for="pwPrivacySwitch" title="身份证与手机号中间位脱敏">
+            <span>隐私脱敏</span>
+            <button type="button" class="pw-privacy__track" id="pwPrivacySwitch" role="switch" aria-checked="true" aria-label="切换隐私脱敏">
+                <span class="pw-privacy__knob"></span>
+            </button>
+        </label>
+    </form>
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th col-index">#</th>
+                    <th class="sc-table__th col-name">姓名</th>
+                    <th class="sc-table__th col-id-card">身份证号</th>
+                    <th class="sc-table__th col-gender">性别</th>
+                    <th class="sc-table__th col-date">出生日期</th>
+                    <th class="sc-table__th col-age">年龄</th>
+                    <th class="sc-table__th col-party-age">党龄</th>
+                    <th class="sc-table__th col-nation">民族</th>
+                    <th class="sc-table__th col-education">学历</th>
+                    <th class="sc-table__th col-date">入党日期</th>
+                    <th class="sc-table__th col-date">转正日期</th>
+                    <th class="sc-table__th col-type">人员类别</th>
+                    <th class="sc-table__th col-phone">手机号</th>
+                    <th class="sc-table__th col-branch">党支部</th>
+                    <th class="sc-table__th col-address">现居住址</th>
+                    <th class="sc-table__th col-fee">党费</th>
+                    <th class="sc-table__th col-action">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="fi">共0条</span>
+        <ul class="sc-pagination__pager" id="pg"></ul>
+    </div>
+</section>
+</div>
+
+{# 2026-11-19 批量导入弹窗按设计稿换壳：模板下载条 + 双列单选卡 + File Drop Zone。
+   契约：#impMode（radio 组，值 append/overwrite）、#impFile（原生 file）、#impRes
+   均保留——doImport() 走 importWizard({fileSel:'#impFile', extraData:{mode:$('#impMode').val()}})，
+   提交链路零改动。 #}
+<div class="modal fade" id="impModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal pw-modal" role="dialog" aria-modal="true" aria-labelledby="impModalTitle">
+            <header class="sc-modal__header">
+                <div>
+                    <h3 class="sc-modal__title" id="impModalTitle">批量导入</h3>
+                    <p class="pw-modal__sub">支持标准党员名册 Excel 模板上传与数据预检</p>
+                </div>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="pw-tplbar">
+                    <div class="pw-tplbar__info">
+                        <i class="bi bi-file-earmark-text" aria-hidden="true"></i>
+                        <span class="pw-tplbar__name">党员名册导入模板</span>
+                        <span class="pw-tplbar__ver">v2.4</span>
+                    </div>
+                    <a href="/party/api/template" class="sc-btn sc-btn--secondary"><i class="bi bi-download"></i> 下载标准导入模板 (.xlsx)</a>
+                </div>
+
+                <div>
+                    <p class="pw-mode-label" id="impModeLabel">导入模式</p>
+                    <div class="pw-radios" role="radiogroup" aria-labelledby="impModeLabel">
+                        <label class="pw-radio-card">
+                            <input type="radio" name="impMode" id="impMode" value="append" checked>
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">仅新增</span>
+                                    <span class="pw-radio-card__desc">遇到重复身份证号自动跳过，仅录入新党员档案</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="pw-radio-card">
+                            <input type="radio" name="impMode" value="overwrite">
+                            <span class="pw-radio-card__body">
+                                <span class="pw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="pw-radio-card__title">覆盖更新</span>
+                                    <span class="pw-radio-card__desc">遇到重复身份证号时，用表格最新信息覆盖原有档案</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="pw-file-head">
+                        <span class="pw-file-head__label" id="impFileLabel">数据文件<span class="sc-field__required">*</span></span>
+                    </div>
+                    <input type="file" id="impFile" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none">
+                    <div class="pw-drop" id="impDrop" role="button" tabindex="0" aria-labelledby="impFileLabel">
+                        <span class="pw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                        <span class="pw-drop__title">点击选择文件，或将 Excel 文件拖拽至此处投放</span>
+                        <span class="pw-drop__hint">仅支持 <b>.xlsx</b> 工作簿，单文件不超过 <b>20MB</b></span>
+                    </div>
+                    <div class="pw-staged d-none" id="impStaged">
+                        <div class="pw-staged__file">
+                            <span class="pw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                            <div class="pw-staged__info">
+                                <div class="pw-staged__name" id="impStagedName"></div>
+                                <div class="pw-staged__meta"><span id="impStagedMeta"></span><span class="sc-badge sc-badge--success">格式校验通过</span></div>
+                            </div>
+                        </div>
+                        <div class="pw-staged__ops">
+                            <button type="button" class="sc-btn sc-btn--secondary" id="impReselect">重新选择</button>
+                            <button type="button" class="sc-btn sc-btn--text pw-btn-danger" id="impRemove">移除</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="impRes" class="small"></div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="impSubmit" onclick="doImport()" disabled>开始导入</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+{# 党员详情弹窗 v2（ADR-022 视觉基线 v4.0）：头部徽章 + 工具栏 / 主体区 #dtBody JS 渲染 /
+   底部状态与动作栏 / 行内抽屉（读写分离）。
+   ⚠️ 内容层保留 .modal-content（BS5 在该层恢复 pointer-events: auto），严禁用自定义壳替代，
+   守卫：tests/test_detail_v2_modal_guard.py（ui-adjustments-20261101.md §十六 教训） #}
+<div class="modal fade" id="dtModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered"><div class="modal-content pd-shell">
+        <header class="pd-head">
+            <div class="pd-head__id">
+                <div class="pd-head__row">
+                    <h1 class="pd-head__name" id="dtTitle">党员详情</h1>
+                    <span class="pd-head__badges" id="pdBadges"></span>
+                </div>
+                <div class="pd-head__branch" id="pdBranch"></div>
+            </div>
+            <div class="pd-head__tools">
+                <button type="button" class="pd-btn pd-btn--secondary" id="pdPrivacyBtn" title="切换身份证与手机号脱敏状态"><i class="bi bi-eye"></i> <span id="pdPrivacyLabel">隐藏敏感号段</span></button>
+                <button type="button" class="pd-btn pd-btn--secondary" id="pdLayoutBtn" title="在一屏页签模式与全量展开模式间切换"><i class="bi bi-list"></i> <span id="pdLayoutLabel">切换全量平铺</span></button>
+                <button type="button" class="pd-btn pd-btn--primary" id="pdEditBtn"><i class="bi bi-pencil"></i> 编辑党员信息</button>
+                <span class="pd-head__vline"></span>
+                <button type="button" class="pd-close" data-bs-dismiss="modal" aria-label="关闭 (Esc)"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </header>
+        <div class="pd-body" id="dtBody"></div>
+        <footer class="pd-foot">
+            <div class="pd-foot__status" id="pdFootStatus"></div>
+            <div class="pd-foot__actions">
+                <button type="button" class="pd-btn pd-btn--secondary" id="pdExportBtn" title="导出党员名册（Excel）">导出党员登记表</button>
+                <button type="button" class="pd-btn pd-btn--primary" data-bs-dismiss="modal">完成审阅</button>
+            </div>
+        </footer>
+        <div class="pd-drawer-backdrop" id="pdDrawerBackdrop" hidden>
+            <aside class="pd-drawer" role="dialog" aria-modal="true">
+                <div>
+                    <div class="pd-drawer__top">
+                        <h3 class="pd-drawer__title" id="pdDrawerTitle">操作面板</h3>
+                        <button type="button" class="pd-close" id="pdDrawerClose" aria-label="关闭抽屉"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <div class="pd-drawer__content" id="pdDrawerContent"></div>
+                </div>
+                <div class="pd-drawer__foot">
+                    <button type="button" class="pd-btn pd-btn--secondary" id="pdDrawerCancel">取消</button>
+                    <button type="button" class="pd-btn pd-btn--primary" id="pdDrawerSave">保存提交</button>
+                </div>
+            </aside>
+        </div>
+    </div></div>
+</div>
+
+{# 069 换壳：新增/编辑弹窗（sc-modal--lg 两列栅格）；字段 id/name 与 party_list.js
+   契约一致（fm/fid/fmTitle/fmName/fmIdCard/fmGender/fmBirth/fmNation/fmLookup +
+   branch-select 供 dictSelect 回填），页面 JS 零改动 #}
+<div class="modal fade" id="fmModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="fm">
+                <input type="hidden" name="id" id="fid">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="fmTitle">党员信息</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmName">姓名<span class="sc-field__required">*</span></label>
+                        <div class="party-lookup-group">
+                            <input type="text" class="sc-input" name="name" id="fmName" required>
+                            <button class="sc-btn sc-btn--secondary" type="button" id="fmLookup" title="读取居民信息"><i class="bi bi-search"></i></button>
+                        </div>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmIdCard">身份证号</label>
+                        <input type="text" class="sc-input" name="id_card" id="fmIdCard">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmGender">性别</label>
+                        <select class="sc-select" name="gender" id="fmGender"><option value="">请选择</option><option value="男">男</option><option value="女">女</option></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmBirth">出生日期</label>
+                        <input type="date" class="sc-input" name="birth_date" id="fmBirth">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmNation">民族</label>
+                        <input type="text" class="sc-input" name="nation" id="fmNation">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmEducation">学历</label>
+                        <select class="sc-select" name="education" id="fmEducation"><option value="">请选择</option><option>研究生</option><option>本科</option><option>大专</option><option>高中/中专</option><option>初中</option><option>小学</option></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmJoinDate">入党日期</label>
+                        <input type="date" class="sc-input" name="join_date" id="fmJoinDate">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmConfirmDate">转正日期</label>
+                        <input type="date" class="sc-input" name="confirm_date" id="fmConfirmDate">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmMemberIdentity">党员身份</label>
+                        <select class="sc-select" name="member_identity" id="fmMemberIdentity"><option value="">请选择</option>{%- for v in party_dicts['党员身份'] %}<option>{{ v }}</option>{%- endfor %}</select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmMemberMobility">党员流动状态</label>
+                        <select class="sc-select" name="member_mobility" id="fmMemberMobility"><option value="">请选择</option>{%- for v in party_dicts['党员流动状态'] %}<option>{{ v }}</option>{%- endfor %}</select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmEmploymentStatus">在职状态</label>
+                        <select class="sc-select" name="employment_status" id="fmEmploymentStatus"><option value="">请选择</option>{%- for v in party_dicts['党员在职状态'] %}<option>{{ v }}</option>{%- endfor %}</select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmPartyStatus">在册状态</label>
+                        <select class="sc-select" name="party_status" id="fmPartyStatus">{%- for v in party_dicts['党员在册状态'] %}<option>{{ v }}</option>{%- endfor %}</select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmPhone">手机号码</label>
+                        <input type="text" class="sc-input" name="phone" id="fmPhone">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmBranch">党支部</label>
+                        <select class="sc-select branch-select" name="branch" id="fmBranch"><option value="">请选择</option></select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="fmAddress">现居住址</label>
+                        <input type="text" class="sc-input" name="current_address" id="fmAddress">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<!-- Fee Modal -->
+<div class="modal fade" id="feeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+        <div class="modal-header bg-info text-white"><h6 class="modal-title"><i class="bi bi-coin"></i> <span id="feeTitle">党费查缴</span></h6>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body p-0">
+            <table class="sc-table sc-table--dense"><thead><tr><th class="sc-table__th">年份</th><th class="sc-table__th">月份</th><th class="sc-table__th">金额</th><th class="sc-table__th">状态</th></tr></thead><tbody id="feeBody"></tbody></table>
+        </div>
+        <div class="modal-footer" id="feeFooter"></div>
+    </div></div>
+</div>
+<script src="{{ url_for('static', filename='js/pages/party_list.js') }}"></script>
+{% endblock %}

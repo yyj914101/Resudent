@@ -1,0 +1,308 @@
+/* ==========================================================================
+ * auth_common.css — 认证域统一壳层（登录 / 解锁 / 恢复 / 改密）
+ * 严格遵循 ADR-022 v4.0 中性灰阶令牌体系（依赖 tokens.css，零裸色值）
+ * ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  min-height: 100%;
+  margin: 0;
+  color: var(--c-ink);
+  background-color: var(--c-side);
+  background-image: radial-gradient(var(--c-line-3) 1px, transparent 1px);
+  background-size: 20px 20px;
+  font-family: var(--ff-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+.auth-shell {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 3px 1fr auto;
+}
+
+.auth-topbar {
+  background: var(--c-ink-2);
+}
+
+.auth-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-10) var(--sp-5);
+}
+
+.auth-footer {
+  text-align: center;
+  color: var(--c-muted);
+  font-size: 12px;
+  padding: 0 var(--sp-4) var(--sp-6);
+  letter-spacing: 0.01em;
+}
+
+/* —— 卡片容器 —— */
+.auth-panel {
+  width: min(460px, 100%);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+  box-shadow: 0 12px 32px rgba(10, 10, 10, 0.06);
+  overflow: hidden;
+}
+
+.auth-card {
+  padding: var(--sp-9) var(--sp-9) var(--sp-7);
+}
+
+/* —— 顶标与标题 —— */
+.auth-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-rail);
+  border: 1px solid var(--c-line-3);
+  color: var(--c-ink-3);
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-bottom: var(--sp-4);
+}
+.auth-eyebrow__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--c-cat-1);
+}
+.auth-eyebrow__dot--warn { background: var(--c-cat-4); }
+.auth-eyebrow__dot--info { background: var(--c-cat-2); }
+
+.auth-head-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-rail);
+  border: 1px solid var(--c-line-3);
+  color: var(--c-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: var(--sp-4);
+}
+
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--c-ink);
+  letter-spacing: -0.01em;
+}
+
+.auth-subtitle {
+  margin: 0 0 var(--sp-6);
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--c-muted);
+}
+
+/* —— 提示条 —— */
+.auth-alert {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 10px 12px;
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--c-line-3);
+  background: var(--c-rail);
+  color: var(--c-ink-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.auth-alert--danger {
+  background: var(--c-badge-danger-bg);
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.auth-alert--warning {
+  background: var(--c-warning-bg);
+  border-color: var(--c-warning);
+  color: var(--c-warning);
+}
+.auth-alert--success {
+  background: var(--c-cat-1-weak);
+  border-color: var(--c-success);
+  color: var(--c-success);
+}
+.auth-alert__close {
+  border: 0;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.7;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 16px;
+  line-height: 1;
+}
+.auth-alert__close:hover { opacity: 1; }
+
+/* —— 表单字段 —— */
+.auth-field {
+  margin-bottom: var(--sp-4);
+}
+.auth-field--last {
+  margin-bottom: var(--sp-6);
+}
+.auth-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-ink-3);
+  margin-bottom: 6px;
+}
+.auth-caps {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-warning);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.auth-caps[hidden] { display: none; }
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.auth-input-wrap__icon {
+  position: absolute;
+  left: 13px;
+  color: var(--c-faint);
+  font-size: 16px;
+  pointer-events: none;
+  z-index: 2;
+}
+.auth-input {
+  display: block;
+  width: 100%;
+  height: 42px;
+  padding: 0 13px;
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-ctrl);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.auth-input--with-icon { padding-left: 38px; }
+.auth-input--with-toggle { padding-right: 40px; }
+.auth-input::placeholder { color: var(--c-faint); opacity: 1; }
+.auth-input:hover { border-color: var(--c-faint); }
+.auth-input:focus {
+  outline: 0;
+  border-color: var(--c-ink-2);
+  box-shadow: 0 0 0 3px rgba(23, 23, 23, 0.08);
+}
+
+.auth-eye {
+  position: absolute;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--r-badge);
+  background: transparent;
+  color: var(--c-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.auth-eye:hover {
+  background: var(--c-hover);
+  color: var(--c-ink);
+}
+
+/* —— 按钮 —— */
+.auth-btn {
+  width: 100%;
+  height: 42px;
+  border: 1px solid var(--c-ink-2);
+  border-radius: var(--r-ctrl);
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.auth-btn:hover, .auth-btn:focus {
+  background: var(--c-ink);
+  border-color: var(--c-ink);
+  color: var(--c-surface);
+}
+.auth-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.auth-btn--secondary {
+  background: var(--c-surface);
+  color: var(--c-ink-3);
+  border-color: var(--c-line-3);
+}
+.auth-btn--secondary:hover, .auth-btn--secondary:focus {
+  background: var(--c-hover);
+  border-color: var(--c-faint);
+  color: var(--c-ink);
+}
+
+/* —— 底部说明与链接 —— */
+.auth-note {
+  margin-top: var(--sp-5);
+  padding: 10px 12px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  border: 1px solid var(--c-line-2);
+  color: var(--c-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+.auth-link-row {
+  margin-top: var(--sp-4);
+  text-align: center;
+  font-size: 13px;
+}
+.auth-link {
+  color: var(--c-ink-3);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.auth-link:hover {
+  color: var(--c-ink);
+  text-decoration: underline;
+}
+
+@media (max-width: 540px) {
+  .auth-main { padding: var(--sp-6) var(--sp-4); }
+  .auth-card { padding: var(--sp-7) var(--sp-5) var(--sp-6); }
+}

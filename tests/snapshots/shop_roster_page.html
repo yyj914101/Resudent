@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="__CSRF__">
+    <title>基础设施分布</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="/static/lib/adminlte/css/adminlte.min.css" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="/static/css/tokens.css" rel="stylesheet">
+    <link href="/static/css/app.css" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="/static/css/shell.css" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="/static/css/components.css" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="/static/css/skeleton.css" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="/static/lib/driver.css" rel="stylesheet">
+    <link href="/static/css/tour.css" rel="stylesheet">
+    
+<link href="/static/css/pages/dynatable_v2.css" rel="stylesheet">
+
+
+
+<script src="/static/js/nav_labels_boot.js"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: true,
+    menuRules: [
+        ['a[href="/resident/"]', true],
+        ['a[href="/resident/add"]', true],
+        ['a[href="/shop/"]', true],
+        ['a[href="/dibao/"]', true],
+        ['a[href="/disabled/"]', true],
+        ['a[href="/care/"]', true],
+        ['a[href="/organization/"]', true],
+        ['a[href="/party/"]', true],
+        ['a[href="/party/dues"]', true],
+        ['a[href="/veteran/"]', true],
+        ['a[href="/todo/"]', true],
+        ['a[href="/welfare/"]', true],
+        ['a[href="/mediation/"]', true],
+        ['a[href="/governance/roster/gov_special_visit/"]', true],
+        ['a[href="/governance/roster/gov_stability_risk/"]', true],
+        ['a[href="/governance/roster/gov_mental_health/"]', true],
+        ['a[href="/governance/roster/gov_security_committee/"]', true],
+        ['a[href="/safety/"]', true],
+        ['a[href="/notice/"]', true],
+        ['a[href="/word-form/"]', true],
+        ['a[href="/medical-insurance/"]', true],
+        ['a[href="/certificate/"]', true],
+        ['a[href="/death-report/"]', true],
+        ['a[href="/visit/"]', true],
+        ['a[href="/visit/history"]', true],
+        ['a[href="/reconcile/"]', true]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    
+
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            
+            <nav class="sc-topbar">
+                
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left-close"></use></svg>
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left"></use></svg>
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="/resident/">
+                    <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#search"></use></svg>
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">0</span> 人在线
+                    </span>
+                    <span class="sc-sync" id="syncStatus" title="单机模式：数据保存在本机，未启用同步">
+                        <span class="sc-dot sc-dot--muted"></span>本机数据
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">a</span>
+                            <span class="sc-usermenu__name">admin</span>
+                            <svg class="sc-icon sc-icon--14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#chevron-down"></use></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">超级管理员</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+
+
+
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo"><svg class="sc-icon sc-icon--20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg></span>
+        <span class="sc-sidebar__title" id="systemTitle">村级村务综合管理系统</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+
+            
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dashboard/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#house"></use></svg><span>首页</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/todo/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-todo"></use></svg><span>待办提醒</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/organization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#building-2"></use></svg><span>机构管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/election/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#check2-square"></use></svg><span>选举管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/civilization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg><span>文明实践站</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/medical-insurance/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-pulse"></use></svg><span>社会保障</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dibao/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>民政对象管理</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/resident/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#users"></use></svg><span>居民管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/mediation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#messages-square"></use></svg><span>综治管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/visit/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>走访关爱</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#folder-open"></use></svg><span>安全工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/emergency">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-checks"></use></svg><span>应急管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/sanitation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#wrench"></use></svg><span>环卫工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/death-report/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#book-open"></use></svg><span>死亡上报</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/veteran/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#shield-check"></use></svg><span>退役军人服务</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/certificate/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#scroll-text"></use></svg><span>证明开具</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/demand/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#inbox"></use></svg><span>民生诉求</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/notice/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#megaphone"></use></svg><span>补贴公示</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dynatable/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database"></use></svg><span>台账建表</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/import/batches">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database-zap"></use></svg><span>导入批次</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        
+        <a class="nav-link sc-nav-item"
+           href="/settings/center">
+            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#settings"></use></svg><span>设置</span>
+        </a>
+        
+        <div class="sc-user-card">
+            <span class="sc-avatar">a</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">admin</span>
+                <span class="sc-user-card__role">超级管理员</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="/auth/logout" aria-label="退出登录">
+                <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#log-out"></use></svg>
+            </a>
+        </div>
+    </div>
+</aside>
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+            <!-- 顶部标签栏 -->
+            <div class="tab-bar" id="tabBar">
+                <div class="tab-scroll" id="tabScroll"></div>
+            </div>
+            
+            <h1 id="pageTitle"></h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+                
+                
+                
+                
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">基础设施分布</h2>
+        <p class="sc-page-head__meta">
+            表标识 <code>shop_facility</code> · 归属 店铺信息 · 基础设施分布台账
+        </p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--secondary" id="appendImportButton"><i class="bi bi-upload"></i> 批量导入</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="exportButton"><i class="bi bi-file-earmark-excel"></i> 导出 Excel</button>
+        <a class="sc-btn sc-btn--secondary" href="/shop/"><i class="bi bi-arrow-left"></i> 返回业务页</a>
+        <button type="button" class="sc-btn sc-btn--primary" id="addButton"><i class="bi bi-plus-circle"></i> 新增记录</button>
+    </div>
+</header>
+
+
+<style id="dtV2PageStyle">@page { size: A4 landscape; margin: 15mm; }</style>
+
+<div class="sc-card" id="dtV2MainCard" style="min-width:0">
+        <!-- 卡片头部：左侧分段视图切换 + 右侧模式徽章与次级操作 -->
+        <div class="dtv2-wb-head" id="dtV2SwitchBar">
+            <div class="dtv2-chips-seg">
+                <button type="button" class="dtv2-chip-btn active" data-dtv2-mode="list">列表查询视图（分页 · 加密脱敏）</button>
+                <button type="button" class="dtv2-chip-btn" data-dtv2-mode="a4">A4 版式视图（所见即所得 · 合页编辑）</button>
+                <button type="button" class="dtv2-chip-btn" data-dtv2-mode="format">版式微调（行高 / 列宽 / 文字）</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span id="dtV2ModeBadges" style="display:inline-flex;gap:5px;flex-wrap:wrap"></span>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnClonePeriod" style="padding:4px 10px;font-size:12px">期次结转</button>
+                <a class="sc-btn sc-btn--secondary" href="/dynatable/api/t/shop_facility/export?styled=1" style="padding:4px 10px;font-size:12px">导出原样 .xlsx</a>
+                
+                <a class="sc-btn sc-btn--secondary" href="/dynatable/api/group/%E4%BA%BA%E5%8F%A3%E4%B8%8E%E5%8F%B0%E8%B4%A6/export" style="padding:4px 10px;font-size:12px">导出整本</a>
+                
+                
+            </div>
+        </div>
+
+        <!-- 列表视图顶部：独立软表分区切换 + 容错增行/减行/增列/减列 -->
+        <div class="dtv2-list-bar" id="dtV2ListBar">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--c-muted-2)" id="dtV2ListPartLabel" hidden>独立软表分区：</span>
+                <div id="dtV2ListPartitions" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+            </div>
+            <div id="dtV2ListOps" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListAddRow" style="padding:3px 9px;font-size:12px">＋ 增行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListDelRow" style="padding:3px 9px;font-size:12px">－ 减行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListAddCol" style="padding:3px 9px;font-size:12px">＋ 增列</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ListDelCol" style="padding:3px 9px;font-size:12px">－ 减列</button>
+            </div>
+        </div>
+
+        <!-- A4 版式与版式微调区域 -->
+        <div id="dtV2A4Wrap" hidden>
+            <div class="dtv2-bar" id="dtV2FillBar">
+                <input type="text" class="sc-input dtv2-fixed-ctrl" id="dtV2ResidentQuery" style="width:165px;height:30px;padding:0 8px" placeholder="搜居民姓名...">
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2ResidentSelect" data-no-custom-select="1" style="width:210px;height:30px;padding:0 8px" aria-label="选择回填居民"></select>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2BackfillTarget" data-no-custom-select="1" hidden style="width:130px;height:30px;padding:0 6px" aria-label="回填目标表"></select>
+                <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnBackfill" style="padding:4px 10px;font-size:12px">一键回填新增行</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnAddRow" style="padding:4px 10px;font-size:12px">＋ 末行增行</button>
+                <span class="dtv2-fill"></span>
+                <span id="dtV2CountHint" style="color:var(--c-muted-2)"></span>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnToggleReveal" style="padding:4px 10px;font-size:12px">查看明文（当前页数据）</button>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnPrint" style="padding:4px 10px;font-size:12px">A4 套打预览</button>
+            </div>
+            <div class="dtv2-bar dtv2-bar--rail" id="dtV2FmtBar" hidden>
+                <strong id="dtV2FmtLabel">点击单元格调格式 · 拖拽边框调列宽/行高</strong>
+                <span>字体</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2FmtFont" style="width:98px;height:30px;padding:0 6px" aria-label="字体">
+                    <option value="SimSun, '宋体', serif">宋体</option>
+                    <option value="FangSong, '仿宋', serif">仿宋</option>
+                    <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                    <option value="SimHei, '黑体', sans-serif">黑体</option>
+                </select>
+                <span>字号</span>
+                <input type="number" class="sc-input dtv2-fixed-ctrl" id="dtV2FmtSize" min="10" max="28" value="12" style="width:58px;height:30px;padding:0 6px" aria-label="字号">
+                <label style="display:inline-flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="dtV2FmtBold"> 加粗</label>
+                <span>水平</span>
+                <span class="dtv2-seg" id="dtV2FmtHAlign"><button type="button" data-val="left">左</button><button type="button" class="active" data-val="center">中</button><button type="button" data-val="right">右</button></span>
+                <span>垂直</span>
+                <span class="dtv2-seg" id="dtV2FmtVAlign"><button type="button" data-val="top">顶</button><button type="button" class="active" data-val="middle">中</button><button type="button" data-val="bottom">底</button></span>
+                <span>行高</span>
+                <input type="number" class="sc-input dtv2-fixed-ctrl" id="dtV2FmtRowH" min="22" max="180" step="2" value="32" style="width:62px;height:30px;padding:0 6px" aria-label="行高">
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnRowAll" style="padding:4px 9px;font-size:12px">全表统一行高</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnSaveLayout" style="padding:4px 10px;font-size:12px">保存版式</button>
+            </div>
+            <div class="dtv2-bar dtv2-bar--bg">
+                <span>固定纸张</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2PaperOrient" style="width:175px;height:30px;padding:0 8px" aria-label="A4方向">
+                    <option value="portrait">A4 纵向（210mm）</option>
+                    <option value="landscape" selected>A4 横向（297mm）</option>
+                </select>
+                <span>页边距</span>
+                <select class="sc-select dtv2-fixed-ctrl" id="dtV2PaperMargin" style="width:155px;height:30px;padding:0 8px" aria-label="页边距">
+                    <option value="narrow">窄边距（10mm）</option>
+                    <option value="normal" selected>标准边距（15mm）</option>
+                    <option value="wide">宽松边距（20mm）</option>
+                </select>
+                <button type="button" class="sc-btn sc-btn--secondary" id="dtV2BtnFitA4" style="padding:4px 9px;font-size:12px">适配 A4 单页宽</button>
+                <span class="dtv2-fill"></span>
+                <span id="dtV2PaperHint"></span>
+            </div>
+            <div class="dtv2-stage">
+                <div class="dtv2-a4-paper is-landscape margin-normal" id="dtV2Canvas"></div>
+            </div>
+        </div>
+</div>
+
+<!-- ADR-022 页内弹窗：套打预览 / 期次结转 / 安全删除 / 增列减列 -->
+<div class="dtv2-print-overlay" id="dtV2PrintOverlay" hidden>
+    <div class="dtv2-print-dialog">
+        <div class="dtv2-print-head">
+            <strong>A4 套打预览（跨页自动重复表头）</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2PrintOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body"><div class="dtv2-a4-paper" id="dtV2PrintPaper"></div></div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnDoPrint">调用浏览器打印</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2CloneOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:460px">
+        <div class="dtv2-print-head">
+            <strong>台账期次结转</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2CloneOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <div class="dtv2-field" style="margin-bottom:10px">
+                <label class="dtv2-field__label" for="dtV2ClonePeriodIn">新期次 / 届次标签（例如：2026-02）</label>
+                <input type="text" class="sc-input" id="dtV2ClonePeriodIn">
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:8px;cursor:pointer">
+                <input type="checkbox" id="dtV2CloneCopyChk" checked> 沿用当前期次的全部记录名单
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="dtV2CloneGroupChk" checked> 整组结转同工作簿下的全部子表
+            </label>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2CloneOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnConfirmClone">立即生成新期次</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2DelOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:460px">
+        <div class="dtv2-print-head">
+            <strong>确认安全删除当前台账</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2DelOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <p style="margin:0 0 10px;color:var(--c-ink-2)">即将删除台账「基础设施分布」（<code>shop_facility</code>）。</p>
+            <div style="background:var(--c-rail);border:1px solid var(--c-line-2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--c-muted-2)">
+                删前系统自动生成双份加密快照备份，并事务级联清理记录、字段定义、导入日志、安全节点与版式 JSON。
+            </div>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2DelOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--danger" id="dtV2BtnConfirmDel">确认安全删除</button>
+        </div>
+    </div>
+</div>
+
+<div class="dtv2-print-overlay" id="dtV2ColOverlay" hidden>
+    <div class="dtv2-print-dialog" style="max-width:440px">
+        <div class="dtv2-print-head">
+            <strong id="dtV2ColTitle">新增字段列</strong>
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2ColOverlay">关闭</button>
+        </div>
+        <div class="dtv2-print-body" style="background:var(--c-surface)">
+            <div id="dtV2ColAddBox">
+                <div class="dtv2-field" style="margin-bottom:10px">
+                    <label class="dtv2-field__label" for="dtV2NewColName">列名</label>
+                    <input type="text" class="sc-input" id="dtV2NewColName" placeholder="例如：银行卡号 / 复核人">
+                </div>
+                <div class="dtv2-field" style="margin-bottom:10px">
+                    <label class="dtv2-field__label" for="dtV2NewColType">数据类型</label>
+                    <select class="sc-select" id="dtV2NewColType" data-no-custom-select="1">
+                        <option value="text">文本 (text)</option>
+                        <option value="number">数值 (number)</option>
+                        <option value="date">日期 (date)</option>
+                    </select>
+                </div>
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="dtV2NewColSens">敏感脱敏级别</label>
+                    <select class="sc-select" id="dtV2NewColSens" data-no-custom-select="1">
+                        <option value="none">普通字段</option>
+                        <option value="identity">身份敏感（加密脱敏）</option>
+                    </select>
+                </div>
+            </div>
+            <div id="dtV2ColDelBox" hidden>
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="dtV2DelColSelect">选择要移除的列（至少保留 1 列）</label>
+                    <select class="sc-select" id="dtV2DelColSelect" data-no-custom-select="1"></select>
+                </div>
+            </div>
+        </div>
+        <div class="dtv2-print-foot">
+            <button type="button" class="sc-btn sc-btn--secondary" data-dtv2-close="dtV2ColOverlay">取消</button>
+            <button type="button" class="sc-btn sc-btn--primary" id="dtV2BtnConfirmCol">确定</button>
+        </div>
+    </div>
+</div>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="filterForm" onsubmit="return false;" style="flex-direction:column;align-items:stretch;gap:0;padding:0">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px">
+            <input type="text" class="sc-input dtv2-fixed-ctrl" name="q" placeholder="搜索姓名、关键字或完整身份证/手机号..." style="width:290px">
+            <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 查询</button>
+            <button type="button" class="sc-btn sc-btn--secondary" id="resetFilter">重置</button>
+            <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ToggleAdvFilter" style="margin-left:auto">高级筛选 ▾</button>
+        </div>
+        <div class="dtv2-adv-panel" id="dtV2AdvFilterPanel" hidden>
+        
+            
+                
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_f00" placeholder="店铺名称" style="width:145px">
+                
+            
+        
+            
+                
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_f01" placeholder="地址" style="width:145px">
+                
+            
+        
+            
+                
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_f02" data-ident="1"
+                           placeholder="负责人（精确查重）" style="width:185px">
+                
+            
+        
+            
+                
+                    <select class="sc-select dtv2-fixed-ctrl" name="f_f03" style="width:155px">
+                        <option value="">缴费类型（全部）</option>
+                        <option value="01">物业费</option><option value="02">水电费</option>
+                    </select>
+                
+            
+        
+            
+                
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_f04_min" placeholder="金额 ≥" style="width:120px">
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_f04_max" placeholder="金额 ≤" style="width:120px">
+                
+            
+        
+        </div>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="recordTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    
+                    <th class="sc-table__th">
+                        店铺名称
+                        
+                    </th>
+                    
+                    <th class="sc-table__th">
+                        地址
+                        
+                    </th>
+                    
+                    <th class="sc-table__th">
+                        负责人
+                        <span class="sc-badge">加密</span>
+                    </th>
+                    
+                    <th class="sc-table__th">
+                        缴费类型
+                        
+                    </th>
+                    
+                    <th class="sc-table__th">
+                        金额
+                        
+                    </th>
+                    
+                    <th class="sc-table__th" style="width:90px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增记录</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_f00">店铺名称<span class="sc-field__required">*</span></label>
+                        
+                        <input type="text" class="sc-input" name="f_f00" id="f_f00" required>
+                        
+                        
+                    </div>
+                    
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_f01">地址</label>
+                        
+                        <input type="text" class="sc-input" name="f_f01" id="f_f01" >
+                        
+                        
+                    </div>
+                    
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_f02">负责人</label>
+                        
+                        <input type="text" class="sc-input" name="f_f02" id="f_f02" >
+                        
+                        <p class="sc-field__hint">身份标识字段，系统加密存储。</p>
+                        
+                        
+                    </div>
+                    
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_f03">缴费类型</label>
+                        
+                        <select class="sc-select" name="f_f03" id="f_f03" >
+                            <option value="">请选择</option>
+                            <option value="01">物业费</option><option value="02">水电费</option>
+                        </select>
+                        
+                    </div>
+                    
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_f04">金额</label>
+                        
+                        <input type="number" step="any" class="sc-input" name="f_f04" id="f_f04" >
+                        
+                    </div>
+                    
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.st-append-drop {
+    position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; min-height: 148px; padding: 20px; border: 1.5px dashed var(--c-line-3);
+    border-radius: var(--r-md, 8px); background: var(--c-bg); color: var(--c-ink-2);
+    text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.st-append-drop:hover, .st-append-drop.is-dragover {
+    border-color: var(--c-ink); background: var(--c-surface);
+}
+.st-append-drop__input {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.st-append-drop__title { font-weight: 600; font-size: 14px; color: var(--c-ink); }
+.st-append-drop__hint { font-size: 12px; color: var(--c-muted); }
+.st-append-summary {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 12px; margin-bottom: 10px; border: 1px solid var(--c-line-2);
+    border-radius: var(--r-sm, 6px); background: var(--c-bg); font-size: 12px; color: var(--c-ink-2);
+}
+.st-append-map-wrap { max-height: 230px; overflow-y: auto; border: 1px solid var(--c-line-2); border-radius: var(--r-sm, 6px); }
+.st-append-progress {
+    height: 8px; border-radius: 999px; background: var(--c-line-2); overflow: hidden; margin: 12px 0;
+}
+.st-append-progress__bar {
+    height: 100%; width: 0%; background: var(--c-ink); transition: width .2s ease;
+}
+.st-append-alert {
+    padding: 8px 12px; margin-top: 8px; border-radius: var(--r-sm, 6px);
+    border: 1px solid var(--c-line-3); background: var(--c-bg); font-size: 12px; color: var(--c-ink-2);
+}
+</style>
+
+<div class="modal fade" id="appendImportModal" tabindex="-1" aria-labelledby="appendImportTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="appendImportTitle">批量导入数据</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                
+                <div id="appendStepUpload">
+                    <div class="st-append-drop" id="appendDropZone">
+                        <i class="bi bi-file-earmark-spreadsheet" style="font-size:28px" aria-hidden="true"></i>
+                        <span class="st-append-drop__title">点击或拖拽 Excel / CSV 文件到此处</span>
+                        <span class="st-append-drop__hint">支持 .xlsx / .csv，≤20MB；将按表头自动匹配当前台账字段并追加写入</span>
+                        <input type="file" class="st-append-drop__input" id="appendFileInput" accept=".xlsx,.xls,.xlsb,.csv,.xlsm">
+                    </div>
+                    <p class="sc-field__hint" id="appendUploadStatus" style="margin-top:8px"></p>
+                </div>
+
+                
+                <div id="appendStepMap" hidden>
+                    <div class="st-append-summary">
+                        <span id="appendFileSummary"></span>
+                        <button type="button" class="sc-btn sc-btn--text" id="appendReselectBtn">重新选文件</button>
+                    </div>
+                    <div class="st-append-map-wrap">
+                        <table class="sc-table">
+                            <thead class="sc-table__head">
+                                <tr>
+                                    <th class="sc-table__th" style="width:45%">台账字段</th>
+                                    <th class="sc-table__th">对应 Excel 列</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appendMapBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="st-append-alert" id="appendAsyncNotice" hidden>
+                        数据量超过 2000 行，提交后将在后台分批导入，不阻塞当前页面。
+                    </div>
+                    <div class="st-append-alert" id="appendMissingNotice" hidden></div>
+                    <label style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;cursor:pointer">
+                        <input type="checkbox" class="form-check-input" id="appendSkipErrors" checked>
+                        <span>跳过格式错误行并继续导入其余合规数据</span>
+                    </label>
+                </div>
+
+                
+                <div id="appendStepProgress" hidden>
+                    <p id="appendProgressText" style="margin:0;font-weight:600">正在提交导入任务…</p>
+                    <div class="st-append-progress">
+                        <div class="st-append-progress__bar" id="appendProgressBar"></div>
+                    </div>
+                    <p class="sc-field__hint" id="appendProgressDetail"></p>
+                    <div id="appendErrorActions" hidden style="margin-top:10px">
+                        <a class="sc-btn sc-btn--secondary" id="appendDownloadFailed" href="#">
+                            <i class="bi bi-download"></i> 下载失败行清单
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal" id="appendCancelBtn">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="appendExecuteBtn" hidden>确认导入</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="appendDoneBtn" hidden data-bs-dismiss="modal">完成</button>
+            </footer>
+        </div>
+    </div>
+</div>
+
+            </div>
+        </main>
+    </div>
+    
+
+    <script src="/static/lib/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/crud.js"></script>
+    
+<script>
+    window.__ST_ROSTER__ = {
+        mode: 'page',
+        code: "shop_facility",
+        meta: {
+            name: "\u57fa\u7840\u8bbe\u65bd\u5206\u5e03",
+            module_key: "shop",
+            description: "\u57fa\u7840\u8bbe\u65bd\u5206\u5e03\u53f0\u8d26"
+        },
+        fields: [{"code": "f00", "data_type": "text", "dict_category_code": null, "display_name": "\u5e97\u94fa\u540d\u79f0", "id": 78, "is_required": true, "options": [], "sensitivity": "none", "sort_order": 0}, {"code": "f01", "data_type": "text", "dict_category_code": null, "display_name": "\u5730\u5740", "id": 79, "is_required": false, "options": [], "sensitivity": "none", "sort_order": 1}, {"code": "f02", "data_type": "text", "dict_category_code": null, "display_name": "\u8d1f\u8d23\u4eba", "id": 80, "is_required": false, "options": [], "sensitivity": "identity", "sort_order": 2}, {"code": "f03", "data_type": "enum", "dict_category_code": "\u7f34\u8d39\u7c7b\u578b", "display_name": "\u7f34\u8d39\u7c7b\u578b", "id": 81, "is_required": false, "options": [{"label": "\u7269\u4e1a\u8d39", "value": "01"}, {"label": "\u6c34\u7535\u8d39", "value": "02"}], "sensitivity": "none", "sort_order": 3}, {"code": "f04", "data_type": "number", "dict_category_code": null, "display_name": "\u91d1\u989d", "id": 82, "is_required": false, "options": [], "sensitivity": "amount", "sort_order": 4}],
+        urls: {
+            page: '/shop/roster/shop_facility/',
+            list: '/shop/roster/shop_facility/api/list',
+            record: '/shop/roster/shop_facility/api/record',
+            upload: '/shop/roster/shop_facility/api/upload',
+            create: '/shop/roster/shop_facility/api/create',
+            export: '/shop/roster/shop_facility/api/export',
+            appendUpload: '/shop/roster/shop_facility/api/append-upload',
+            appendExecute: '/shop/roster/shop_facility/api/append-execute',
+            importStatus: '/shop/roster/shop_facility/api/import-status',
+            importReport: '/shop/roster/shop_facility/api/import-report',
+            importExportFailed: '/shop/roster/shop_facility/api/import-export-failed'
+        }
+    };
+</script>
+<script src="/static/js/pages/roster_append_import.js"></script>
+<script src="/static/js/pages/roster.js"></script>
+<script src="/static/js/pages/dynatable_a4_view.js"></script>
+
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="/static/js/spa.js"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="/static/js/shell.js"></script>
+    <script src="/static/lib/driver.js.iife.js"></script>
+    <script src="/static/js/tour_registry.js"></script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">admin</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">超级管理员</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>admin</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>-</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>超级管理员</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>首次登录</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="/auth/logout" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>
+</body>
+</html>

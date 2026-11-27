@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block title %}{{ table.name }}{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/dynatable_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% if nav_module %}{{ module_tabs(nav_module, nav_active or '') }}{% endif %}
+{% set ident_fields = fields | selectattr('sensitivity', 'equalto', 'identity') | list %}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">{{ table.name }}</h2>
+        <p class="sc-page-head__meta">
+            表标识 <code>{{ table.code }}</code> · 菜单归属 {{ module_label }}
+            {%- if table.description %} · {{ table.description }}{% endif %}
+        </p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--secondary" id="appendImportButton"><i class="bi bi-upload"></i> 批量导入</button>
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/t/{{ table.code }}/structure"><i class="bi bi-sliders"></i> 结构修改</a>
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/"><i class="bi bi-arrow-left"></i> 台账中心</a>
+    </div>
+</header>
+
+{% include 'components/roster/_softtable_workbench.html' %}
+
+<section class="sc-card" id="dtV2ListCard" style="margin-top:10px">
+    <form class="sc-toolbar" id="filterForm" onsubmit="return false;" style="flex-direction:column;align-items:stretch;gap:0;padding:0">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px">
+            <input type="text" class="sc-input dtv2-fixed-ctrl" name="q" placeholder="搜索姓名、关键字或完整身份证/手机号..." style="width:290px">
+            <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 查询</button>
+            <button type="button" class="sc-btn sc-btn--secondary" id="resetFilter">重置</button>
+            <button type="button" class="sc-btn sc-btn--secondary" id="dtV2ToggleAdvFilter" style="margin-left:auto">高级筛选 ▾</button>
+        </div>
+        <div class="dtv2-adv-panel" id="dtV2AdvFilterPanel" hidden>
+        {% for f in fields %}
+            {% if (f.display_name | trim) != '序号' and f.code != 'seq' %}
+                {% if f.sensitivity == 'identity' %}
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_{{ f.code }}" data-ident="1"
+                           placeholder="{{ f.display_name }}（精确查重）" style="width:185px">
+                {% elif f.data_type == 'number' %}
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_{{ f.code }}_min" placeholder="{{ f.display_name }} ≥" style="width:120px">
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_{{ f.code }}_max" placeholder="{{ f.display_name }} ≤" style="width:120px">
+                {% elif f.data_type == 'enum' %}
+                    <select class="sc-select dtv2-fixed-ctrl" name="f_{{ f.code }}" style="width:155px">
+                        <option value="">{{ f.display_name }}（全部）</option>
+                        {% for opt in f.options %}<option value="{{ opt.value }}">{{ opt.label }}</option>{% endfor %}
+                    </select>
+                {% else %}
+                    <input type="text" class="sc-input dtv2-fixed-ctrl" name="f_{{ f.code }}" placeholder="{{ f.display_name }}" style="width:145px">
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+        </div>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="recordTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    {% for f in fields %}
+                    <th class="sc-table__th" data-sort="{{ f.code }}">
+                        {{ f.display_name }}
+                        {% if f.sensitivity == 'identity' %}<span class="sc-badge">加密</span>{% endif %}
+                    </th>
+                    {% endfor %}
+                    <th class="sc-table__th" style="width:110px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<div class="modal fade" id="revealModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">身份标识明文（受控）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="revealBody"></div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% include 'components/roster/_append_import_modal.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.__ST_LIST__ = {
+        code: {{ table.code | tojson }},
+        urls: {
+            appendUpload: '/dynatable/api/t/{{ table.code }}/append-upload',
+            appendExecute: '/dynatable/api/t/{{ table.code }}/append-execute',
+            importStatus: '/dynatable/api/import-status',
+            importReport: '/dynatable/api/import-report',
+            importExportFailed: '/dynatable/api/import-export-failed'
+        },
+        {# fields 保持对象末键：R-096 列表页快照正则按 `fields: [...] };` 提取 #}
+        fields: {{ fields | tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/pages/roster_append_import.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/dynatable_list.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/dynatable_a4_view.js') }}"></script>
+{% endblock %}

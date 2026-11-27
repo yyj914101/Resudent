@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% block title %}养老保险{% endblock %}
+
+{# 088 养老保险页（未建册态）：指标卡（MetricsEngine 唯一取数）+ 建册引导 + 规范列指引
+   2026-11-16：取消二级布局——已建册时 /pension/ 直接渲染参保名册台账（routes/pension.py index），
+   本模板仅承担「名册尚未建立」的首屏引导（上传 Excel 建册），不再作为台账的上级门面。 #}
+{% block page_title %}养老保险{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/pension.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="pension-page sc-workflow-page">
+{# 102：社会保障页内胶囊（医保参保管理 / 养老保险），宿主 /medical-insurance/ #}
+{{ module_tabs('social', 'pension') }}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">养老保险</h2>
+        <p class="sc-page-head__meta">参保名册（软表承载）与待遇认证进度 · 指标与看板同源</p>
+    </div>
+</header>
+
+{% include 'pension/_stats.html' %}
+
+<section class="sc-card">
+    <div style="display:flex;gap:12px;align-items:flex-start">
+        <i class="bi bi-people text-primary" style="font-size:20px;margin-top:2px"></i>
+        <div style="flex:1">
+            <p style="margin:0 0 6px;font-weight:600">养老保险参保名册（{{ roster.name }}）</p>
+            {% if roster.built %}
+            <p class="sc-field__hint" style="margin:0 0 10px">名册已建立，可直接维护参保记录。</p>
+            {% else %}
+            <p class="sc-field__hint" style="margin:0 0 10px">
+                名册尚未建立：首次上传 Excel（表头经人工确认）后生成台账，字段不预先约定。
+                建议按下方规范列准备表头；【待确认】列在上级口径明确前不猜字段。
+            </p>
+            {% endif %}
+            <div class="sc-field__hint" style="margin:0">
+                规范列（字段清单 §3.4.2）：{{ canonical_columns | join('、') }}；
+                <span class="text-warning">【待确认】{{ unconfirmed_columns | join('、') }}</span>
+                （是否单列待定，暂以上传表头为准）；缴费基数/缴费金额暂不入列（§五待确认）。
+            </div>
+            <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
+                <a class="sc-btn sc-btn--primary" href="/pension/ledger">
+                    <i class="bi bi-database"></i> 进入农保大表台账（A1 批量导入）
+                </a>
+                <a class="sc-btn sc-btn--secondary" href="/pension/roster/{{ roster.code }}/">
+                    <i class="bi bi-table"></i> {{ '进入软表名册' if roster.built else '软表建册（小体量）' }}
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/pension.js') }}"></script>
+{% endblock %}

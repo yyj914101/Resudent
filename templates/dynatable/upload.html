@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}智能传表建账{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/dynatable_v2.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name" style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+            智能传表建账
+            <span class="dtv2-tag dtv2-tag--ok">懒人 1 屏极速模式 · 自动防重认路</span>
+        </h2>
+        <p class="sc-page-head__meta">拖入任意表格（.xlsx / .xls / .xlsb / .csv / .xlsm）或 Word 审批表（.docx），系统自动识别去向：内置表与底账防重指引、复杂花名册一键建表、Word 表单直达报表审批工作台。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('dynatable.index') }}"><i class="bi bi-arrow-left"></i> 返回台账中心</a>
+    </div>
+</header>
+
+<section class="sc-card" id="v2ImportSection">
+    <div class="dtv2-wiz-body">
+        <!-- 1. 拖放上传区 -->
+        <div class="dtv2-dropzone" id="v2DropZone">
+            <h3 class="dtv2-dropzone__title">拖放表格或 Word 表单到此处，或点击下方按钮选择本地文件</h3>
+            <p class="dtv2-dropzone__hint">表格支持 .xlsx / .xls / .xlsb / .csv / .xlsm（与全站一致，上限 200,000 行）· Word 表单支持 .docx（通用引擎自动解析与居民回填）</p>
+            <input type="file" id="v2FileInput" accept=".xlsx,.xls,.xlsb,.csv,.xlsm,.docx" hidden>
+            <button type="button" class="sc-btn sc-btn--primary" id="v2PickBtn"><i class="bi bi-folder2-open"></i> 选择本地表格 / Word 文件</button>
+            <div class="dtv2-dropzone__file" id="v2FileName" hidden></div>
+            <div style="margin-top:8px;font-size:12.5px;color:var(--c-muted-2)" id="v2Msg"></div>
+        </div>
+
+        <!-- 2. 智能分流防重提示条（命中 7 张内置表或物理底账时高亮提示） -->
+        <div id="v2SmartRouteBanner" hidden style="margin-top:14px;padding:13px 16px;border-radius:10px;border:1px solid var(--c-ink-2);background:var(--c-rail);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+                <div style="font-weight:700;color:var(--c-ink);margin-bottom:3px" id="v2SmartRouteTitle"></div>
+                <div style="font-size:12.5px;color:var(--c-ink-3)" id="v2SmartRouteDesc"></div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <a class="sc-btn sc-btn--primary" id="v2SmartRouteLink" href="#">立即前往导入 →</a>
+                <button type="button" class="sc-btn sc-btn--secondary" id="v2SmartRouteAltBtn" hidden></button>
+            </div>
+        </div>
+
+        <!-- 3. 1 屏极速确认区（解析完成后同屏直接展示，免走 3 步） -->
+        <div id="v2QuickConfirm" hidden style="margin-top:16px;padding-top:16px;border-top:1px solid var(--c-line-2)">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px" id="v2QuickDiag"></div>
+
+            <div class="dtv2-form-grid">
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="v2GroupInput">台账 / 工作簿名称</label>
+                    <input type="text" class="sc-input" id="v2GroupInput" placeholder="例如：高龄津贴增减变动表">
+                    <span class="dtv2-field__hint">已自动清洗原始文件名中的残留扩展名与副本编号；同组多子表在模块顶部仅占 1 枚收敛胶囊。</span>
+                </div>
+                <div class="dtv2-field">
+                    <label class="dtv2-field__label" for="v2ModuleSelect">挂载目标业务模块（已自动推荐）</label>
+                    <select class="sc-select" id="v2ModuleSelect" data-no-custom-select="1">
+                        {% for opt in module_options %}
+                        <option value="{{ opt['value'] }}"{% if opt['value'] == 'dynatable' %} selected{% endif %}>{{ opt['label'] }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="dtv2-field__hint" id="v2ModuleHint">挂入「机构管理」的台账在建表和保存时会自动静默同步至「组织架构」。</span>
+                </div>
+                <div class="dtv2-field" id="v2SafetyFolderWrap" hidden>
+                    <label class="dtv2-field__label" for="v2SafetyFolderSelect">安全管理目标文件夹（选填）</label>
+                    <select class="sc-select" id="v2SafetyFolderSelect" data-no-custom-select="1">
+                        <option value="">（暂不挂入指定安全文件夹）</option>
+                    </select>
+                    <span class="dtv2-field__hint">选择后建表时自动挂入对应安全工作目录树。</span>
+                </div>
+            </div>
+
+            <!-- 折叠高级设置（95% 场景无需展开，需要微调字段类型/表头行/期次时再点开） -->
+            <details id="v2AdvancedBox" style="margin-top:16px;border:1px solid var(--c-line-2);border-radius:8px;padding:10px 14px;background:var(--c-bg)">
+                <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--c-ink-2)">高级设置（选填：修改期次标签、A4 合页策略、逐列微调数据类型或指定表头行）</summary>
+                <div style="margin-top:14px">
+                    <div class="dtv2-form-grid" style="margin-bottom:14px">
+                        <div class="dtv2-field">
+                            <label class="dtv2-field__label" for="v2PeriodInput">期次 / 届次标签（选填）</label>
+                            <input type="text" class="sc-input" id="v2PeriodInput" placeholder="例如：2026-02 或 第十一届">
+                        </div>
+                        <div class="dtv2-field">
+                            <label class="dtv2-field__label">A4 合页渲染策略</label>
+                            <label style="display:flex;align-items:center;gap:8px;padding-top:6px;font-size:13px;cursor:pointer">
+                                <input type="checkbox" id="v2CombinePage" checked> 多分区 / 并排双表在 A4 视图自动合并同页套打
+                            </label>
+                        </div>
+                    </div>
+                    <div id="v2SheetsBox"></div>
+                </div>
+            </details>
+
+            <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;align-items:center">
+                <button type="button" class="sc-btn sc-btn--secondary" id="v2ResetBtn">重新选文件</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="v2CreateBatchBtn"><i class="bi bi-check2-circle"></i> 一键建表并打开工作台</button>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/dynatable_v2_upload.js') }}"></script>
+{% endblock %}

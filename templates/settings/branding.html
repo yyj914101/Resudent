@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}界面设置{% endblock %}
+{% block page_title %}界面设置{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="form">
+{{ settings_head('界面设置', '系统名称与 Logo') }}
+
+<section class="sc-card">
+    <div class="sc-card__body">
+        <form id="brandingForm">
+            <div class="sc-field" style="margin-bottom:var(--sp-4)">
+                <label class="sc-field__label" for="sysTitle">系统标题</label>
+                <input type="text" class="sc-input" name="system_title" id="sysTitle" style="max-width:400px">
+            </div>
+            {# 075 RC-02（Q1 裁定）：村名设置项，页头副标题数据日期口径取真实值；可空 #}
+            <div class="sc-field" style="margin-bottom:var(--sp-4)">
+                <label class="sc-field__label" for="villageName">村名</label>
+                <input type="text" class="sc-input" name="village_name" id="villageName" placeholder="如：河湾村（用于页头副标题，可空）" style="max-width:400px">
+            </div>
+            <div class="sc-field sc-field--top" style="margin-bottom:var(--sp-4)">
+                <label class="sc-field__label">Logo</label>
+                <div class="d-flex align-items-center gap-3">
+                    <div id="logoPreview" style="width:120px;height:120px;border:1px dashed var(--c-line-3);border-radius:var(--r-card);display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--c-rail);">
+                        <span class="text-muted small" id="logoPlaceholder">暂无Logo</span>
+                        <img id="logoImg" src="" style="max-width:100%;max-height:100%;display:none;">
+                    </div>
+                    <div>
+                        <input type="file" class="sc-input" id="logoFile" accept=".png,.jpg,.jpeg,.gif,.webp" data-sc-dropzone data-dz-hint="支持 png/jpg/gif/webp（建议 200×200px）" style="margin-bottom:var(--sp-2)">
+                        <small class="text-muted d-block" style="margin-bottom:var(--sp-2)">支持 png/jpg/gif/webp，建议尺寸 200×200px</small>
+                        <button type="button" class="sc-btn sc-btn--danger" id="removeLogo">移除 Logo</button>
+                    </div>
+                </div>
+                <input type="hidden" name="logo_url" id="logoUrl">
+            </div>
+            <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+        </form>
+    </div>
+</section>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/settings_branding.js') }}"></script>
+{% endblock %}

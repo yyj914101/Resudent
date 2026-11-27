@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs, col_picker, toolbar_actions %}
+{% block title %}优抚对象 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}优抚对象{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{# 优抚对象（2026-11-16）：因伤病残涉核退役军人的优待补贴；数据表参考低保查询（同一套页面壳） #}
+{% set civil_subtitle = (village_name ~ ' · ' if village_name else '') ~ '优抚对象 · 因伤病残涉核退役军人优待补贴 · 在册 ' ~ (youshu_count or 0) ~ ' 人' %}
+{% call page_head('优抚对象', civil_subtitle) %}
+    <button type="button" class="sc-btn sc-btn--primary" onclick="openAdd()"><i class="bi bi-plus"></i> 新增优抚对象</button>
+    <button type="button" class="sc-btn sc-btn--secondary" onclick="exportData()"><i class="bi bi-download"></i> 导出名单</button>
+{% endcall %}
+{{ civil_tabs('youshu') }}
+
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <input type="text" class="sc-input" id="searchName" placeholder="姓名" style="width:140px">
+        <input type="text" class="sc-input" id="searchIdCard" placeholder="身份证号" style="width:170px">
+        <select class="sc-select" id="searchType" style="width:150px">
+            <option value="">全部救助类别</option>
+        </select>
+        <select class="sc-select" id="searchSupport" style="width:150px">
+            <option value="">全部保障状态</option>
+            {% for s in support_statuses %}<option>{{ s }}</option>{% endfor %}
+        </select>
+        <select class="sc-select" id="searchDeceased" style="width:110px">
+            <option value="">是否死亡</option>
+            <option>是</option>
+            <option>否</option>
+        </select>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="loadList(1)"><i class="bi bi-search"></i> 查询</button>
+        {{ toolbar_actions() }}
+    </div>
+    {{ col_picker('youshu', '姓名|身份证号|电话|救助类别|优抚金额（元）|是否死亡|保障状态|操作') }}
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="youshuTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">姓名</th>
+                    <th class="sc-table__th">身份证号</th>
+                    <th class="sc-table__th">电话</th>
+                    <th class="sc-table__th sc-table__th--center">救助类别</th>
+                    <th class="sc-table__th sc-table__th--center">优抚金额（元）</th>
+                    <th class="sc-table__th sc-table__th--center">是否死亡</th>
+                    <th class="sc-table__th sc-table__th--center">保障状态</th>
+                    <th class="sc-table__th">操作</th>
+                </tr>
+            </thead>
+            <tbody id="youshuBody"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+<!-- 新增/编辑弹窗（.sc-modal 自带 pointer-events:auto，第十六节守卫白名单） -->
+<div class="modal fade" id="youshuFormModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="youshuForm">
+                <input type="hidden" name="id" id="yFormId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="yFormTitle">新增优抚对象</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yName">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="yName" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yIdCard">身份证号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" id="yIdCard" maxlength="18" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yPhone">电话</label>
+                        <input type="text" class="sc-input" name="phone" id="yPhone">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yCategory">救助类别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="care_category" id="yCategory" required></select>
+                        <small class="text-muted">选项在【设置 → 字典管理 → 优抚对象救助类别】维护</small>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yAmount">优抚金额（元）</label>
+                        <input type="number" step="0.01" min="0" class="sc-input" name="amount" id="yAmount" value="0">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="yDeceased">是否死亡</label>
+                        <select class="sc-select" name="is_deceased" id="yDeceased">
+                            <option>否</option><option>是</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="ySupport">保障状态</label>
+                        <select class="sc-select" name="support_status" id="ySupport">
+                            {% for s in support_statuses %}<option>{{ s }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="sc-field sc-field--top">
+                        <label class="sc-field__label" for="yRemark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="yRemark" rows="2"></textarea>
+                    </div>
+                    <p class="sc-field__hint" id="yFormMsg" style="margin-top:8px"></p>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-check-lg"></i> 保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+<!-- 优抚对象详情弹窗（2026-11-17 Master–Detail 全站统一：d2 壳复用 detail_v2.js 渲染器，行数据直建只读视图） -->
+<div class="modal fade" id="youshuDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="d2-shell" role="dialog" aria-modal="true">
+            <header class="d2-header">
+                <div class="d2-header__main">
+                    <div class="d2-header__row1">
+                        <h2 class="d2-name" id="youshuDetailName">优抚对象详情</h2>
+                        <div class="d2-tags" id="youshuDetailTags"></div>
+                    </div>
+                    <div class="d2-subtitle" id="youshuDetailSubtitle"></div>
+                </div>
+                <div class="d2-kpis" id="youshuDetailKpis"></div>
+                <button type="button" class="d2-close" data-bs-dismiss="modal" aria-label="关闭">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="d2-risk" id="youshuDetailRisk" hidden></div>
+            <div class="d2-body" id="youshuDetailBody"></div>
+            <footer class="d2-footer">
+                <label class="d2-privacy"><input type="checkbox" id="d2Privacy"><span>隐私脱敏显示（隐藏身份证号中间位）</span></label>
+                <div class="d2-footer__btns" id="youshuDetailBtns"></div>
+            </footer>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/youshu_list.js') }}"></script>
+{% endblock %}

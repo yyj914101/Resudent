@@ -1,0 +1,89 @@
+/* civil_pages.css — 民政对象 10 页页级件（059 建，067 收口）
+ * 067 表格层换壳后：筛选卡/表格卡/旧表格与分页覆盖、btn/form 覆盖规则已被
+ * components.css 通用件（sc-card/sc-toolbar/sc-table/sc-pagination/sc-btn/sc-input）
+ * 替代，规则随标记删除（R-061-C2：组件唯一真源 components.css，不另抄组件样式）。
+ * 本文件只留页级特有件：列选择器挂点、关爱子胶囊、统计条、对账页签、scope 面板。
+ * 加载：各页 {% block extra_css %}，SPA 会按 GLB-02 注入；只允许 var()，不写裸色值。
+ */
+
+/* ── 页头专有覆盖（062 收口后公共部分走 components.css）：副标题加粗 + 多按钮换行
+      （077：加 .sc-civil-page 作用域，消除对全局 .sc-page-head__actions 的无前缀覆盖） ── */
+.sc-civil-page .sc-page-head__meta b { color: var(--c-ink-2); font-weight: 600; }
+.sc-civil-page .sc-page-head__actions { flex-wrap: wrap; }
+
+/* ── 列选择器挂点（074 RC-08 起改为表格上方独立一行；075 上收 components.css 全局层，此处删除平行定义） ── */
+
+/* ── 走访计划 scope 动态子面板（067：sc-modal 内嵌条件表单框） ── */
+.sc-civil-page .scope-panel {
+  border: 1px solid var(--c-line-2);
+  border-radius: var(--r-ctrl);
+  padding: var(--sp-3);
+}
+
+/* ── 关爱对象 3 子类胶囊（D-21 C：比主胶囊小一档） ── */
+.sc-subchips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: calc(var(--sp-4) * -1) 0 var(--sp-4);
+}
+.sc-subchip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: var(--c-active);
+  color: var(--c-ink-3);
+  font-size: 12px;
+  font-weight: 400;
+  text-decoration: none;
+}
+.sc-subchip:hover { background: var(--c-line-3); color: var(--c-ink-2); }
+.sc-subchip.is-active { background: var(--c-ink-2); color: var(--c-surface); font-weight: 500; }
+
+/* ── 统计徽章条（低保 2 格 / 弱势群体 5 格 / 走访 4 格）
+      （077 真源收敛：sc-stat 系列唯一裸定义在 components.css（值 22px 按规格）；
+        此处仅保留列表页作用域差异——flex 换行卡式、label→value 左对齐流） ── */
+.sc-civil-page .sc-stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  height: auto;
+  padding: 0;
+  margin-bottom: var(--sp-4);
+  border: 0;
+}
+.sc-civil-page .sc-stat {
+  flex: 1 1 140px;
+  min-height: 64px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line-3);
+  border-radius: var(--r-card);
+}
+.sc-civil-page .sc-stat__value { font-variant-numeric: tabular-nums; }
+
+/* ── 页内页签（死亡对账 5 tab）── */
+.sc-civil-page .nav-tabs { border-bottom-color: var(--c-line-3); }
+.sc-civil-page .nav-tabs .nav-link {
+  color: var(--c-muted);
+  border: 0;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 13px;
+}
+.sc-civil-page .nav-tabs .nav-link:hover { color: var(--c-ink-2); }
+.sc-civil-page .nav-tabs .nav-link.active {
+  color: var(--c-ink);
+  background: transparent;
+  border-bottom: 2px solid var(--c-ink-2);
+  font-weight: 600;
+}
+
+@media (max-width: 991.98px) {
+  .sc-civil-page .sc-page-head__actions { width: 100%; }
+}

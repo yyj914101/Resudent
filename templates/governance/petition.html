@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}信访维稳{% endblock %}
+{% block page_title %}信访维稳{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/governance_petition.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{# 086 信访维稳：综治组独立页（不走 CATEGORY_CONFIG 配置驱动，因为需要「一主表 + N 办理记录」两级）
+   - 页头/工具条/表格/分页/弹窗全部复用 components.css 既有件，零新增样式类。
+   - 字段真源：models/governance_petition.py，序列化键见 routes/governance.py::_petition_to_dict。
+   - 办理状态不在表单里编辑：后端状态机为唯一入口（新增固定「待受理」），表单只读展示 + 「推进」按钮。 #}
+{{ module_tabs('governance', 'petition') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">信访维稳</h2>
+        <p class="sc-page-head__meta">信访事项受理 · 办理过程留痕 · 办结归档</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink" href="#"><i class="bi bi-file-earmark-excel"></i> 导出台账</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton"><i class="bi bi-plus-circle"></i> 新增事项</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="信访人 / 联系方式 / 身份证号 / 摘要 / 承办人" style="width:340px">
+        <select class="sc-select" name="status" data-dict="status" style="width:130px">
+            <option value="">全部办理状态</option>
+        </select>
+        <select class="sc-select" name="category" data-dict="category" style="width:150px">
+            <option value="">全部诉求类别</option>
+        </select>
+        <select class="sc-select" name="source" data-dict="source" style="width:130px">
+            <option value="">全部来源</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:90px">信访人</th>
+                    <th class="sc-table__th" style="width:110px">诉求类别</th>
+                    <th class="sc-table__th">诉求摘要</th>
+                    <th class="sc-table__th" style="width:110px">受理日期</th>
+                    <th class="sc-table__th" style="width:96px">办理状态</th>
+                    <th class="sc-table__th" style="width:120px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# ══════════ 新增 / 编辑事项（ADR-022 原型 gp-form-shell 紧凑档：
+     编号 UI 整体移除（自动生成 hidden 提交）、办结日期/满意度/办理状态移出编辑表单——办结随迁走推进弹窗、状态走「推进」） ══════════ #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg gp-form-modal" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                {# 编号 UI 已整体移除（主理人拍板「不需要事项编号」）：新增态由 JS 自动生成 XF-日期-时间
+                   （后端 petition_no 必填+唯一约束不变，hidden 提交），编辑态沿用原值回填 #}
+                <input type="hidden" name="petition_no" id="f_petition_no">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增信访事项</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_petitioner_name">信访人<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="petitioner_name" id="f_petitioner_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_contact">联系方式</label>
+                        <input type="text" class="sc-input" name="contact" id="f_contact" placeholder="已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_source">信访来源<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="source" id="f_source" data-dict="source">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_category">诉求类别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="category" id="f_category" data-dict="category">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_accept_date">受理日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="accept_date" id="f_accept_date" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_case_officer">承办人</label>
+                        <input type="text" class="sc-input" name="case_officer" id="f_case_officer">
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_address">住址/涉及地点</label>
+                        <input type="text" class="sc-input" name="address" id="f_address">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_summary">诉求摘要<span class="sc-field__required">*</span></label>
+                        <textarea class="sc-textarea" name="summary" id="f_summary" rows="3" required
+                                  placeholder="信访人反映的主要问题与诉求"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_reply">答复情况</label>
+                        <textarea class="sc-textarea" name="reply" id="f_reply" rows="2"
+                                  placeholder="办结前必须填写（推进到「已办结」时后端会校验）"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="f_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">办理状态不在此处修改，请用行内「推进」</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 详情（主表字段 + 办理记录 + 新增办理记录） ══════════ #}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal gp-shell" role="dialog" aria-modal="true">
+            <header class="gp-header">
+                <div class="gp-header__main">
+                    <h2 class="gp-header__name" id="detailName">信访事项详情</h2>
+                    <span class="sc-badge sc-badge--muted gp-header__chip" id="detailStatusChip" hidden></span>
+                    <span class="gp-header__sep"></span>
+                    <span class="gp-header__meta" id="detailMeta"></span>
+                </div>
+                <div class="gp-header__actions">
+                    <button type="button" class="sc-btn sc-btn--secondary" id="detailTransitionBtn" hidden><i class="bi bi-arrow-left-right"></i> 变更办理状态</button>
+                    <button type="button" class="sc-btn sc-btn--secondary" id="detailEditBtn" hidden><i class="bi bi-pencil"></i> 编辑</button>
+                    <button type="button" class="sc-btn sc-btn--primary" id="gpAddHandleBtn"><i class="bi bi-plus-lg"></i> 新增办理记录</button>
+                    <span class="gp-header__vline"></span>
+                    <button type="button" class="gp-header__close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </div>
+            </header>
+
+            <div class="gp-body">
+                <section class="gp-card">
+                    <div class="gp-card__head">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat1"></span>
+                            <span class="gp-card__index gp-card__index--cat1">01</span>
+                            <h3 class="gp-card__title-text">基本与受理信息</h3>
+                        </div>
+                        <span class="gp-card__count">共 8 项核心字段</span>
+                    </div>
+                    <div class="gp-grid4" id="gpBasicGrid"></div>
+                </section>
+
+                <section class="gp-card">
+                    <div class="gp-card__head gp-card__head--noborder">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat2"></span>
+                            <span class="gp-card__index gp-card__index--cat2">02</span>
+                            <h3 class="gp-card__title-text">诉求内容与答复摘要</h3>
+                        </div>
+                    </div>
+                    <div class="gp-summary">
+                        <p class="gp-summary__text" id="gpSummaryText">—</p>
+                        <p class="gp-summary__sub" id="gpReplyText" hidden></p>
+                        <p class="gp-summary__sub" id="gpRemarkText" hidden></p>
+                    </div>
+                </section>
+
+                <section class="gp-card gp-card--last">
+                    <div class="gp-card__head">
+                        <div class="gp-card__title">
+                            <span class="gp-card__bar gp-card__bar--cat3"></span>
+                            <span class="gp-card__index gp-card__index--cat3">03</span>
+                            <h3 class="gp-card__title-text">办理记录</h3>
+                            <span class="sc-badge sc-badge--muted" id="handleCount">共 0 条</span>
+                        </div>
+                        <button type="button" class="gp-card__more" id="gpAddHandleBtn2">+ 新增记录</button>
+                    </div>
+                    <div class="gp-table-wrap">
+                        <table class="gp-table">
+                            <thead>
+                                <tr>
+                                    <th class="gp-table__date gp-num">办理日期</th>
+                                    <th class="gp-table__handler">处理人</th>
+                                    <th>办理措施</th>
+                                    <th>办理结果</th>
+                                    <th>后续计划</th>
+                                </tr>
+                            </thead>
+                            <tbody id="handleBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="gp-footer">
+                <div class="gp-footer__sync">
+                    <span class="gp-footer__sync-dot"></span>
+                    <span>数据已同步<span id="gpSyncDate"></span></span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+
+            {# 右侧 420px 行内抽屉：读写分离，新增办理记录 #}
+            <div class="gp-drawer-backdrop" id="gpDrawerBackdrop" hidden>
+                <div class="gp-drawer" role="dialog" aria-modal="true" aria-label="新增办理记录">
+                    <div class="gp-drawer__scroll">
+                        <div class="gp-drawer__head">
+                            <h3 class="gp-drawer__title"><span class="gp-card__bar gp-card__bar--cat3"></span>新增办理记录</h3>
+                            <button type="button" class="gp-drawer__close" id="gpDrawerClose1">✕</button>
+                        </div>
+                        <form class="gp-drawer__form" id="handleForm">
+                            <input type="hidden" name="petition_id" id="handlePetitionId" value="">
+                            <div class="gp-drawer__tip">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span class="gp-drawer__tip-text" id="gpDrawerTip">提示：新增记录将作为办理过程留痕。</span>
+                            </div>
+                            <div class="gp-drawer__row2">
+                                <div>
+                                    <label class="gp-drawer__field-label" for="h_date">办理日期<span class="sc-field__required">*</span></label>
+                                    <input type="date" class="gp-drawer__input gp-num" name="handle_date" id="h_date" required>
+                                </div>
+                                <div>
+                                    <label class="gp-drawer__field-label" for="h_handler">处理人</label>
+                                    <input type="text" class="gp-drawer__input" name="handler" id="h_handler" placeholder="如：张伟">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="gp-drawer__chips-label">
+                                    <label class="gp-drawer__field-label" for="h_action" style="margin-bottom:0">办理措施<span class="sc-field__required">*</span></label>
+                                    <span class="gp-drawer__chips-hint">点击标签快捷填入</span>
+                                </div>
+                                <textarea class="gp-drawer__input" name="action" id="h_action" rows="3" required
+                                          placeholder="请输入约谈、转办、协调会或政策解释详情..."></textarea>
+                                <div class="gp-drawer__chips">
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【约谈】">约谈</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【转办】">转办</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【协调会】">协调会</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【政策解释】">政策解释</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="h_result">办理结果</label>
+                                <textarea class="gp-drawer__input" name="result" id="h_result" rows="2" placeholder="可选填写阶段性结果"></textarea>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="h_next_plan">后续计划</label>
+                                <textarea class="gp-drawer__input" name="next_plan" id="h_next_plan" rows="2" placeholder="可选填写后续跟进安排"></textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="gp-drawer__foot">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="gpDrawerClose2">取消</button>
+                        <button type="submit" class="sc-btn sc-btn--primary" form="handleForm"><i class="bi bi-plus-lg"></i> 保存办理记录</button>
+                    </div>
+                </div>
+            </div>
+
+            {# ══════════ 变更办理状态：详情内右侧滑出抽屉（对齐原型「就地变化」交互，不再弹独立 modal） ══════════ #}
+            <div class="gp-drawer-backdrop" id="gpTransitionBackdrop" hidden>
+                <div class="gp-drawer" role="dialog" aria-modal="true" aria-label="变更办理状态">
+                    <div class="gp-drawer__scroll">
+                        <div class="gp-drawer__head">
+                            <h3 class="gp-drawer__title"><span class="gp-card__bar gp-card__bar--cat2"></span>变更办理状态</h3>
+                            <button type="button" class="gp-drawer__close" id="gpTransitionClose1">✕</button>
+                        </div>
+                        <form class="gp-drawer__form" id="transitionForm">
+                            <input type="hidden" name="id" id="transitionId" value="0">
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionName">信访人</label>
+                                <input type="text" class="gp-drawer__input" id="transitionName" readonly>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionCurrent">当前状态</label>
+                                <input type="text" class="gp-drawer__input" id="transitionCurrent" readonly>
+                            </div>
+                            <div>
+                                <label class="gp-drawer__field-label" for="transitionTo">推进至<span class="sc-field__required">*</span></label>
+                                <select class="gp-drawer__input" name="to_status" id="transitionTo" required>
+                                    <option value="">请选择</option>
+                                </select>
+                            </div>
+                            {# 办结随迁字段：仅 to_status=已办结 时露出并置 required；其余状态 JS 显式从 FormData 删除，不夹带 #}
+                            <div class="d-none" id="transitionCloseWrap">
+                                <label class="gp-drawer__field-label" for="t_close_date">办结日期<span class="sc-field__required">*</span></label>
+                                <input type="date" class="gp-drawer__input gp-num" name="close_date" id="t_close_date">
+                                <label class="gp-drawer__field-label" for="t_reply" style="margin-top:12px">答复情况<span class="sc-field__required">*</span></label>
+                                <textarea class="gp-drawer__input" name="reply" id="t_reply" rows="2"
+                                          placeholder="向信访人正式答复的内容"></textarea>
+                            </div>
+                            <div class="gp-drawer__tip">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span class="gp-drawer__tip-text">流转合法性由后端校验：不合法返回 409 并给出原因，本面板保留可改选；选「已办结」需填写办结日期与答复情况，提交即与状态一次落库。</span>
+                            </div>
+                            <p class="gp-drawer__tip-text text-danger" id="transitionError" hidden></p>
+                        </form>
+                    </div>
+                    <div class="gp-drawer__foot">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="gpTransitionClose2">取消</button>
+                        <button type="submit" class="sc-btn sc-btn--primary" form="transitionForm">确认变更</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/governance_petition.js') }}"></script>
+{% endblock %}

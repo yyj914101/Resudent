@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}台账不存在{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<section class="sc-card">
+    <div class="sc-empty">
+        <p>台账 <code>{{ code }}</code> 不存在或已被删除。</p>
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/"><i class="bi bi-arrow-left"></i> 返回台账列表</a>
+    </div>
+</section>
+{% endblock %}

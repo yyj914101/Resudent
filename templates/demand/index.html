@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}民生诉求{% endblock %}
+{% block page_title %}民生诉求{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/demand_detail.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{# 090A 民生诉求：民生服务组独立页（086 信访同构范式 + 一页纸 v1.1 收敛：
+   无事项编号/办理期限/答复/满意度；状态机两跳 待受理→已办结/不予受理）。
+   - 页头/工具条/表格/分页/弹窗全部复用 components.css 既有件；详情弹窗 v2 增配 pages/demand_detail.css。
+   - 字段真源：models/demand.py，序列化键见 routes/demand.py::_demand_to_dict。
+   - 枚举口径 096：字典 value 落库、label 展示（「诉求来源」value 编码见一页纸 D-01）。 #}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">民生诉求</h2>
+        <p class="sc-page-head__meta">诉求登记 · 办理过程留痕 · 办结归档</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink" href="#"><i class="bi bi-file-earmark-excel"></i> 导出台账</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton"><i class="bi bi-plus-circle"></i> 新增诉求</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="诉求人 / 内容摘要" style="width:220px">
+        <select class="sc-select" name="status" data-dict="status" style="width:140px">
+            <option value="">全部办理状态</option>
+        </select>
+        <select class="sc-select" name="category" data-dict="category" style="width:150px">
+            <option value="">全部诉求类别</option>
+        </select>
+        <select class="sc-select" name="source" data-dict="source" style="width:150px">
+            <option value="">全部来源</option>
+        </select>
+        <input type="date" class="sc-input" name="accept_from" style="width:150px" title="受理日期起">
+        <input type="date" class="sc-input" name="accept_to" style="width:150px" title="受理日期止">
+        <button type="submit" class="sc-btn sc-btn--primary"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">受理日期</th>
+                    <th class="sc-table__th">来源</th>
+                    <th class="sc-table__th">诉求类别</th>
+                    <th class="sc-table__th">诉求人</th>
+                    <th class="sc-table__th">内容摘要</th>
+                    <th class="sc-table__th">责任人</th>
+                    <th class="sc-table__th">办理状态</th>
+                    <th class="sc-table__th">办结日期</th>
+                    <th class="sc-table__th" style="width:230px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# ══════════ 新增 / 编辑诉求 ══════════ #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增民生诉求</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_petitioner_name">诉求人<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="petitioner_name" id="f_petitioner_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_contact">联系方式</label>
+                        <input type="text" class="sc-input" name="contact" id="f_contact" placeholder="电话或手机，已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_source">诉求来源<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="source" id="f_source" data-dict="source">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_category">诉求类别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="category" id="f_category" data-dict="category">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_accept_date">受理日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="accept_date" id="f_accept_date" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_case_officer">责任人/承办人</label>
+                        <input type="text" class="sc-input" name="case_officer" id="f_case_officer">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_id_card">身份证号</label>
+                        <input type="text" class="sc-input" name="id_card" id="f_id_card" placeholder="已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_status_ro">办理状态</label>
+                        <input type="text" class="sc-input" id="f_status_ro" readonly placeholder="新增固定「待受理」，之后经「推进」变更">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_address">住址/涉及地点</label>
+                        <input type="text" class="sc-input" name="address" id="f_address">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_summary">诉求内容摘要<span class="sc-field__required">*</span></label>
+                        <textarea class="sc-textarea" name="summary" id="f_summary" rows="3" required
+                                  placeholder="诉求人反映的主要问题与诉求"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_remark">备注/不予受理依据</label>
+                        <textarea class="sc-textarea" name="remark" id="f_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">办理状态不在此处修改，请用行内「推进」</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 详情（2026-11-17 设计稿改造：紧凑一屏式读写分离，ui.md/code_artifact 真源；
+      结构 = 单行头部 + 不予受理警示条 + 01/02/03 三分区 + 超薄底栏；处理记录录入改右侧行内抽屉。
+      防点击穿透：容器沿用 .sc-modal（自带 pointer-events:auto），抽屉浮层 dd-drawer 自恢复。） ══════════ #}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal dd-shell" role="dialog" aria-modal="true">
+            <header class="dd-header">
+                <div class="dd-header__main">
+                    <h2 class="dd-header__name" id="detailName">民生诉求详情</h2>
+                    <span class="sc-badge sc-badge--muted dd-header__chip" id="detailStatusChip" hidden></span>
+                    <span class="dd-header__sep"></span>
+                    <span class="dd-header__meta" id="detailMeta"></span>
+                </div>
+                <div class="dd-header__actions">
+                    <button type="button" class="sc-btn sc-btn--secondary" id="detailEditBtn" hidden title="编辑基本信息"><i class="bi bi-pencil-square"></i> 编辑</button>
+                    <div class="position-relative">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="ddStatusBtn"><i class="bi bi-arrow-left-right"></i> 变更状态</button>
+                    </div>
+                    <button type="button" class="sc-btn sc-btn--primary" id="ddAddHandleBtn"><i class="bi bi-plus-lg"></i> 新增处理记录</button>
+                    <span class="dd-header__vline"></span>
+                    <button type="button" class="dd-header__close" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </header>
+
+            <div class="dd-banner" id="ddRejectBanner" hidden>
+                <i class="bi bi-exclamation-circle-fill dd-banner__icon"></i>
+                <span class="dd-banner__text" id="ddRejectText"></span>
+            </div>
+
+            <div class="dd-body">
+                <section class="dd-card">
+                    <div class="dd-card__head">
+                        <div class="dd-card__title">
+                            <span class="dd-card__bar dd-card__bar--cat1"></span>
+                            <span class="dd-card__index dd-card__index--cat1">01</span>
+                            <h3 class="dd-card__title-text">基本与受理信息</h3>
+                        </div>
+                        <span class="dd-card__count">共 8 项核心字段</span>
+                    </div>
+                    <div class="dd-grid4" id="ddBasicGrid"></div>
+                </section>
+
+                <section class="dd-card">
+                    <div class="dd-card__head dd-card__head--noborder">
+                        <div class="dd-card__title">
+                            <span class="dd-card__bar dd-card__bar--cat2"></span>
+                            <span class="dd-card__index dd-card__index--cat2">02</span>
+                            <h3 class="dd-card__title-text">诉求内容摘要</h3>
+                        </div>
+                    </div>
+                    <div class="dd-summary">
+                        <p class="dd-summary__text" id="ddSummaryText">—</p>
+                        <p class="dd-summary__remark" id="ddRemarkText" hidden></p>
+                    </div>
+                </section>
+
+                <section class="dd-card dd-card--last">
+                    <div class="dd-card__head">
+                        <div class="dd-card__title">
+                            <span class="dd-card__bar dd-card__bar--cat3"></span>
+                            <span class="dd-card__index dd-card__index--cat3">03</span>
+                            <h3 class="dd-card__title-text">处理记录</h3>
+                            <span class="sc-badge sc-badge--muted">共 <strong id="ddHandleCount">0</strong> 条</span>
+                        </div>
+                        <button type="button" class="dd-card__more" id="ddAddHandleBtn2"><span class="dd-plus">+</span> 新增记录</button>
+                    </div>
+                    <div class="dd-table-wrap">
+                        <table class="dd-table">
+                            <thead>
+                                <tr>
+                                    <th class="dd-table__date dd-table__num">处理日期</th>
+                                    <th class="dd-table__handler">经办人</th>
+                                    <th>处理措施</th>
+                                </tr>
+                            </thead>
+                            <tbody id="handleBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="dd-footer">
+                <div class="dd-footer__sync">
+                    <span class="dd-footer__sync-dot"></span>
+                    <span>数据已同步<span id="ddSyncDate"></span></span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            </footer>
+
+            {# 右侧行内抽屉：新增处理记录（读写分离；替代原弹窗底部常驻表单） #}
+            <div class="dd-drawer-backdrop" id="ddDrawerBackdrop" hidden>
+                <div class="dd-drawer" role="dialog" aria-modal="true" aria-label="新增处理记录">
+                    <div class="dd-drawer__scroll">
+                        <div class="dd-drawer__head">
+                            <h3 class="dd-drawer__title"><span class="dd-card__bar dd-card__bar--cat3"></span>新增处理记录</h3>
+                            <button type="button" class="dd-drawer__close" id="ddDrawerClose1">✕</button>
+                        </div>
+                        <form class="dd-drawer__form" id="handleForm">
+                            <input type="hidden" name="demand_id" id="handleDemandId" value="">
+                            <div class="dd-drawer__tip">
+                                <i class="bi bi-info-circle-fill"></i>
+                                <span class="dd-drawer__tip-text" id="ddDrawerTip">提示：新增记录将作为办理过程留痕。</span>
+                            </div>
+                            <div class="dd-drawer__row2">
+                                <div>
+                                    <label class="dd-drawer__field-label" for="h_date">处理日期<span class="sc-field__required">*</span></label>
+                                    <input type="date" class="dd-drawer__input dd-meta-num" name="handle_date" id="h_date" required>
+                                </div>
+                                <div>
+                                    <label class="dd-drawer__field-label" for="h_handler">经办人<span class="sc-field__required">*</span></label>
+                                    <input type="text" class="dd-drawer__input" name="handler" id="h_handler" placeholder="如：李明" required>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="dd-drawer__chips-label">
+                                    <label class="dd-drawer__field-label" for="h_action" style="margin-bottom:0">处理措施<span class="sc-field__required">*</span></label>
+                                    <span class="dd-drawer__chips-hint">点击标签快捷填入</span>
+                                </div>
+                                <textarea class="dd-drawer__input" name="action" id="h_action" rows="3" required
+                                          placeholder="请输入约谈、转办、协调会或政策解释详情..."></textarea>
+                                <div class="dd-drawer__chips">
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【约谈】">约谈</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【转办】">转办</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【协调会】">协调会</button>
+                                    <button type="button" class="sc-btn sc-btn--secondary" data-chip="【政策解释】">政策解释</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="dd-drawer__foot">
+                        <button type="button" class="sc-btn sc-btn--secondary" id="ddDrawerClose2">取消</button>
+                        <button type="submit" class="sc-btn sc-btn--primary" form="handleForm"><i class="bi bi-plus-lg"></i> 保存处理记录</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 推进办理状态（两跳） ══════════ #}
+<div class="modal fade" id="transitionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:500px">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="transitionForm">
+                <input type="hidden" name="id" id="transitionId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">推进办理状态</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label">诉求人</label>
+                        <input type="text" class="sc-input" id="transitionName" readonly>
+                    </div>
+                    <div class="sc-field mt-2">
+                        <label class="sc-field__label">当前状态</label>
+                        <input type="text" class="sc-input" id="transitionCurrent" readonly>
+                    </div>
+                    <div class="sc-field mt-2">
+                        <label class="sc-field__label">推进至<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="to_status" id="transitionTo" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    {# 随迁字段：办结露出办结日期、不予受理露出依据备注；其余状态 JS 显式从 FormData 删除，不夹带 #}
+                    <div class="d-none" id="transitionCloseWrap">
+                        <div class="sc-field mt-2">
+                            <label class="sc-field__label" for="t_close_date">办结日期<span class="sc-field__required">*</span></label>
+                            <input type="date" class="sc-input" name="close_date" id="t_close_date">
+                        </div>
+                    </div>
+                    <div class="d-none" id="transitionRejectWrap">
+                        <div class="sc-field mt-2 sc-field--top">
+                            <label class="sc-field__label" for="t_remark">不予受理依据<span class="sc-field__required">*</span></label>
+                            <textarea class="sc-textarea" name="remark" id="t_remark" rows="2"
+                                      placeholder="写明不予受理的依据，随本次流转一并落库"></textarea>
+                        </div>
+                    </div>
+                    <p class="sc-field__hint mt-2">
+                        流转合法性由后端校验：不合法返回 409 并给出原因，本弹窗保留可改选。<br>
+                        选「已办结」时填办结日期（不得早于受理日期）；选「不予受理」时须写明依据。
+                    </p>
+                <p class="sc-field__hint text-danger" id="transitionError" style="margin:8px 0 0" hidden></p>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">确认推进</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/demand.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="__CSRF__">
+    <title>新增居民 - 村级村务综合管理系统</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="/static/lib/adminlte/css/adminlte.min.css" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="/static/css/tokens.css" rel="stylesheet">
+    <link href="/static/css/app.css" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="/static/css/shell.css" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="/static/css/components.css" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="/static/css/skeleton.css" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="/static/lib/driver.css" rel="stylesheet">
+    <link href="/static/css/tour.css" rel="stylesheet">
+    
+<link href="/static/css/pages/workflow_shared.css" rel="stylesheet">
+<link href="/static/css/pages/resident_add.css" rel="stylesheet">
+
+
+<script src="/static/js/nav_labels_boot.js"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: true,
+    menuRules: [
+        ['a[href="/resident/"]', true],
+        ['a[href="/resident/add"]', true],
+        ['a[href="/shop/"]', true],
+        ['a[href="/dibao/"]', true],
+        ['a[href="/disabled/"]', true],
+        ['a[href="/care/"]', true],
+        ['a[href="/organization/"]', true],
+        ['a[href="/party/"]', true],
+        ['a[href="/party/dues"]', true],
+        ['a[href="/veteran/"]', true],
+        ['a[href="/todo/"]', true],
+        ['a[href="/welfare/"]', true],
+        ['a[href="/mediation/"]', true],
+        ['a[href="/governance/roster/gov_special_visit/"]', true],
+        ['a[href="/governance/roster/gov_stability_risk/"]', true],
+        ['a[href="/governance/roster/gov_mental_health/"]', true],
+        ['a[href="/governance/roster/gov_security_committee/"]', true],
+        ['a[href="/safety/"]', true],
+        ['a[href="/notice/"]', true],
+        ['a[href="/word-form/"]', true],
+        ['a[href="/medical-insurance/"]', true],
+        ['a[href="/certificate/"]', true],
+        ['a[href="/death-report/"]', true],
+        ['a[href="/visit/"]', true],
+        ['a[href="/visit/history"]', true],
+        ['a[href="/reconcile/"]', true]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    
+
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            
+            <nav class="sc-topbar">
+                
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left-close"></use></svg>
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left"></use></svg>
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="/resident/">
+                    <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#search"></use></svg>
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">0</span> 人在线
+                    </span>
+                    <span class="sc-sync" id="syncStatus" title="单机模式：数据保存在本机，未启用同步">
+                        <span class="sc-dot sc-dot--muted"></span>本机数据
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">a</span>
+                            <span class="sc-usermenu__name">admin</span>
+                            <svg class="sc-icon sc-icon--14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#chevron-down"></use></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">超级管理员</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+
+
+
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo"><svg class="sc-icon sc-icon--20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg></span>
+        <span class="sc-sidebar__title" id="systemTitle">村级村务综合管理系统</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+
+            
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dashboard/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#house"></use></svg><span>首页</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/todo/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-todo"></use></svg><span>待办提醒</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/organization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#building-2"></use></svg><span>机构管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/election/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#check2-square"></use></svg><span>选举管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/civilization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg><span>文明实践站</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/medical-insurance/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-pulse"></use></svg><span>社会保障</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dibao/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>民政对象管理</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/resident/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#users"></use></svg><span>居民管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/mediation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#messages-square"></use></svg><span>综治管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/visit/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>走访关爱</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#folder-open"></use></svg><span>安全工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/emergency">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-checks"></use></svg><span>应急管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/sanitation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#wrench"></use></svg><span>环卫工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/death-report/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#book-open"></use></svg><span>死亡上报</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/veteran/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#shield-check"></use></svg><span>退役军人服务</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/certificate/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#scroll-text"></use></svg><span>证明开具</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/demand/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#inbox"></use></svg><span>民生诉求</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/notice/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#megaphone"></use></svg><span>补贴公示</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dynatable/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database"></use></svg><span>台账建表</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/import/batches">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database-zap"></use></svg><span>导入批次</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        
+        <a class="nav-link sc-nav-item"
+           href="/settings/center">
+            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#settings"></use></svg><span>设置</span>
+        </a>
+        
+        <div class="sc-user-card">
+            <span class="sc-avatar">a</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">admin</span>
+                <span class="sc-user-card__role">超级管理员</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="/auth/logout" aria-label="退出登录">
+                <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#log-out"></use></svg>
+            </a>
+        </div>
+    </div>
+</aside>
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+            <!-- 顶部标签栏 -->
+            <div class="tab-bar" id="tabBar">
+                <div class="tab-scroll" id="tabScroll"></div>
+            </div>
+            
+            <h1 id="pageTitle">新增居民</h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+                
+                
+                
+                
+<div class="sc-workflow-page rw-page">
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">新增居民</h2>
+        <p class="sc-page-head__meta">三种录入方式：手动录入 / 批量导入 / 自定义名单导入</p>
+    </div>
+</header>
+<nav class="sc-chips" aria-label="模块内导航">
+  <div class="sc-chips__row">
+    <a class="sc-chip" href="/resident/#tab=query" title="居民查询">居民查询</a>
+    <a class="sc-chip is-active" href="/resident/add#tab=add" title="新增居民">新增居民</a>
+    <a class="sc-chip" href="/shop/#tab=shop" title="店铺信息">店铺信息</a>
+    <a class="sc-chip" href="/shop/facility/#tab=shop-facility" title="基础设施分布">设施分布</a>
+  </div>
+</nav>
+
+
+
+<div class="add-mode-bar">
+    <div class="rw-topbar">
+        <nav class="sc-chips rw-seg" id="addTabs" role="tablist" aria-label="新增模式页签">
+            <div class="sc-chips__row">
+                <button class="sc-chip nav-link active" id="manual-tab"
+                        data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab">手动录入</button>
+                <button class="sc-chip nav-link " id="import-tab"
+                        data-bs-toggle="tab" data-bs-target="#import" type="button" role="tab">批量导入</button>
+                
+                <button class="sc-chip nav-link " id="custom-tab"
+                        data-bs-toggle="tab" data-bs-target="#custom" type="button" role="tab">
+                    自定义名单导入 <span class="badge rounded-pill bg-secondary d-none" id="customBadge"></span>
+                </button>
+                
+            </div>
+        </nav>
+        <div class="rw-readiness">
+            <span class="rw-readiness__dot"></span>
+            <span>居民人口与户籍库已就绪</span>
+        </div>
+    </div>
+</div>
+
+<div class="tab-content rw-card">
+
+    
+    <div class="tab-pane fade show active" id="manual">
+        <form id="addResidentForm" class="rw-form">
+            <input type="hidden" name="id" id="residentId">
+            <div class="rw-body">
+                <div class="rw-banner rw-banner--warn" role="note">
+                    <i class="bi bi-lightbulb rw-banner__icon" aria-hidden="true"></i>
+                    <div><strong>操作提示：</strong>同户新增时，输入户主姓名后系统会自动填充户主信息、家庭ID、户属性、户口类型。户编号由系统自动生成，无需手动填写。</div>
+                </div>
+
+                <!-- 户主信息 -->
+                <section class="rw-section">
+                    <div class="rw-section__head">
+                        <h3 class="rw-section__title">户主信息</h3>
+                        <span class="rw-section__hint">新增一户时以下六项为必填</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="rHouseholdName">户主名<span class="rw-req">*</span></label>
+                            <input type="text" class="form-control" name="household_name" id="rHouseholdName"
+                                   placeholder="输入户主姓名，同户新增自动填充" autocomplete="off">
+                            <div class="invalid-feedback">请选择或输入户主姓名</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rHouseholdCode">户编号</label>
+                            <input type="text" class="form-control" name="household_code" id="rHouseholdCode"
+                                   readonly placeholder="系统自动生成">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rPhone">联系电话</label>
+                            <input type="text" class="form-control" name="phone" id="rPhone">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rHouseholdType">户口类型</label>
+                            <select class="form-select" name="household_type" id="rHouseholdType"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rGroup">所在组</label>
+                            <select class="form-select" name="village_group" id="rGroup"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rProperty">户属性</label>
+                            <select class="form-select" name="household_property" id="rProperty"></select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="rAddress">家庭住址</label>
+                            <input type="text" class="form-control" name="address" id="rAddress">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 居民信息 -->
+                <section class="rw-section">
+                    <div class="rw-section__head">
+                        <h3 class="rw-section__title">居民信息</h3>
+                        <span class="rw-section__hint">带 <span class="rw-req">*</span> 为必填；身份证号录入后自动带出性别与出生日期</span>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label" for="rName">姓名<span class="rw-req">*</span></label>
+                            <input type="text" class="form-control" name="name" id="rName" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rIdCard">身份证号<span class="rw-req">*</span></label>
+                            <input type="text" class="form-control" name="id_card" id="rIdCard"
+                                   onblur="autoFillIdCard()" required>
+                            <div class="invalid-feedback">请输入身份证号码</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="rGender">性别<span class="rw-req">*</span></label>
+                            <select class="form-select" name="gender" id="rGender" required>
+                                <option value="">请选择</option>
+                                <option value="男">男</option>
+                                <option value="女">女</option>
+                            </select>
+                            <div class="invalid-feedback">请选择性别</div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <label class="form-label" for="rBirthDate">出生日期</label>
+                            <input type="date" class="form-control" name="birth_date" id="rBirthDate">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rNation">民族<span class="rw-req">*</span></label>
+                            <select class="form-select" name="nation" id="rNation" required>
+                                <option value="">请选择</option>
+                            </select>
+                            <div class="invalid-feedback">请选择民族</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rMemberGroup">所在组</label>
+                            <select class="form-select" id="rMemberGroup">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rPolitics">政治面貌<span class="rw-req">*</span></label>
+                            <select class="form-select" name="politics_status" id="rPolitics" required>
+                                <option value="">请选择</option>
+                            </select>
+                            <div class="invalid-feedback">请选择政治面貌</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rEducation">学历<span class="rw-req">*</span></label>
+                            <select class="form-select" name="education" id="rEducation" required>
+                                <option value="">请选择</option>
+                            </select>
+                            <div class="invalid-feedback">请选择学历</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rOccupation">职业</label>
+                            <input type="text" class="form-control" name="occupation" id="rOccupation">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rHealth">健康状态<span class="rw-req">*</span></label>
+                            <select class="form-select" name="health_status" id="rHealth" required>
+                                <option value="">请选择</option>
+                            </select>
+                            <div class="invalid-feedback">请选择健康状态</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rMarital">婚姻状况</label>
+                            <select class="form-select" name="marital_status" id="rMarital"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rMilitary">兵役状况<span class="rw-req">*</span></label>
+                            <select class="form-select" name="military_status" id="rMilitary" required>
+                                <option value="">请选择</option>
+                            </select>
+                            <div class="invalid-feedback">请选择兵役状况</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rRelation">与户主关系<span class="rw-req">*</span></label>
+                            <select class="form-select" name="relationship" id="rRelation" required>
+                                <option value="">请选择</option>
+                                <option value="户主本人">户主本人</option>
+                            </select>
+                            <div class="invalid-feedback">请选择与户主关系</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rFlowStatus">流动状态（T11-5）</label>
+                            <select class="form-select" name="flow_status" id="rFlowStatus">
+                                <option value="常住">常住</option>
+                                <option value="流入">流入</option>
+                                <option value="流出">流出</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rBankName">开户行</label>
+                            <select class="form-select" name="bank_name" id="rBankName"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="rBankCard">银行卡号</label>
+                            <input type="text" class="form-control" name="bank_card" id="rBankCard">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="rRemark">备注</label>
+                            <textarea class="form-control" name="remark" id="rRemark" rows="2"></textarea>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div class="rw-footer">
+                <a href="/resident/" class="sc-btn sc-btn--text rw-btn">返回查询</a>
+                <div class="rw-footer__actions">
+                    <button type="button" class="sc-btn sc-btn--secondary rw-btn" id="resetBtn">
+                        <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> 手动重置
+                    </button>
+                    <button type="submit" class="sc-btn sc-btn--primary rw-btn rw-btn--primary" id="submitBtn">
+                        <i class="bi bi-check2" aria-hidden="true"></i> 保存
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    
+    <div class="tab-pane fade" id="import">
+        <div class="rw-body">
+            <div class="rw-banner rw-banner--warn" role="note">
+                <i class="bi bi-info-circle rw-banner__icon" aria-hidden="true"></i>
+                <div><strong>批量导入分组规则：</strong>请使用标准模板整理数据后上传。表格中若将 <code>户编号</code> 列留空，系统将自动按相同的<strong>户主姓名</strong>归并为同一户家庭并生成唯一户号。</div>
+            </div>
+
+            <section>
+                <div class="rw-step-head">
+                    <span class="rw-step-no">1</span>
+                    <h3 class="rw-step-title">下载标准模板并选择入库策略</h3>
+                </div>
+                <div class="rw-tplbar">
+                    <div class="rw-tplbar__info">
+                        <span class="rw-tplbar__name">居民人口信息标准采集表</span>
+                        <span class="rw-tplbar__ver">vv1-10a834a7</span>
+                        <span class="rw-tplbar__meta">· 含必填字段校验与示例数据</span>
+                    </div>
+                    <a href="/resident/api/template"
+                       class="sc-btn sc-btn--secondary rw-btn">
+                        <i class="bi bi-download" aria-hidden="true"></i> 下载标准模板
+                    </a>
+                </div>
+
+                <div class="mt-3">
+                    <div class="rw-field-label">导入模式</div>
+                    <div class="rw-radios">
+                        <label class="rw-radio-card">
+                            <input type="radio" name="addImportMode" value="append" checked>
+                            <span class="rw-radio-card__body">
+                                <span class="rw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="rw-radio-card__title">仅新增
+                                        <span class="sc-badge sc-badge--muted">推荐</span>
+                                    </span>
+                                    <span class="rw-radio-card__desc">跳过重复身份证号，仅将库中不存在的新居民档案写入系统。</span>
+                                </span>
+                            </span>
+                        </label>
+                        <label class="rw-radio-card">
+                            <input type="radio" name="addImportMode" value="overwrite">
+                            <span class="rw-radio-card__body">
+                                <span class="rw-radio-card__dot" aria-hidden="true"></span>
+                                <span>
+                                    <span class="rw-radio-card__title">覆盖更新
+                                        <span class="sc-badge sc-badge--warning">谨慎使用</span>
+                                    </span>
+                                    <span class="rw-radio-card__desc">以新数据覆盖重复记录，匹配到相同身份证号时更新其档案字段。</span>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <div class="rw-step-head">
+                    <span class="rw-step-no">2</span>
+                    <h3 class="rw-step-title">上传数据文件</h3>
+                    <span class="rw-step-aside">点击 / 拖拽双通道</span>
+                </div>
+
+                <input type="file" id="addImportFile" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" class="d-none">
+
+                <div class="rw-drop" id="addImportDrop" role="button" tabindex="0"
+                     aria-label="点击选择文件，或将表格拖拽至此区域投放">
+                    <span class="rw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                    <span class="rw-drop__title">点击选择文件，或将表格拖拽至此区域投放</span>
+                    <span class="rw-drop__hint">仅支持 <b>.xlsx</b> 格式，单文件大小 <b>≤ 50MB</b>（首行为字段名，最多 20 万行）</span>
+                </div>
+
+                <div class="rw-staged d-none" id="addImportStaged">
+                    <div class="rw-staged__file">
+                        <span class="rw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                        <div class="rw-staged__info">
+                            <div class="rw-staged__row">
+                                <span class="rw-staged__name" id="addImportStagedName"></span>
+                                <span class="sc-badge sc-badge--success">校验通过</span>
+                            </div>
+                            <div class="rw-staged__meta" id="addImportStagedMeta"></div>
+                        </div>
+                    </div>
+                    <div class="rw-staged__ops">
+                        <button type="button" class="sc-btn sc-btn--secondary rw-btn" id="addImportReselect">重新选择</button>
+                        <button type="button" class="sc-btn sc-btn--text rw-btn rw-btn--danger" id="addImportRemove">移除</button>
+                    </div>
+                </div>
+
+                <div id="addImportProgress" class="d-none mt-3">
+                    <span class="spinner-border spinner-border-sm text-secondary me-2" role="status" aria-hidden="true"></span>
+                    <span class="rw-tplbar__meta">正在解析并导入...</span>
+                </div>
+                <div id="addImportResult" class="mt-3"></div>
+            </section>
+        </div>
+        <div class="rw-footer">
+            <button type="button" class="sc-btn sc-btn--text rw-btn" id="addImportReset">清空重置</button>
+            <button type="button" class="sc-btn sc-btn--primary rw-btn rw-btn--primary"
+                    id="addImportSubmit" disabled>
+                <i class="bi bi-upload" aria-hidden="true"></i> 开始解析并导入
+            </button>
+        </div>
+    </div>
+
+    
+    
+    <div class="tab-pane fade" id="custom">
+        <div class="rw-body">
+            <div class="rw-banner rw-banner--neutral" role="note">
+                <i class="bi bi-file-earmark-text rw-banner__icon" aria-hidden="true"></i>
+                <div><strong>自定义表头映射说明：</strong>支持直接上传任意业务部门下发的原始 Excel 名单（无需套用标准模板），系统将在下一步引导您完成自定义列与人口库字段的映射关系配置。</div>
+            </div>
+
+        
+<div class="step-tabs">
+            <div class="step-tab active" data-step="1">1 上传名单</div>
+            <div class="step-tab" data-step="2">2 字段映射</div>
+            <div class="step-tab" data-step="3">3 校验预览</div>
+            <div class="step-tab" data-step="4">4 确认导入</div>
+        </div>
+
+        <div id="alert-zone"></div>
+
+        <!-- 步1 上传（__DATE__ 按 File Drop Zone 设计稿：投放区 + 暂存卡；
+             提交按钮移至 #custom 页脚，id=btn-upload 不变，import_wizard.js 零改动） -->
+        <div id="pane-1">
+            <div class="rw-pick-head">
+                <h3 class="rw-pick-title">选择名单文件<span class="rw-pick-meta">（.xlsx，≤ 50MB）</span></h3>
+            </div>
+            <input type="file" id="file" class="d-none" accept=".xlsx,.xls,.xlsb,.csv,.xlsm">
+            <div class="rw-drop" id="customDrop" role="button" tabindex="0"
+                 aria-label="点击选择名单文件，或将自定义 Excel 拖拽至此区域投放">
+                <span class="rw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                <span class="rw-drop__title">点击选择名单文件，或将自定义 Excel 拖拽至此区域投放</span>
+                <span class="rw-drop__hint">仅支持 <b>.xlsx</b> 工作簿，单文件大小 <b>≤ 50MB</b>（默认读取首个工作表）</span>
+            </div>
+            <div class="rw-staged d-none" id="customStaged">
+                <div class="rw-staged__file">
+                    <span class="rw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                    <div class="rw-staged__info">
+                        <div class="rw-staged__row">
+                            <span class="rw-staged__name" id="customStagedName"></span>
+                            <span class="sc-badge sc-badge--success">格式有效</span>
+                        </div>
+                        <div class="rw-staged__meta" id="customStagedMeta"></div>
+                    </div>
+                </div>
+                <div class="rw-staged__ops">
+                    <button type="button" class="sc-btn sc-btn--secondary rw-btn" id="customReselect">重新选择</button>
+                    <button type="button" class="sc-btn sc-btn--text rw-btn rw-btn--danger" id="customRemove">移除</button>
+                </div>
+            </div>
+            <div id="upload-msg" class="rw-hint mt-2"></div>
+        </div>
+
+        <!-- 步2 映射 -->
+        <div id="pane-2" class="d-none">
+            <div id="block-bar"></div>
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <select class="form-select form-select-sm" id="profile-select"
+                        style="max-width:260px">
+                    <option value="">— 选择已保存方案 —</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-apply-profile">加载方案</button>
+                <span id="profile-msg" class="text-muted" style="font-size:12px"></span>
+            </div>
+            <div class="mapping-row head">
+                <div>源表头</div><div>目标字段</div><div>匹配方式</div>
+            </div>
+            <div id="mapping-list"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" id="btn-save-mapping">保存映射</button>
+            </div>
+        </div>
+
+        <!-- 步3 校验 -->
+        <div id="pane-3" class="d-none">
+            <div id="validate-summary"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary" id="btn-back-mapping">上一步</button>
+                <button class="btn btn-primary" id="btn-execute">开始导入</button>
+                <a class="btn btn-outline-secondary" id="btn-export-failed" href="#" style="display:none">导出失败行</a>
+            </div>
+        </div>
+
+        <!-- 步4 导入 -->
+        <div id="pane-4" class="d-none">
+            <div class="progress mb-3" style="height:22px">
+                <div class="progress-bar" id="progress-bar" style="width:0%">0%</div>
+            </div>
+            <div id="execute-msg" class="text-muted" style="font-size:13px"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary" id="btn-view-report" style="display:none">查看结果报告</button>
+                <button class="btn btn-outline-primary" id="btn-save-profile" style="display:none">保存为方案</button>
+            </div>
+        </div>
+
+        </div>
+        
+        <div class="rw-footer rw-footer--upload">
+            <button type="button" class="sc-btn sc-btn--text rw-btn" id="customReset">清空重置</button>
+            <button type="button" class="sc-btn sc-btn--primary rw-btn rw-btn--primary"
+                    id="btn-upload" disabled>
+                <i class="bi bi-upload" aria-hidden="true"></i> 上传并创建批次
+            </button>
+        </div>
+    </div>
+    
+
+</div>
+
+            </div>
+        </main>
+    </div>
+    
+
+    <script src="/static/lib/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/crud.js"></script>
+    
+<script src="/static/js/import_wizard.js"></script>
+<script src="/static/js/pages/resident_add.js"></script>
+
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="/static/js/spa.js"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="/static/js/shell.js"></script>
+    <script src="/static/lib/driver.js.iife.js"></script>
+    <script src="/static/js/tour_registry.js"></script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">admin</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">超级管理员</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>admin</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>-</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>超级管理员</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>__DATETIME__</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="/auth/logout" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>
+</body>
+</html>

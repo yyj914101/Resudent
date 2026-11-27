@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}角色管理 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}角色管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="special">
+{{ settings_head('角色管理', '角色与权限位分配', '新增角色', 'showAdd()') }}
+
+<section class="sc-card">
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th class="sc-table__th">角色名称</th>
+                    <th class="sc-table__th">描述</th>
+                    <th class="sc-table__th" style="width:80px">用户数</th>
+                    <th class="sc-table__th" style="width:90px">系统内置</th>
+                    <th class="sc-table__th">创建时间</th>
+                    <th class="sc-table__th" style="width:230px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat">共 0 条 · 每页 20 条</span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 角色表单 + 权限矩阵（v9-02：模块 × 5 动作表格；容器由 JS 渲染） #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-labelledby="formTitle" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="editId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增角色</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-modal__body--grid">
+                        <div class="sc-field">
+                            <label class="sc-field__label" for="f_role_name">角色名称<span class="sc-field__required">*</span></label>
+                            <input type="text" class="sc-input" id="f_role_name" name="name" required>
+                        </div>
+                        <div class="sc-field">
+                            <label class="sc-field__label" for="f_role_desc">描述</label>
+                            <input type="text" class="sc-input" id="f_role_desc" name="description">
+                        </div>
+                    </div>
+
+                    <div class="sc-toolbar" style="padding:var(--sp-3) 0;border-bottom:0">
+                        <span class="sc-page-head__meta" style="margin:0">权限配置</span>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-batch="all">全选</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-batch="view-only">只查看</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-batch="clear">清空</button>
+                        <span class="sc-page-head__meta" style="margin:0">按权限</span>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-action="view">查看</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-action="add">新增</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-action="edit">编辑</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-action="delete">删除</button>
+                        <button type="button" class="sc-btn sc-btn--text" data-perm-action="export">导出</button>
+                    </div>
+                    <div id="permissionsContainer" style="max-height:400px;overflow-y:auto"></div>
+                    <input type="hidden" name="permissions" id="permissionsInput" value="{}">
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 复制角色（v9-02 第二张弹窗） #}
+<div class="modal fade" id="copyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="copyForm">
+                <input type="hidden" name="id" id="copySourceId">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">复制角色权限</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_copy_name">新角色名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" id="f_copy_name" name="name" required>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">复制</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/role_mgmt_list.js') }}"></script>
+{% endblock %}

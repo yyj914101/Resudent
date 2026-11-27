@@ -1,0 +1,99 @@
+/* tour.css — driver.js ADR-022 v4.0 中性灰阶覆写样式（零硬编码色） */
+
+.driver-popover.resudent-tour-popover {
+    background-color: var(--c-surface);
+    color: var(--c-ink);
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-md, 10px);
+    box-shadow: 0 12px 32px rgba(10, 10, 10, 0.14);
+    padding: 16px 18px;
+    max-width: 340px;
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--c-ink);
+    line-height: 1.4;
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-description {
+    font-size: 13px;
+    color: var(--c-ink-2);
+    line-height: 1.6;
+    margin-top: 6px;
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-progress-text {
+    font-size: 12px;
+    color: var(--c-muted);
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-footer {
+    margin-top: 14px;
+    gap: 6px;
+}
+
+.driver-popover.resudent-tour-popover button.driver-popover-prev-btn,
+.driver-popover.resudent-tour-popover button.driver-popover-next-btn {
+    border-radius: var(--r-sm, 6px);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-shadow: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.driver-popover.resudent-tour-popover button.driver-popover-prev-btn {
+    background-color: var(--c-surface);
+    color: var(--c-ink-2);
+    border: 1px solid var(--c-line-3);
+}
+
+.driver-popover.resudent-tour-popover button.driver-popover-prev-btn:hover {
+    background-color: var(--c-bg);
+    color: var(--c-ink);
+}
+
+.driver-popover.resudent-tour-popover button.driver-popover-next-btn {
+    background-color: var(--c-ink);
+    color: var(--c-surface);
+    border: 1px solid var(--c-ink);
+}
+
+.driver-popover.resudent-tour-popover button.driver-popover-next-btn:hover {
+    background-color: var(--c-ink-2);
+    border-color: var(--c-ink-2);
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-close-btn {
+    color: var(--c-muted);
+}
+
+.driver-popover.resudent-tour-popover .driver-popover-close-btn:hover {
+    color: var(--c-ink);
+}
+
+.sc-tour-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--c-ink-2);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sc-tour-trigger:hover {
+    background: var(--c-bg);
+    color: var(--c-ink);
+    border-color: var(--c-ink-2);
+}
+
+.sc-tour-trigger[hidden] {
+    display: none;
+}

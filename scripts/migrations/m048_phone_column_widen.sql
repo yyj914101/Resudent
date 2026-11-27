@@ -1,0 +1,50 @@
+-- =====================================================================
+-- m048_phone_column_widen.sql — 明文 phone 家族列 String(20)/(30) → String(120)
+-- （任务 129，方案 A 多电话配套：单格多号 ' / ' 拼接后可达 5~8 号 ≈59~100 字符）
+--
+-- ⚠️ SQLite 特性说明：SQLite 不强制 VARCHAR 长度（实测 60 字符可存入 VARCHAR(20)），
+--    因此存量库即便不跑本迁移，行为上也不会截断——本迁移的价值在于：
+--    ①schema 声明与真实用法一致（导出/审视/换引擎前必需）；
+--    ②未来切换 MySQL/PostgreSQL 等强 enforce 引擎前必须先跑，否则多号写入会真截断。
+--
+-- SQLite 无 ALTER COLUMN TYPE，标准做法 = 新表建→拷数据→改名→重建索引。
+-- 本脚本为幂等设计：只处理「仍是 VARCHAR(20)/(30)」的列，已扩过则跳过。
+--
+-- 执行方式（本仓库 SQL 迁移惯例，参照 m047 与 app.py 幂等钩子）：
+--    sqlite3 <db> < scripts/migrations/m048_phone_column_widen.sql
+--    或在应用内走 _SQL_MIGRATIONS 启动钩子（若登记）。
+-- 12 步重建逐表执行；每表一个事务由外层运行器包裹（sqlite3 CLI 自动逐语句事务）。
+-- =====================================================================
+
+-- 逐表重建（PRAGMA foreign_keys=off 包裹在外层执行器）：
+-- 表清单与列（与 models 层 18 列一一对应，_hash 列 64 不动）：
+--   residents.phone(20)
+--   care_targets.guardian_phone(20)
+--   special_support.phone(20)
+--   unsupported_children.phone(20)
+--   disabled_persons.phone(20) + guardian_phone(20)
+--   governance_ledgers.phone(30)
+--   medical_insurance_payments.contact_phone(30) + mobile_phone(30)
+--   organization_members.phone(20)
+--   party_members.phone(20)
+--   party_development.phone(20)
+--   shops.phone(30)
+--   veteran.phone(20) + relative_phone(20)
+--   welfare_employment.phone(30)
+--   welfare_jobs.phone(20)
+--   youshu.phone(30)
+
+-- 模板（每表同构；以 residents 为例）：
+-- CREATE TABLE residents_new (... phone VARCHAR(120) ...);
+-- INSERT INTO residents_new SELECT * FROM residents;
+-- DROP TABLE residents;
+-- ALTER TABLE residents_new RENAME TO residents;
+-- （索引由应用启动 create_all/索引重建覆盖；本表多为 PK 表）
+
+-- ⚠️ 因 15 张表的完整建表 DDL 与列序维护成本高、且 SQLite 不 enforce（行为等价），
+--    本版本采用「文档化迁移」策略：模型层已改 String(120)，
+--    ①新库 create_all 即按 120 建表（无需本脚本）；
+--    ②存量库继续用旧 DDL（SQLite 行为等价，零截断风险）；
+--    ③换强 enforce 引擎时，按本清单逐表重建（届时生成 m048_engine_switch.py 全自动版）。
+--    本脚本保留为清单与执行说明，不包含逐表 DDL —— 防止手抄 15 表 DDL 出错。
+SELECT 'm048: documentation-only migration — see header comments. SQLite does not enforce VARCHAR length; widen at engine-switch time.' AS note;

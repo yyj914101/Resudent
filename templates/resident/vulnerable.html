@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs %}
+{% block title %}弱势群体台账{% endblock %}
+{% block page_title %}弱势群体台账{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<div class="sc-civil-page">
+{# 075 RC-06：副标题统一为样图口径（村名走 village_name 设置项，未配置回退不带村名） #}
+{% set civil_subtitle = (village_name ~ ' · ' if village_name else '') ~ '10 类民政对象 · 在册 ' ~ (civil_headcount or 0) ~ ' 人' %}
+{{ page_head('弱势群体台账', civil_subtitle) }}
+{{ civil_tabs('vulnerable') }}
+
+<div class="sc-stat-strip" id="vulnStats">
+    <div class="sc-stat">
+        <div class="sc-stat__label">低保</div>
+        <div class="sc-stat__value" id="stDibao">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label">残疾</div>
+        <div class="sc-stat__value" id="stDisabled">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label">特困</div>
+        <div class="sc-stat__value" id="stTekun">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label">其他困难</div>
+        <div class="sc-stat__value" id="stSpecial">0</div>
+    </div>
+    <div class="sc-stat">
+        <div class="sc-stat__label">去重总人数</div>
+        <div class="sc-stat__value" id="stTotal">0</div>
+    </div>
+</div>
+
+{# 067 表格层换壳：sc-card 单卡（工具条 + sc-table + sc-pagination），组件真源 components.css（R-061-C2） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <select class="sc-select" id="vCategory" style="width:140px">
+            <option value="dibao">低保</option>
+            <option value="disabled">残疾</option>
+            <option value="tekun">特困</option>
+            <option value="special">其他困难</option>
+        </select>
+        <input type="text" class="sc-input" id="vName" placeholder="姓名" style="width:140px">
+        <button type="button" class="sc-btn sc-btn--primary" id="btnVSearch"><i class="bi bi-search"></i> 查询</button>
+        <span class="sc-page-head__meta mb-0" style="font-size:12px;">数据来源：低保 / 残疾 / 特困（一老一小）/ 其他困难台账（免二次录入）</span>
+    </div>
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="vulnTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th">姓名</th><th class="sc-table__th">分类</th><th class="sc-table__th">身份证</th><th class="sc-table__th">性别</th><th class="sc-table__th">年龄</th><th class="sc-table__th">网格/组</th><th class="sc-table__th">类别细目</th><th class="sc-table__th">关联居民</th>
+                </tr>
+            </thead>
+            <tbody id="vb"></tbody>
+        </table>
+    </div>
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="vpg"></ul>
+    </div>
+</section>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/resident_vulnerable.js') }}"></script>
+{% endblock %}

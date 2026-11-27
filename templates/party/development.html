@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block title %}党员发展{% endblock %}
+{% block page_title %}党员发展{% endblock %}
+
+{% block content %}
+{# 083B 党员发展：org 组独立页（五阶段名册 + 阶段迁移状态机）
+   - 页头/工具条/表格/分页复用 components.css 既有件；详情弹窗走 party_dev_detail.css（.pdv 作用域）。
+   - 字段真源：models/party_development.py，序列化键见 routes/party.py::_dev_to_dict。
+   - 阶段只在「推进」弹窗变更（后端状态机唯一入口，仅前滚一格，非法 409）。 #}
+{{ module_tabs('org', 'party-development') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">党员发展</h2>
+        <p class="sc-page-head__meta">申请人 → 积极分子 → 发展对象 → 预备党员 → 正式党员 · 仅前滚</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" id="exportLink" href="#">导出名册</a>
+        <button class="sc-btn sc-btn--primary" type="button" id="addButton">新增发展对象</button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" name="keyword" placeholder="姓名 / 身份证号 / 培养联系人" style="width:240px">
+        <select class="sc-select" name="stage" id="filterStage" style="width:150px">
+            <option value="">全部阶段</option>
+        </select>
+        <select class="sc-select" name="branch" id="filterBranch" style="width:180px">
+            <option value="">全部支部</option>
+        </select>
+        <button type="submit" class="sc-btn sc-btn--primary">{{ icon('search', 16) }} 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="resetButton">重置</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th">姓名</th>
+                    <th class="sc-table__th">身份证号</th>
+                    <th class="sc-table__th">当前阶段</th>
+                    <th class="sc-table__th">申请入党日期</th>
+                    <th class="sc-table__th">所属党支部</th>
+                    <th class="sc-table__th">培养联系人</th>
+                    <th class="sc-table__th" style="width:200px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# ══════════ 新增 / 编辑发展对象 ══════════ #}
+<div class="modal fade" id="formModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <form id="saveForm">
+                <input type="hidden" name="id" id="recordId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="formTitle">新增发展对象</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_name">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="f_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_gender">性别</label>
+                        <select class="sc-select" name="gender" id="f_gender">
+                            <option value="">请选择</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_id_card">身份证号</label>
+                        <input type="text" class="sc-input" name="id_card" id="f_id_card" maxlength="18"
+                               placeholder="已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_phone">联系电话</label>
+                        <input type="text" class="sc-input" name="phone" id="f_phone"
+                               placeholder="已打码的回显值不会覆盖原值">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_branch">所属党支部</label>
+                        <select class="sc-select" name="branch" id="f_branch">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_apply_date">申请入党日期</label>
+                        <input type="date" class="sc-input" name="apply_date" id="f_apply_date">
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_introducer">培养联系人 / 入党介绍人</label>
+                        <input type="text" class="sc-input" name="introducer" id="f_introducer"
+                               placeholder="单列自由文本（多人拆子表为遗留待确认项，不在本任务范围）">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="f_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="f_remark" rows="2"></textarea>
+                    </div>
+                    <div class="sc-field sc-field--full">
+                        <label class="sc-field__label" for="f_stage_ro">当前阶段</label>
+                        <input type="text" class="sc-input" id="f_stage_ro" readonly
+                               placeholder="新增固定「申请人」，之后经「推进」前滚">
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <span class="sc-field__hint" style="width:auto;margin-right:auto">阶段不在此处修改，请用行内「推进」</span>
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 推进阶段（状态机唯一入口的 UI 面） ══════════ #}
+<div class="modal fade" id="transitionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="transitionForm">
+                <input type="hidden" name="id" id="transitionId" value="0">
+                <input type="hidden" name="to_stage" id="transitionToStage" value="">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">推进阶段</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 18) }}</button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label">发展对象</label>
+                        <input type="text" class="sc-input" id="t_name" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">当前阶段</label>
+                        <input type="text" class="sc-input" id="t_current" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">下一阶段（仅前滚一格）</label>
+                        <input type="text" class="sc-input" id="t_next" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label">该阶段节点日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="stage_date" id="t_stage_date" required>
+                    </div>
+                    <div class="sc-field" id="t_writebackWrap" hidden>
+                        <label class="sc-field__label" for="t_writeback">转正回写确认</label>
+                        <select class="sc-select" name="confirm_writeback" id="t_writeback">
+                            <option value="">不回写（仅推进阶段）</option>
+                            <option value="1">确认回写：更新在册党员的 party_status 与 member_identity 两列</option>
+                        </select>
+                        <span class="sc-field__hint">仅在在册党员档案可按身份证匹配到时生效；其余维度不动</span>
+                    </div>
+                </div>
+                <p class="sc-field__hint text-danger" id="transitionError" style="margin:8px 0 0" hidden></p>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">确认推进</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ══════════ 详情（2026-11-19 按设计稿《紧凑单屏五阶段发展档案详情弹窗》重做：
+      单行档案头部 + 编辑档案/推进下一阶段 + 三段卡片(01 四列网格 / 02 五阶段进度条 + 备注槽 /
+      03 迁移日志) + 底部周期状态栏；编辑/推进仍走 formModal/transitionModal 既有业务面，
+      详见 static/css/pages/party_dev_detail.css 与 party_development.js renderStepper） ══════════ #}
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog pdv-dialog modal-dialog-centered">
+        <div class="sc-modal sc-modal--detail pdv" role="dialog" aria-modal="true">
+            <header class="pdv-header">
+                <div class="pdv-header__id">
+                    <span class="pdv-header__name"><span id="d_name">—</span><span class="pdv-header__dot">·</span>发展记录详情</span>
+                    <span class="sc-badge sc-badge--info pdv-badge" id="d_stage"></span>
+                    <span class="pdv-vline pdv-vline--sm"></span>
+                    <span class="pdv-header__meta" id="d_meta"></span>
+                </div>
+                <div class="pdv-header__ops">
+                    <button type="button" class="sc-btn sc-btn--secondary pdv-btn" id="detailEditBtn">
+                        <i class="bi bi-pencil-square" style="font-size:12px"></i> 编辑档案
+                    </button>
+                    <button type="button" class="sc-btn sc-btn--primary pdv-btn" id="detailAdvanceBtn">+ 推进下一阶段</button>
+                    <span class="pdv-vline pdv-vline--lg"></span>
+                    <button type="button" class="sc-dheader__close pdv-close" data-bs-dismiss="modal" aria-label="关闭">{{ icon('x', 20) }}</button>
+                </div>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="pdv-body">
+                <section class="pdv-card">
+                    <div class="pdv-card__head">
+                        <div class="pdv-card__title">
+                            <span class="pdv-catbar pdv-catbar--1"></span>
+                            <span class="pdv-catindex pdv-catindex--1">01</span>
+                            <h4 class="pdv-card__name">基本信息与培养联系</h4>
+                        </div>
+                        <span class="pdv-card__hint">统一四列网格</span>
+                    </div>
+                    <div class="pdv-grid">
+                        <div class="pdv-field"><span class="pdv-label">姓名</span><span class="pdv-value pdv-value--strong" id="pd_name">—</span></div>
+                        <div class="pdv-field"><span class="pdv-label">性别</span><span class="pdv-value" id="pd_gender">—</span></div>
+                        <div class="pdv-field"><span class="pdv-label">身份证号</span><span id="pd_idcard"></span></div>
+                        <div class="pdv-field"><span class="pdv-label">联系电话</span><span id="pd_phone"></span></div>
+                        <div class="pdv-field pdv-field--half"><span class="pdv-label">所属党支部</span><span class="pdv-value pdv-ellipsis" id="pd_branch">—</span></div>
+                        <div class="pdv-field pdv-field--half"><span class="pdv-label">培养联系人 / 入党介绍人</span><span class="pdv-value" id="pd_introducer">—</span></div>
+                    </div>
+                </section>
+                <section class="pdv-card">
+                    <div class="pdv-card__head">
+                        <div class="pdv-card__title">
+                            <span class="pdv-catbar pdv-catbar--2"></span>
+                            <span class="pdv-catindex pdv-catindex--2">02</span>
+                            <h4 class="pdv-card__name">发展五阶段节点与考察备注</h4>
+                        </div>
+                        <span class="pdv-card__hint pdv-num" id="pdvProgress"></span>
+                    </div>
+                    <div class="pdv-stepper" id="pdvStepper"></div>
+                    <div class="pdv-remark">
+                        <div class="pdv-remark__text">
+                            <span class="pdv-remark__label">考察备注：</span>
+                            <span id="pd_remark">—</span>
+                        </div>
+                        <button type="button" class="pdv-remark__link" id="detailRemarkBtn">修改备注</button>
+                    </div>
+                </section>
+                <section class="pdv-card pdv-card--flush">
+                    <div class="pdv-card__head pdv-card__head--flush">
+                        <div class="pdv-card__title">
+                            <span class="pdv-catbar pdv-catbar--3"></span>
+                            <span class="pdv-catindex pdv-catindex--3">03</span>
+                            <h4 class="pdv-card__name">阶段迁移日志</h4>
+                        </div>
+                        <span class="sc-badge sc-badge--muted pdv-count pdv-num" id="logCount"></span>
+                    </div>
+                    <div class="pdv-logwrap">
+                        <table class="sc-table pdv-table">
+                            <thead class="sc-table__head">
+                                <tr>
+                                    <th class="sc-table__th">迁移路径</th>
+                                    <th class="sc-table__th pdv-col-date">节点日期</th>
+                                    <th class="sc-table__th pdv-col-op">操作人</th>
+                                    <th class="sc-table__th pdv-col-snap">回写快照</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="pdv-footer">
+                <div class="pdv-footer__status">
+                    <span class="pdv-dot"></span>
+                    <span class="pdv-num" id="pdvCycle"></span>
+                </div>
+                <button type="button" class="sc-btn sc-btn--secondary pdv-btn" data-bs-dismiss="modal">关闭</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/party_dev_detail.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/party_development.js') }}"></script>
+{% endblock %}

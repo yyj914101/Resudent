@@ -1,0 +1,85 @@
+{% set _wz = True %}
+        {# 034 P2：四步向导可嵌入 body（单页模板与三模式工作台 custom tab 共用单源） #}
+<div class="step-tabs">
+            <div class="step-tab active" data-step="1">1 上传名单</div>
+            <div class="step-tab" data-step="2">2 字段映射</div>
+            <div class="step-tab" data-step="3">3 校验预览</div>
+            <div class="step-tab" data-step="4">4 确认导入</div>
+        </div>
+
+        <div id="alert-zone"></div>
+
+        <!-- 步1 上传（2026-11-19 按 File Drop Zone 设计稿：投放区 + 暂存卡；
+             提交按钮移至 #custom 页脚，id=btn-upload 不变，import_wizard.js 零改动） -->
+        <div id="pane-1">
+            <div class="rw-pick-head">
+                <h3 class="rw-pick-title">选择名单文件<span class="rw-pick-meta">（.xlsx，≤ 50MB）</span></h3>
+            </div>
+            <input type="file" id="file" class="d-none" accept=".xlsx,.xls,.xlsb,.csv,.xlsm">
+            <div class="rw-drop" id="customDrop" role="button" tabindex="0"
+                 aria-label="点击选择名单文件，或将自定义 Excel 拖拽至此区域投放">
+                <span class="rw-drop__icon"><i class="bi bi-cloud-arrow-up" aria-hidden="true"></i></span>
+                <span class="rw-drop__title">点击选择名单文件，或将自定义 Excel 拖拽至此区域投放</span>
+                <span class="rw-drop__hint">仅支持 <b>.xlsx</b> 工作簿，单文件大小 <b>≤ 50MB</b>（默认读取首个工作表）</span>
+            </div>
+            <div class="rw-staged d-none" id="customStaged">
+                <div class="rw-staged__file">
+                    <span class="rw-staged__icon"><i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i></span>
+                    <div class="rw-staged__info">
+                        <div class="rw-staged__row">
+                            <span class="rw-staged__name" id="customStagedName"></span>
+                            <span class="sc-badge sc-badge--success">格式有效</span>
+                        </div>
+                        <div class="rw-staged__meta" id="customStagedMeta"></div>
+                    </div>
+                </div>
+                <div class="rw-staged__ops">
+                    <button type="button" class="sc-btn sc-btn--secondary rw-btn" id="customReselect">重新选择</button>
+                    <button type="button" class="sc-btn sc-btn--text rw-btn rw-btn--danger" id="customRemove">移除</button>
+                </div>
+            </div>
+            <div id="upload-msg" class="rw-hint mt-2"></div>
+        </div>
+
+        <!-- 步2 映射 -->
+        <div id="pane-2" class="d-none">
+            <div id="block-bar"></div>
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+                <select class="form-select form-select-sm" id="profile-select"
+                        style="max-width:260px">
+                    <option value="">— 选择已保存方案 —</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-primary" id="btn-apply-profile">加载方案</button>
+                <span id="profile-msg" class="text-muted" style="font-size:12px"></span>
+            </div>
+            <div class="mapping-row head">
+                <div>源表头</div><div>目标字段</div><div>匹配方式</div>
+            </div>
+            <div id="mapping-list"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-primary" id="btn-save-mapping">保存映射</button>
+            </div>
+        </div>
+
+        <!-- 步3 校验 -->
+        <div id="pane-3" class="d-none">
+            <div id="validate-summary"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary" id="btn-back-mapping">上一步</button>
+                <button class="btn btn-primary" id="btn-execute">开始导入</button>
+                <a class="btn btn-outline-secondary" id="btn-export-failed" href="#" style="display:none">导出失败行</a>
+            </div>
+        </div>
+
+        <!-- 步4 导入 -->
+        <div id="pane-4" class="d-none">
+            <div class="progress mb-3" style="height:22px">
+                <div class="progress-bar" id="progress-bar" style="width:0%">0%</div>
+            </div>
+            <div id="execute-msg" class="text-muted" style="font-size:13px"></div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary" id="btn-view-report" style="display:none">查看结果报告</button>
+                <button class="btn btn-outline-primary" id="btn-save-profile" style="display:none">保存为方案</button>
+            </div>
+        </div>
+

@@ -1,0 +1,332 @@
+/* 090C 环卫工作门面：矩阵看板，仅作用于 .sanitation-dashboard。 */
+
+/* 弹性铺满（根治版）：页签溢出时标签栏会被内部横向滚动条撑高（44 → ~51px），
+   任何 100vh 减固定值的写法都会因此欠账产生纵向滚动条。
+   改为本页主区走 flex 列布局，看板 flex:1 自动填满标签栏以下全部剩余高度，
+   chrome 高度如何变化都不再溢出；内容真实超高时仍保留必要的纵向滚动。
+   :has() 作用域限定：其他页面布局零影响（Chrome/Edge 105+ 支持）。 */
+.app-main:has(.sanitation-dashboard) {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main:has(.sanitation-dashboard) > #contentArea {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.sanitation-dashboard {
+  flex: 1 0 auto;
+  min-height: 0;
+  margin: calc(var(--sp-6) * -1);
+  padding: var(--sp-6);
+  background: var(--c-rail);
+  color: var(--c-ink);
+}
+
+/* 首页铺满口径：与其他功能首页一致，内容横跨整个 .sc-main-inner，
+   不再用 1152px 居中约束（居中会把首页压成二级页面观感）。 */
+.sanitation-dashboard__container {
+  width: 100%;
+  margin: 0;
+}
+
+.sanitation-dashboard__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding-bottom: var(--sp-2);
+}
+
+.sanitation-dashboard__title {
+  margin: 0;
+  color: var(--c-ink);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.sanitation-dashboard__subtitle {
+  margin: 0;
+  color: var(--c-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sanitation-dashboard__section {
+  margin-top: var(--sp-6);
+}
+
+.sanitation-dashboard__stats,
+.sanitation-dashboard__rosters {
+  display: grid;
+  gap: var(--sp-5);
+}
+
+.sanitation-dashboard__stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: var(--sp-6);
+}
+
+.sanitation-dashboard__rosters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sanitation-dashboard__card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--sp-6);
+  background: var(--c-surface);
+  border: var(--card-border);
+  border-radius: var(--r-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+}
+
+.sanitation-dashboard__stat {
+  min-height: 132px;
+  justify-content: center;
+}
+
+.sanitation-dashboard__stat-label {
+  margin-bottom: 10px;
+  color: var(--c-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.sanitation-dashboard__stat-value {
+  color: var(--c-ink);
+  font-family: var(--ff-num);
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.sanitation-dashboard__stat-value--success {
+  color: var(--c-cat-1);
+}
+
+.sanitation-dashboard__roster-card {
+  min-height: 242px;
+  transition: box-shadow 0.2s ease;
+}
+
+.sanitation-dashboard__roster-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+}
+
+.sanitation-dashboard__roster-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.sanitation-dashboard__roster-ident {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 10px;
+}
+
+.sanitation-dashboard__roster-icon {
+  display: inline-flex;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--c-ink-3);
+  background: var(--c-rail);
+  border-radius: var(--r-ctrl);
+  font-size: 20px;
+}
+
+.sanitation-dashboard__roster-name {
+  min-width: 0;
+  margin: 0;
+  color: var(--c-ink);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.sanitation-dashboard__roster-code {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--c-faint);
+  font-family: var(--ff-num);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sanitation-dashboard__info {
+  flex: 0 0 auto;
+  padding: 0;
+  color: var(--c-faint);
+  background: transparent;
+  border: 0;
+  cursor: help;
+  font-size: 16px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.sanitation-dashboard__info:hover,
+.sanitation-dashboard__info:focus-visible {
+  color: var(--c-ink);
+}
+
+.sanitation-dashboard__roster-desc {
+  min-height: 40px;
+  margin: 0 0 var(--sp-6);
+  color: var(--c-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.sanitation-dashboard__roster-action {
+  margin-top: auto;
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--c-line-3);
+}
+
+.sanitation-dashboard__enter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 40px;
+  gap: 6px;
+  padding: 10px var(--sp-3);
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
+  border: 1px solid var(--btn-primary-bg);
+  border-radius: var(--r-ctrl);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-decoration: none;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sanitation-dashboard__enter:hover,
+.sanitation-dashboard__enter:focus-visible {
+  color: var(--btn-primary-fg);
+  background: var(--c-ink);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* 铺满修正：原桌面端规则把负 margin/padding 放大到 --sp-8(32px)，
+   而父级 .sc-main-inner 的 padding 恒为 --sp-6(24px)，四周各溢出 8px，
+   直接产生横向 + 纵向滚动条。此处不再覆盖，基础规则等量抵消即可铺满且不溢出。
+   纵向铺满已由顶部 flex 弹性方案接管（见文件头注释）。 */
+
+@media (max-width: 767.98px) {
+  .sanitation-dashboard__stats,
+  .sanitation-dashboard__rosters {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 矮窗口（高度 ≤700px）：压缩卡片与区块间距，保证首页零纵向滚动。
+   仅收紧尺寸，不改配色/圆角/字体层级，维持与其他首页一致的视觉风格。 */
+@media (max-height: 700px) {
+  .sanitation-dashboard {
+    padding: var(--sp-4);
+  }  .sanitation-dashboard__header {
+    gap: 2px;
+    padding-bottom: var(--sp-1);
+  }
+  .sanitation-dashboard__title {
+    font-size: 22px;
+    line-height: 1.25;
+  }
+  .sanitation-dashboard__subtitle {
+    font-size: 13px;
+  }
+  .sanitation-dashboard__section,
+  .sanitation-dashboard__stats {
+    margin-top: var(--sp-3);
+  }
+  .sanitation-dashboard__stats,
+  .sanitation-dashboard__rosters {
+    gap: var(--sp-3);
+  }
+  .sanitation-dashboard__card {
+    padding: var(--sp-4);
+  }
+  .sanitation-dashboard__stat {
+    min-height: 96px;
+  }
+  .sanitation-dashboard__stat-label {
+    margin-bottom: 6px;
+  }
+  .sanitation-dashboard__stat-value {
+    font-size: 28px;
+  }
+  .sanitation-dashboard__roster-card {
+    min-height: 200px;
+  }
+  .sanitation-dashboard__roster-head {
+    margin-bottom: var(--sp-2);
+  }
+  .sanitation-dashboard__roster-icon {
+    flex-basis: 32px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+  .sanitation-dashboard__roster-desc {
+    min-height: 0;
+    margin-bottom: var(--sp-3);
+  }
+  .sanitation-dashboard__roster-action {
+    padding-top: var(--sp-3);
+  }
+  .sanitation-dashboard__enter {
+    min-height: 36px;
+    padding: 8px var(--sp-3);
+  }
+}
+
+/* 极矮窗口（高度 ≤560px，如半屏/小笔记本）：进一步收紧至内容物理下限。 */
+@media (max-height: 560px) {
+  .sanitation-dashboard {
+    padding: var(--sp-3);
+  }
+  .sanitation-dashboard__stats,
+  .sanitation-dashboard__rosters {
+    gap: var(--sp-2);
+  }
+  .sanitation-dashboard__section,
+  .sanitation-dashboard__stats {
+    margin-top: var(--sp-2);
+  }
+  .sanitation-dashboard__stat {
+    min-height: 76px;
+  }
+  .sanitation-dashboard__roster-card {
+    min-height: 150px;
+  }
+  .sanitation-dashboard__roster-desc {
+    margin-bottom: var(--sp-2);
+  }
+  .sanitation-dashboard__roster-icon {
+    flex-basis: 28px;
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+  .sanitation-dashboard__enter {
+    min-height: 32px;
+    padding: 6px var(--sp-2);
+  }
+}

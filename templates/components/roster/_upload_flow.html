@@ -1,0 +1,48 @@
+{# _upload_flow.html — 台账「上传解析 + 字段确认」骨架（099）。
+   由 roster_bootstrap.html（未建表引导）与 roster_upload.html（独立上传页）共用：
+   宿主负责注入 window.__ST_ROSTER__（mode=bootstrap|upload, code, meta?, urls）
+   并在 extra_js 引入 static/js/pages/roster.js。上传成功后就地渲染确认表单。 #}
+<section class="sc-card" id="uploadCard">
+    <div class="sc-field sc-field--top">
+        <label class="sc-field__label" for="rosterFile">台账 Excel 文件<span class="sc-field__required">*</span></label>
+        <input type="file" class="sc-input" id="rosterFile" name="file" accept=".xlsx,.xls,.xlsb,.csv,.xlsm" data-sc-dropzone data-dz-hint="支持 .xlsx / .xls / .xlsb / .csv / .xlsm 台账文件 · 点击或拖拽">
+        <p class="sc-field__hint">支持 .xlsx / .xlsm / .csv。上传后系统解析表头与抽样数据，字段需人工确认后才建表。</p>
+    </div>
+    <button type="button" class="sc-btn sc-btn--primary" id="uploadBtn"><i class="bi bi-upload"></i> 上传并解析</button>
+</section>
+
+<section class="sc-card" id="confirmCard" hidden>
+    <div class="sc-toolbar" style="align-items:flex-end">
+        <div class="sc-field" style="min-width:280px">
+            <label class="sc-field__label" for="tableName">台账名称<span class="sc-field__required">*</span></label>
+            <input type="text" class="sc-input" id="tableName" maxlength="100" placeholder="默认取台账信息中的表名，可修改">
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;padding-bottom:9px">
+            <input type="checkbox" class="form-check-input" id="skipErrorRows"> 解析失败的行跳过不导入
+        </label>
+    </div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="fieldTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:72px">跳过此列</th>
+                    <th class="sc-table__th">列名</th>
+                    <th class="sc-table__th" style="width:90px">字段标识</th>
+                    <th class="sc-table__th" style="width:110px">类型</th>
+                    <th class="sc-table__th" style="width:72px">必填</th>
+                    <th class="sc-table__th" style="width:160px">敏感级</th>
+                    <th class="sc-table__th" style="width:190px">字典分类（枚举）</th>
+                </tr>
+            </thead>
+            <tbody id="fieldRows"></tbody>
+        </table>
+    </div>
+
+    <p class="sc-field__hint" id="sampleStat" style="margin:14px 0 8px"></p>
+    <div id="sampleWrap"></div>
+
+    <div class="sc-toolbar" style="justify-content:flex-end">
+        <button type="button" class="sc-btn sc-btn--primary" id="createBtn"><i class="bi bi-check2-circle"></i> 确认建表并导入</button>
+    </div>
+</section>

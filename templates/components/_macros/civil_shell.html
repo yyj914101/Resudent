@@ -1,0 +1,55 @@
+{# 民政对象页壳（059）—— 页头 + 模块胶囊 + 关爱对象 3 子类胶囊
+   胶囊配置真源在 module_tabs.html（065），本文件只做薄封装，不复制 tabs 列表。
+   用法：
+     {% call page_head('低保人员查询', '民政对象 · 低保救助') %} …按钮… {% endcall %}
+     {{ civil_tabs('dibao') }}
+     {{ care_tabs('special') }}
+   样式：static/css/pages/civil_pages.css（全局层以外，页面 extra_css 引入，SPA 会注入）。 #}
+
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{% macro page_head(title, subtitle='') %}
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">{{ title }}</h2>
+    {% if subtitle %}<p class="sc-page-head__meta">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if caller is defined %}
+  <div class="sc-page-head__actions">{{ caller() }}</div>
+  {% endif %}
+</header>
+{% endmacro %}
+
+{% macro civil_tabs(active_key) %}
+{{ module_tabs('civil', active_key) }}
+{% endmacro %}
+
+{% macro care_tabs(active_key) %}
+{% set items = [
+  {'key': 'special', 'label': '特困供养', 'endpoint': 'care.special_list'},
+  {'key': 'child', 'label': '事实无人抚养儿童', 'endpoint': 'care.child_list'},
+  {'key': 'target', 'label': '一老一小关怀台账', 'endpoint': 'care.target_list'}
+] %}
+<nav class="sc-subchips" aria-label="关爱对象分类">
+  {%- for it in items %}
+  <a class="sc-subchip{{ ' is-active' if it['key'] == active_key }}" href="{{ url_for(it['endpoint']) }}#tab={{ it['key'] }}">{{ it['label'] }}</a>
+  {%- endfor %}
+</nav>
+{% endmacro %}
+
+{% macro col_picker(key, default_cols='') %}
+<div class="sc-table-toolbar">
+  <span class="sc-col-count" data-col-count></span>
+  <div class="sc-col-picker" data-col-picker-key="{{ key }}" data-default-cols="{{ default_cols }}"></div>
+</div>
+{% endmacro %}
+
+{# 074 RC-07：工具栏尾部「重置」+ 右侧「共 N 人」。
+   重置行为由 civil_pages.js 统一处理（清空工具条内 input/select 后点击查询），
+   计数由页面 #pageStat 的 total 同步过来 —— 页面不必各自实现。
+   R-074-01：不带图标（lucide sprite 无重置语义图标；bi-* 受 handoff §五.1 基线
+   只减不增约束不得新增），对齐 v3-01 纯文字白底按钮形态。 #}
+{% macro toolbar_actions() %}
+<button type="button" class="sc-btn sc-btn--secondary" data-toolbar-reset>重置</button>
+<span class="sc-toolbar__count" data-toolbar-count></span>
+{% endmacro %}

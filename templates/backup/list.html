@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}数据库备份 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}数据库安全管理{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head %}
+<div class="sc-settings-page" data-sc-settings="list">
+{{ settings_head('数据库安全', '备份、恢复与校验') }}
+
+<div class="sc-grid">
+    <div class="sc-grid__side">
+        <section class="sc-card">
+            <header class="sc-card__header"><h3 class="sc-card__title">操作</h3></header>
+            <div class="sc-card__body">
+                <button type="button" class="sc-btn sc-btn--primary" style="width:100%;margin-bottom:var(--sp-2)" onclick="createBackup()">立即备份</button>
+                <button type="button" class="sc-btn sc-btn--danger" style="width:100%;margin-bottom:var(--sp-2)" onclick="openClearDbModal()">一键清空数据</button>
+                <p class="text-muted small">清空后不可恢复，执行时需输入登录密码二次确认</p>
+                <div class="sc-modal__divider" style="margin:var(--sp-3) 0"></div>
+
+                <h3 class="sc-card__title" style="font-size:14px;margin-bottom:var(--sp-1)">外来备份恢复</h3>
+                <p class="text-muted small">选择 .db 备份文件直接恢复数据库</p>
+                <input type="file" class="sc-input" id="restoreFile" accept=".db" data-sc-dropzone data-dz-hint="支持 .db 备份文件 · 点击或拖拽上传" style="width:100%;margin-bottom:var(--sp-2)">
+                <button type="button" class="sc-btn sc-btn--secondary" style="width:100%;margin-bottom:var(--sp-2)" onclick="uploadAndRestore()">上传并恢复</button>
+                <div class="sc-modal__divider" style="margin:var(--sp-3) 0"></div>
+
+                <h3 class="sc-card__title" style="font-size:14px;margin-bottom:var(--sp-2)">自动备份设置</h3>
+                <form id="settingsForm">
+                    <div class="form-check form-switch" style="margin-bottom:var(--sp-2)">
+                        <input class="form-check-input" type="checkbox" name="enable_auto" id="inputAutoBackup" value="1">
+                        <label class="form-check-label" for="inputAutoBackup">启用自动备份</label>
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-2)">
+                        <label class="sc-field__label" for="inputBackupTime">备份时间</label>
+                        <input type="time" class="sc-input" name="backup_time" id="inputBackupTime">
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-2)">
+                        <label class="sc-field__label" for="inputRetentionDays">保留天数</label>
+                        <input type="number" class="sc-input" name="retention_days" id="inputRetentionDays" min="1" max="365">
+                    </div>
+                    <button type="submit" class="sc-btn sc-btn--primary" style="width:100%">保存设置</button>
+                </form>
+            </div>
+        </section>
+    </div>
+
+    <div class="sc-grid__main">
+        <section class="sc-card">
+            <header class="sc-card__header d-flex justify-content-between align-items-center">
+                <h3 class="sc-card__title">备份文件列表</h3>
+                <span class="sc-card__meta" id="backupMeta">—</span>
+            </header>
+            <div class="sc-table-wrap">
+                <table class="sc-table">
+                    <thead>
+                        <tr>
+                            <th class="sc-table__th">文件名</th>
+                            <th class="sc-table__th" style="width:100px">大小</th>
+                            <th class="sc-table__th" style="width:170px">创建时间</th>
+                            <th class="sc-table__th" style="width:190px">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="backupBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</div>
+
+{# 危险操作弹窗（spec-03：唯一 danger 档；登录密码二次确认） #}
+<div class="modal fade" id="clearDbModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--danger" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">一键清空数据（危险）</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <div class="alert alert-warning py-2 small mb-3">
+                    此操作将<strong>永久删除</strong>所有业务数据（居民 / 民政 / 党建等），用户、角色、字典、系统设置等配置数据保留不变。<br>
+                    操作前系统会自动创建一份当前数据库备份。
+                </div>
+                <div class="sc-field">
+                    <label class="sc-field__label" for="clearDbPassword">登录密码</label>
+                    <input type="password" class="sc-input" id="clearDbPassword" placeholder="请输入当前登录密码">
+                </div>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnClearDbConfirm" style="background:var(--c-danger);border-color:var(--c-danger)">确认清空</button>
+            </footer>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/backup_list.js') }}"></script>
+{% endblock %}

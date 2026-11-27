@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}待办提醒{% endblock %}
+
+{# 062 P2 v4.0：标题由页头（sc-page-head）承担，顶栏标题留空（同 055/组织架构口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">待办提醒</h2>
+        {# 075 RC-19：副标题对齐样图 v7-28「共 N 条 · 待办 M 条」 #}
+        <p class="sc-page-head__meta">共 {{ head_total or 0 }} 条 · 待办 {{ head_current or 0 }} 条</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button class="sc-btn sc-btn--secondary" type="button" onclick="exportTodo()"><i class="bi bi-download"></i> 导出</button>
+        <button class="sc-btn sc-btn--primary" id="btnAddTodo" type="button"><i class="bi bi-plus-circle"></i> 新增待办</button>
+    </div>
+</header>
+
+{# 字段真源：docs/design/照单施工-6页字段清单-2026-10-28.md §三（8 列 + 批量条 + 弹窗 4 字段） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <select class="sc-select" id="filterStatus" style="width:120px">
+            <option value="">全部</option><option value="todo">待办</option><option value="done">已完成</option>
+        </select>
+        <input type="text" class="sc-input" id="searchKeyword" placeholder="搜索标题 / 内容" style="width:200px">
+    </div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:40px"><input type="checkbox" id="checkAll"></th>
+                    <th class="sc-table__th">标题</th>
+                    <th class="sc-table__th">内容</th>
+                    <th class="sc-table__th" style="width:110px">类型</th>
+                    <th class="sc-table__th" style="width:90px">状态</th>
+                    <th class="sc-table__th" style="width:150px">完成人</th>
+                    <th class="sc-table__th" style="width:140px">创建时间</th>
+                    <th class="sc-table__th" style="width:110px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tb"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <div class="sc-row-actions">
+            <span class="sc-pagination__stat" id="pageStat"></span>
+            <span class="sc-pagination__stat" id="selStat">已选 0 项</span>
+            <button type="button" class="sc-btn sc-btn--text" onclick="batchDone()">批量完成</button>
+            <button type="button" class="sc-btn sc-btn--text is-danger" onclick="batchDelete()">批量删除</button>
+        </div>
+        <ul class="sc-pagination__pager" id="pg"></ul>
+    </div>
+</section>
+
+{# 新增弹窗（§三：4 字段；无编辑）。外层 .modal.fade 供 BS 5 JS 驱动，内层 sc-modal。 #}
+<div class="modal fade" id="todoFormModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="todoForm" novalidate>
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">新增待办事项</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_title">标题<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="title" id="f_title" maxlength="100" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_remind_time">提醒时间</label>
+                        <input type="datetime-local" class="sc-input" name="remind_time" id="f_remind_time">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="f_todo_type">类型</label>
+                        <input type="text" class="sc-input" name="todo_type" id="f_todo_type" list="todoTypeOptions" maxlength="50" placeholder="可选择或手动输入">
+                        <datalist id="todoTypeOptions"></datalist>
+                    </div>
+                    <div class="sc-field sc-field--top">
+                        <label class="sc-field__label" for="f_content">内容</label>
+                        <textarea class="sc-textarea" name="content" id="f_content" rows="4" maxlength="1000"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="sc-btn sc-btn--primary" id="btnSaveTodo"><i class="bi bi-check-lg"></i> 保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/todo_list.js') }}"></script>
+{% endblock %}

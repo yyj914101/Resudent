@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}综合安全检查{% endblock %}
+{# 087：标题由页头承担，顶栏标题留空（062 口径） #}
+{% block page_title %}{% endblock %}
+{% from 'components/_macros/icon.html' import icon %}
+{% block content %}
+
+{# 综合安全检查（B-10）：列表 + 录入 + 「检查—隐患—整改」闭环操作台。
+   壳层走 spec-02 通用列表页型（077 回灌口径：sc-page-head + sc-card 单卡 + sc-toolbar + sc-table + sc-pagination + sc-modal）。 #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">综合安全检查</h2>
+        <p class="sc-page-head__meta">安全工作 · 检查—隐患—整改闭环记录（B-10）</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="{{ url_for('safety.emergency') }}">
+            返回应急管理
+        </a>
+        <button type="button" class="sc-btn sc-btn--primary" onclick="openCheckModal()">
+            检查登记
+        </button>
+    </div>
+</header>
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <input type="text" class="sc-input" id="searchTitle" placeholder="按检查名称筛选" style="width:200px">
+        <button type="button" class="sc-btn sc-btn--secondary" onclick="loadChecks(1)">{{ icon('search', 16) }} 查询</button>
+        <span class="sc-toolbar__count" id="pageStat"></span>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead>
+                <tr>
+                    <th class="sc-table__th" style="width:50px">序号</th>
+                    <th class="sc-table__th">检查名称</th>
+                    <th class="sc-table__th">日期</th>
+                    <th class="sc-table__th">类型</th>
+                    <th class="sc-table__th">范围/地点</th>
+                    <th class="sc-table__th">检查人</th>
+                    <th class="sc-table__th" style="width:120px">隐患</th>
+                    <th class="sc-table__th" style="width:90px">状态</th>
+                    <th class="sc-table__th" style="width:150px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat2"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# ── 检查单录入/编辑弹窗（基本信息；隐患行在闭环操作台追加） ── #}
+<div class="modal fade" id="checkModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="checkForm">
+                <input type="hidden" name="id" id="checkId" value="0">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="checkModalTitle">检查登记</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                        <label class="sc-field__label">检查名称<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="title" id="fTitle" maxlength="120" required>
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                        <label class="sc-field__label">检查日期<span class="sc-field__required">*</span></label>
+                        <input type="date" class="sc-input" name="check_date" id="fDate" required>
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                        <label class="sc-field__label">检查类型</label>
+                        <select class="sc-select" name="check_type" id="fType">
+                            <option value="">请选择</option>
+                            {% for t in check_types %}
+                            <option value="{{ t.value }}">{{ t.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                        <label class="sc-field__label">范围/地点</label>
+                        <input type="text" class="sc-input" name="location" id="fLocation" maxlength="200">
+                    </div>
+                    <div class="sc-field" style="margin-bottom:var(--sp-3)">
+                        <label class="sc-field__label">检查人/单位</label>
+                        <input type="text" class="sc-input" name="checker" id="fChecker" maxlength="60">
+                    </div>
+                    <div class="sc-field sc-field--top" style="margin-bottom:0">
+                        <label class="sc-field__label">情况综述</label>
+                        <textarea class="sc-textarea" name="remark" id="fRemark" maxlength="500" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary">保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ── 闭环操作台弹窗：检查单详情 + 隐患行整改状态流转 ── #}
+<div class="modal fade" id="workModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">闭环操作台 · <span id="workCheckTitle"></span>
+                    <button type="button" class="sc-btn sc-btn--text" id="workCheckEditBtn" data-edit="" hidden title="编辑检查单基本信息"><i class="bi bi-pencil-square"></i> 编辑</button>
+                </h3>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" style="max-height:60vh;overflow-y:auto">
+                <div id="workHazardList"></div>
+                <div class="sc-modal__divider" style="margin:var(--sp-3) 0"></div>
+                {# 新增隐患行 #}
+                <form id="hazardForm">
+                    <h4 class="sc-card__title" style="font-size:14px;margin-bottom:var(--sp-2)">登记隐患</h4>
+                    <div class="sc-field" style="margin-bottom:var(--sp-2)">
+                        <label class="sc-field__label">隐患描述<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="description" maxlength="500" required>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2" style="margin-bottom:var(--sp-2)">
+                        <div class="sc-field">
+                            <label class="sc-field__label">等级</label>
+                            <select class="sc-select" name="level" style="width:110px">
+                                {% for lv in hazard_levels %}
+                                <option value="{{ lv.value }}">{{ lv.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="sc-field">
+                            <label class="sc-field__label">位置</label>
+                            <input type="text" class="sc-input" name="location" maxlength="200" style="width:170px">
+                        </div>
+                        <div class="sc-field">
+                            <label class="sc-field__label">整改责任人</label>
+                            <input type="text" class="sc-input" name="rectify_owner" maxlength="60" style="width:150px">
+                        </div>
+                        <div class="sc-field">
+                            <label class="sc-field__label">整改期限</label>
+                            <input type="date" class="sc-input" name="rectify_deadline" style="width:160px">
+                        </div>
+                    </div>
+                    <button type="submit" class="sc-btn sc-btn--secondary">登记隐患</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ── 整改上报 / 复核弹窗（按动作切标题与字段） ── #}
+<div class="modal fade" id="flowModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="flowForm">
+                <input type="hidden" name="hazard_id" id="flowHazardId">
+                <input type="hidden" name="action" id="flowAction">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="flowTitle">整改上报</h3>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <p class="sc-card__subtitle" id="flowHazardDesc" style="margin-bottom:var(--sp-3)"></p>
+                    <div class="sc-field sc-field--top">
+                        <label class="sc-field__label"><span id="flowNoteLabel">整改情况</span><span class="sc-field__required">*</span></label>
+                        <textarea class="sc-textarea" name="note" id="flowNote" rows="3" required></textarea>
+                        <p class="sc-field__hint" id="flowHint"></p>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="sc-btn sc-btn--primary" id="flowSubmit">提交</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/safety_checks.js') }}"></script>
+{% endblock %}

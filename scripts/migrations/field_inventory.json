@@ -1,0 +1,117 @@
+{
+  "_comment": "敏感字段盘点清单（T09，机器可复核准）。13 表 33 字段（2026-10-23 移除 subsidies/employment/risk_checks：地力补贴台账/务工信息/风险排查模块下线）。id_card 类 16 + phone 类 13 + bank_card 类 4 = 33。",
+  "tables": [
+    {
+      "table": "residents",
+      "model": "Resident",
+      "fields": [
+        "id_card",
+        "phone",
+        "bank_card"
+      ],
+      "id_card_prefix_hash": true
+    },
+    {
+      "table": "dibao",
+      "model": "Dibao",
+      "fields": [
+        "household_id_card",
+        "id_card",
+        "account_holder_id_card",
+        "bank_card"
+      ]
+    },
+    {
+      "table": "disabled_persons",
+      "model": "Disabled",
+      "fields": [
+        "id_card",
+        "phone",
+        "guardian_phone"
+      ]
+    },
+    {
+      "table": "care_targets",
+      "model": "CareTarget",
+      "fields": [
+        "guardian_phone"
+      ]
+    },
+    {
+      "table": "special_support",
+      "model": "SpecialSupport",
+      "fields": [
+        "household_id_card",
+        "bank_card",
+        "account_holder_id_card",
+        "phone"
+      ]
+    },
+    {
+      "table": "veteran",
+      "model": "Veteran",
+      "fields": [
+        "id_card",
+        "phone",
+        "relative_phone"
+      ]
+    },
+    {
+      "table": "death_reports",
+      "model": "DeathReport",
+      "fields": [
+        "id_card"
+      ]
+    },
+    {
+      "table": "medical_insurance_payments",
+      "model": "MedicalInsurance",
+      "fields": [
+        "id_card",
+        "contact_phone",
+        "mobile_phone"
+      ]
+    },
+    {
+      "table": "party_members",
+      "model": "PartyMember",
+      "fields": [
+        "id_card",
+        "phone"
+      ]
+    },
+    {
+      "table": "organization_members",
+      "model": "OrganizationMember",
+      "fields": [
+        "id_card",
+        "phone"
+      ]
+    },
+    {
+      "table": "mediations",
+      "model": "Mediation",
+      "fields": [
+        "applicant_id_card",
+        "respondent_id_card"
+      ]
+    },
+    {
+      "table": "unsupported_children",
+      "model": "UnsupportedChild",
+      "fields": [
+        "id_card",
+        "phone"
+      ]
+    },
+    {
+      "table": "welfare_jobs",
+      "model": "WelfareJob",
+      "fields": [
+        "id_card",
+        "phone",
+        "bank_info"
+      ]
+    }
+  ]
+}

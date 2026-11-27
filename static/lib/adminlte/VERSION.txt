@@ -1,0 +1,24 @@
+AdminLTE v4.8.1 — vendored CSS 留痕
+=====================================
+
+文件      : static/lib/adminlte/css/adminlte.min.css
+版本      : 4.8.1（对齐 ADR-009 冻结口径）
+上游      : https://github.com/ColorlibHQ/AdminLTE （MIT）
+下载源    : https://cdn.jsdelivr.net/npm/admin-lte@4.8.1/dist/css/adminlte.min.css
+下载日期  : 2026-09-16
+字节数    : 311649
+Bootstrap : peer ^5.3.8（与 ADR-012 已升级的 5.3.8 一致）
+
+校验值
+------
+SHA-256   : c93b52a55bccf3b17f2f0071294cc1716c0b963ec29a8836f04d79badd3c56a3
+SHA-384   : P5wSHOAz9Cd1mpoM2jTnBkde1g500iwvOWeAMCTbZRI1c674PhNYqtJvn94T4J40
+SRI 字符串: sha384-P5wSHOAz9Cd1mpoM2jTnBkde1g500iwvOWeAMCTbZRI1c674PhNYqtJvn94T4J40
+
+范围说明
+--------
+- 仅 vendored 本 CSS 文件；**不引入 dist/js/adminlte.min.js**（ADR-011：v4 已去 jQuery、
+  纯 vanilla JS，与现有 jQuery 伪 SPA 双重绑定冲突）。
+- 侧栏收起/展开由项目自身 `static/js/app.js` 的 `toggleSidebar()` 切换 `body.sidebar-open`
+  类实现（AdminLTE CSS 自带的 off-canvas 规则接管），不依赖其 JS。
+- 校验方法：`sha256sum static/lib/adminlte/css/adminlte.min.css`

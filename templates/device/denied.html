@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设备未准入</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}">
+<style>
+:root{--brand:#1877C9;--bg:#F4F7FA;--muted:#6c757d}
+*{box-sizing:border-box}html,body{margin:0;height:100%}body{display:grid;place-items:center;background:var(--bg);color:#212529;font-family:"Microsoft YaHei",Arial,sans-serif}
+.box{display:grid;justify-items:center;gap:14px;padding:44px 52px;background:#fff;border:1px solid #e5e9ef;border-radius:14px;box-shadow:0 6px 24px rgba(24,119,201,.08);text-align:center;max-width:460px}
+.icon{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:rgba(24,119,201,.1);color:var(--brand);font-size:30px}
+h1{margin:0;font-size:20px;font-weight:600}
+p{margin:0;color:var(--muted);font-size:14px;line-height:1.7}
+code{background:#f1f4f8;padding:2px 6px;border-radius:4px;color:var(--brand);font-size:13px}
+</style>
+</head>
+<body>
+<div class="box">
+    <div class="icon"><i class="bi bi-shield-lock"></i></div>
+    <h1>本设备尚未通过准入</h1>
+    <p>这台设备（<code>{{ remote or '未知地址' }}</code>）不在白名单内。</p>
+    <p>请在该设备上运行「村务综合管理系统 局域网客户端」完成登记，<br>并请管理员在系统内「系统管理 → 设备管理」中批准后重试。</p>
+</div>
+</body>
+</html>

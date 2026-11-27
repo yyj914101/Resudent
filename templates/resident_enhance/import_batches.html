@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}导入批次 - 村级村务综合管理系统{% endblock %}
+
+{# 062 P2 v4.0：标题由页头（sc-page-head）承担，顶栏标题留空（同 055/组织架构口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{# 2026-11-16：tools 模块胶囊撤除——导入批次已升为侧栏「数据管理」组独立入口（与台账建表并列），
+   不再依附证明开具页；页面本身与数据端点不变。 #}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">导入批次</h2>
+        <p class="sc-page-head__meta">仅展示最近批次，按创建时间倒序。</p>
+    </div>
+</header>
+
+{# 字段真源：docs/design/照单施工-6页字段清单-2026-10-28.md §四（12 列 + 4 项筛选 + 无弹窗） #}
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm" onsubmit="return false;">
+        <select class="sc-select" name="source_module" style="width:130px">
+            <option value="">全部模块</option>
+            <option value="resident">居民管理</option>
+            <option value="softtable">软表台账</option>
+            <option value="election">选举管理</option>
+            <option value="subsidy">补贴登记</option>
+            <option value="medical">医保参保</option>
+            <option value="pension">农保/养老保险</option>
+            <option value="civil">民政对象</option>
+        </select>
+        <select class="sc-select" name="status" style="width:130px">
+            <option value="">全部状态</option>
+            <option value="pending">待映射</option>
+            <option value="mapped">已映射</option>
+            <option value="running">导入中</option>
+            <option value="done">完成</option>
+            <option value="failed">失败</option>
+            <option value="blocked">已阻断</option>
+            <option value="aborted">已中止</option>
+        </select>
+        <select class="sc-select" name="mode" style="width:120px">
+            <option value="">全部模式</option>
+            <option value="template">模板</option>
+            <option value="custom">自定义</option>
+        </select>
+        <input type="date" class="sc-input" name="date_from" title="开始日期" style="width:150px">
+        <input type="date" class="sc-input" name="date_to" title="结束日期" style="width:150px">
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 筛选</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="dataTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:160px">批次号</th>
+                    <th class="sc-table__th">源文件</th>
+                    <th class="sc-table__th" style="width:80px">模式</th>
+                    <th class="sc-table__th" style="width:90px">模板版本</th>
+                    <th class="sc-table__th" style="width:80px">状态</th>
+                    <th class="sc-table__th" style="width:70px">新增</th>
+                    <th class="sc-table__th" style="width:70px">更新</th>
+                    <th class="sc-table__th" style="width:70px">跳过</th>
+                    <th class="sc-table__th" style="width:70px">失败</th>
+                    <th class="sc-table__th" style="width:90px">操作人</th>
+                    <th class="sc-table__th" style="width:150px">创建时间</th>
+                    <th class="sc-table__th" style="width:130px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/import_batches.js') }}"></script>
+{% endblock %}

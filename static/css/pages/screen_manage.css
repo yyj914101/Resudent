@@ -1,0 +1,278 @@
+/* screen_manage.css — 大屏管理页（ADR-022 v4.0 重构，零裸色值） */
+.sm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+.sm-kpi {
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.sm-kpi__label {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-bottom: 3px;
+}
+.sm-kpi__val {
+  font-family: var(--ff-num);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+.sm-kpi__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-rail);
+  color: var(--c-ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex: none;
+}
+
+/* —— 主体两栏 + 底部通栏 —— */
+.sm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.38fr) minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+}
+.sm-full {
+  grid-column: 1 / -1;
+}
+
+/* —— 左侧配置表单（垂直标签、清晰分区，告别挤压错位） —— */
+.sm-switch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 12px 14px;
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  border: 1px solid var(--c-line-2);
+}
+.sm-switch-bar__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+.sm-switch-bar__sub {
+  font-size: 12px;
+  color: var(--c-muted);
+  margin-top: 2px;
+}
+
+.sm-form-section {
+  margin-bottom: var(--sp-4);
+}
+.sm-form-section__title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-muted);
+  letter-spacing: 0.03em;
+  margin-bottom: var(--sp-2);
+}
+.sm-row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.sm-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+.sm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.sm-field__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-ink-3);
+}
+.sm-input-unit {
+  position: relative;
+}
+.sm-input-unit .sc-input {
+  padding-right: 34px;
+}
+.sm-input-unit__suffix {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: var(--c-muted);
+  pointer-events: none;
+}
+
+.sm-privacy-box {
+  padding: 11px 14px;
+  border-radius: var(--r-ctrl);
+  background: var(--c-side);
+  border: 1px solid var(--c-line-2);
+  margin-bottom: var(--sp-4);
+}
+.sm-privacy-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--c-muted);
+  line-height: 1.5;
+}
+.sm-form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+/* —— 右侧：实时迷你大屏预览 + 新增终端 —— */
+.sm-side-stack {
+  display: grid;
+  gap: var(--sp-4);
+}
+.sm-preview-screen {
+  border-radius: var(--r-ctrl);
+  background: var(--c-ink-2);
+  color: var(--c-surface);
+  padding: 16px;
+  border: 1px solid var(--c-ink-3);
+}
+.sm-preview-screen__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.sm-preview-screen__village {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.72);
+}
+.sm-preview-screen__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--c-surface);
+}
+.sm-preview-screen__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--r-full);
+  background: var(--c-cat-1);
+}
+.sm-preview-screen__dot.is-off {
+  background: var(--c-faint);
+}
+.sm-preview-screen__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--c-surface);
+  margin-bottom: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sm-preview-screen__bars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.sm-preview-tile {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.sm-preview-tile__k {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.sm-preview-tile__v {
+  font-family: var(--ff-num);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-surface);
+  margin-top: 2px;
+}
+.sm-add-row {
+  display: flex;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-3);
+}
+.sm-tip-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--c-muted);
+  line-height: 1.7;
+}
+
+/* —— 终端列表凭证与操作 —— */
+.sm-token-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sm-token-code {
+  font-family: var(--ff-num);
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: var(--r-badge);
+  background: var(--c-rail);
+  border: 1px solid var(--c-line-3);
+  color: var(--c-ink-2);
+}
+.sm-copy-btn {
+  border: 1px solid var(--c-line-3);
+  background: var(--c-surface);
+  color: var(--c-ink-3);
+  border-radius: var(--r-badge);
+  font-size: 11.5px;
+  padding: 2px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sm-copy-btn:hover {
+  background: var(--c-hover);
+  color: var(--c-ink);
+}
+.sm-ops-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sm-ops-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--c-line-3);
+  margin: 0 2px;
+}
+
+@media (max-width: 1024px) {
+  .sm-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 767.98px) {
+  .sm-kpi-grid { grid-template-columns: 1fr; }
+  .sm-row-2, .sm-row-3 { grid-template-columns: 1fr; }
+}

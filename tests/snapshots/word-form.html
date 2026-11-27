@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- P2-1 整改：CSRF token（前端 AJAX 与表单自动携带，配合服务端 before_request 校验） -->
+    <meta name="csrf-token" content="__CSRF__">
+    <title>报表审批 - 村级村务综合管理系统</title>
+    <link href="/static/lib/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE v4.8.1 布局打底（MIT；版本/SRI 见 static/lib/adminlte/VERSION.txt）——须在 app.css 之前，令牌覆写才生效 -->
+    <link href="/static/lib/adminlte/css/adminlte.min.css" rel="stylesheet">
+    <!-- bootstrap-icons 保留：图标一期只换壳层，业务页 142 个图标仍依赖本字体（ADR-022 分期） -->
+    <link href="/static/lib/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- 三层令牌（003 / 056 重写）：须在 adminlte 之后、app.css 之前，app.css 的 var() 引用才生效 -->
+    <link href="/static/css/tokens.css" rel="stylesheet">
+    <link href="/static/css/app.css" rel="stylesheet">
+    <!-- 壳层样式（057a）：须在 app.css 之后覆盖 AdminLTE/app.css 的壳层规则 -->
+    <link href="/static/css/shell.css" rel="stylesheet">
+    <!-- 通用组件层（065）：分组胶囊等跨页组件，全局引入以兼容 SPA 导航 -->
+    <link href="/static/css/components.css" rel="stylesheet">
+    <!-- 壳层细节（011：原 base.html 内联样式块外移；须在 app.css 之后保持层叠优先级） -->
+    <link href="/static/css/skeleton.css" rel="stylesheet">
+    <!-- driver.js 离线操作指引（MIT；本地放入 static/lib/driver.css 与 driver.js.iife.js 即生效） -->
+    <link href="/static/lib/driver.css" rel="stylesheet">
+    <link href="/static/css/tour.css" rel="stylesheet">
+    
+<link href="/static/css/pages/civil_pages.css" rel="stylesheet">
+<link href="/static/css/pages/workflow_shared.css" rel="stylesheet">
+
+
+<script src="/static/js/nav_labels_boot.js"></script>
+<script>
+/* 011：权限配置注入（由 Jinja 渲染一次，spa.js 读取）。
+   置于 <head>：SPA 伪导航只替换 #contentArea，不会重跑本块。 */
+window.__SPA_CFG__ = {
+    isAdmin: true,
+    menuRules: [
+        ['a[href="/resident/"]', true],
+        ['a[href="/resident/add"]', true],
+        ['a[href="/shop/"]', true],
+        ['a[href="/dibao/"]', true],
+        ['a[href="/disabled/"]', true],
+        ['a[href="/care/"]', true],
+        ['a[href="/organization/"]', true],
+        ['a[href="/party/"]', true],
+        ['a[href="/party/dues"]', true],
+        ['a[href="/veteran/"]', true],
+        ['a[href="/todo/"]', true],
+        ['a[href="/welfare/"]', true],
+        ['a[href="/mediation/"]', true],
+        ['a[href="/governance/roster/gov_special_visit/"]', true],
+        ['a[href="/governance/roster/gov_stability_risk/"]', true],
+        ['a[href="/governance/roster/gov_mental_health/"]', true],
+        ['a[href="/governance/roster/gov_security_committee/"]', true],
+        ['a[href="/safety/"]', true],
+        ['a[href="/notice/"]', true],
+        ['a[href="/word-form/"]', true],
+        ['a[href="/medical-insurance/"]', true],
+        ['a[href="/certificate/"]', true],
+        ['a[href="/death-report/"]', true],
+        ['a[href="/visit/"]', true],
+        ['a[href="/visit/history"]', true],
+        ['a[href="/reconcile/"]', true]
+    ]
+};
+</script>
+</head>
+<body class="layout-fixed sidebar-expand-lg sc-body">
+    
+
+    <div class="app-wrapper sc-shell">
+        <!-- 巨壳层头：提示条（34px，跨内容列不跨侧栏）+ 顶栏（64px）。
+             整块占 AdminLTE 的 lte-app-header grid 区，提示条才能落在顶栏之上（基线 §4.3 版位）。 -->
+        <div class="app-header sc-header-stack">
+            
+            <nav class="sc-topbar">
+                
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--desktop" type="button"
+                        id="sidebarCollapseBtn" aria-controls="sidebar" aria-expanded="true" aria-label="折叠侧栏">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left-close"></use></svg>
+                </button>
+                <button class="sc-icon-btn sc-icon-btn--plain sc-topbar__burger sc-topbar__burger--mobile" type="button"
+                        onclick="toggleSidebar()" aria-label="展开菜单">
+                    <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#panel-left"></use></svg>
+                </button>
+                <form class="sc-topbar__search" role="search" method="get" action="/resident/">
+                    <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#search"></use></svg>
+                    <input class="sc-search__input" type="search" name="name" id="globalSearch"
+                           placeholder="搜索居民 / 户号 / 身份证号" autocomplete="off" aria-label="搜索居民">
+                    <kbd class="sc-kbd">Ctrl K</kbd>
+                </form>
+                <div class="sc-topbar__cluster">
+                    
+                    <span class="sc-presence" id="presence" title="60 秒内活跃用户数">
+                        <span class="sc-dot sc-dot--pulse"></span><span id="onlineCount">0</span> 人在线
+                    </span>
+                    <span class="sc-sync" id="syncStatus" title="单机模式：数据保存在本机，未启用同步">
+                        <span class="sc-dot sc-dot--muted"></span>本机数据
+                    </span>
+                    <button class="sc-tour-trigger" type="button" id="btnPageTour" hidden title="查看本页操作指引">
+                        <i class="bi bi-question-circle" aria-hidden="true"></i> 指引
+                    </button>
+                    <div class="dropdown">
+                        <button class="sc-usermenu" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sc-avatar sc-avatar--sm">a</span>
+                            <span class="sc-usermenu__name">admin</span>
+                            <svg class="sc-icon sc-icon--14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#chevron-down"></use></svg>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><h6 class="dropdown-header small">超级管理员</h6></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" onclick="showProfile()">个人中心</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="/auth/logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+
+        <!-- 侧栏（AdminLTE grid-area: lte-app-sidebar；保留 id="sidebar" 以兼容既有脚本） -->
+
+
+
+<aside class="app-sidebar sc-sidebar" id="sidebar">
+    <div class="sc-sidebar__brand">
+        <span class="sc-sidebar__logo"><svg class="sc-icon sc-icon--20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg></span>
+        <span class="sc-sidebar__title" id="systemTitle">村级村务综合管理系统</span>
+    </div>
+
+    <div class="sidebar-menu sc-sidebar__nav">
+        <div id="menu">
+
+            
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">综合工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dashboard/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#house"></use></svg><span>首页</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/todo/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-todo"></use></svg><span>待办提醒</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">党建工作</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/organization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#building-2"></use></svg><span>机构管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/election/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#check2-square"></use></svg><span>选举管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/civilization/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#landmark"></use></svg><span>文明实践站</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">民生保障</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/medical-insurance/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-pulse"></use></svg><span>社会保障</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dibao/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>民政对象管理</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">社区治理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/resident/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#users"></use></svg><span>居民管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/mediation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#messages-square"></use></svg><span>综治管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/visit/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#heart-handshake"></use></svg><span>走访关爱</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#folder-open"></use></svg><span>安全工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/safety/emergency">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#list-checks"></use></svg><span>应急管理</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/sanitation/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#wrench"></use></svg><span>环卫工作</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/death-report/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#book-open"></use></svg><span>死亡上报</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">便民服务</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/veteran/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#shield-check"></use></svg><span>退役军人服务</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/certificate/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#scroll-text"></use></svg><span>证明开具</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/demand/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#inbox"></use></svg><span>民生诉求</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/notice/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#megaphone"></use></svg><span>补贴公示</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+            <div class="sc-sidebar__group">
+                <h4 class="sc-sidebar__label">数据管理</h4>
+                <ul class="nav flex-column">
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/dynatable/">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database"></use></svg><span>台账建表</span>
+                        </a>
+                    </li>
+                    
+                    <li>
+                        <a class="nav-link sc-nav-item" href="/import/batches">
+                            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#database-zap"></use></svg><span>导入批次</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+            </div>
+            
+
+        </div>
+    </div>
+
+    <div class="sc-sidebar__bottom">
+        <div class="sc-sidebar__divider"></div>
+        
+        <a class="nav-link sc-nav-item"
+           href="/settings/center">
+            <svg class="sc-icon sc-icon--18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#settings"></use></svg><span>设置</span>
+        </a>
+        
+        <div class="sc-user-card">
+            <span class="sc-avatar">a</span>
+            <div class="sc-user-card__text">
+                <span class="sc-user-card__name">admin</span>
+                <span class="sc-user-card__role">超级管理员</span>
+            </div>
+            <a class="sc-icon-btn sc-icon-btn--plain" href="/auth/logout" aria-label="退出登录">
+                <svg class="sc-icon sc-icon--16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><use href="/static/lib/lucide/sprite.svg#log-out"></use></svg>
+            </a>
+        </div>
+    </div>
+</aside>
+
+        <!-- 内容区（AdminLTE .app-main：无显式 grid-area，由 .app-wrapper 的 grid 自动落入右上区下方的 1fr 轨道） -->
+        <main class="app-main" id="contentWrapper">
+            <!-- 顶部标签栏 -->
+            <div class="tab-bar" id="tabBar">
+                <div class="tab-scroll" id="tabScroll"></div>
+            </div>
+            
+            <h1 id="pageTitle">报表审批</h1>
+            <div class="container-fluid sc-main-inner" id="contentArea">
+                
+                
+                
+                
+<style id="wfDynamicPageStyle">@page { size: A4 portrait; margin: 15mm; }</style>
+<style>
+.wf-page { color: var(--c-ink-3); }
+.wf-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 992px) { .wf-layout { grid-template-columns: 1fr; } }
+
+.wf-card {
+    background: var(--c-surface); border: 1px solid var(--c-line-3);
+    border-radius: var(--r-card); overflow: hidden;
+}
+.wf-sider { padding: 10px; }
+.wf-sider-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 4px 8px; margin-bottom: 6px; border-bottom: 1px solid var(--c-line-2);
+}
+.wf-sider-head strong { font-size: 14px; color: var(--c-ink); }
+.wf-sider-sub {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 12px 2px 6px; padding-top: 10px; border-top: 1px solid var(--c-line-2);
+    font-size: 12px; font-weight: 600; color: var(--c-ink-2);
+}
+.wf-item-btn {
+    width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
+    border-radius: var(--r-ctrl); padding: 7px 9px; margin: 2px 0; cursor: pointer;
+    display: flex; flex-direction: column; gap: 2px; color: var(--c-ink-3); position: relative;
+}
+.wf-item-btn:hover { background: var(--c-hover); }
+.wf-item-btn.active { background: var(--c-ink-2); color: var(--c-surface); }
+.wf-item-btn__name { font-size: 13px; font-weight: 600; padding-right: 22px; }
+.wf-item-btn__meta { font-size: 11px; color: var(--c-muted-2); }
+.wf-item-btn.active .wf-item-btn__meta { color: var(--c-line-3); }
+.wf-item-del {
+    position: absolute; top: 6px; right: 6px; border: 0; background: transparent;
+    color: var(--c-muted-2); font-size: 12px; padding: 1px 4px; border-radius: 4px; cursor: pointer;
+}
+.wf-item-del:hover { background: var(--c-hover); color: var(--c-ink); }
+.wf-item-btn.active .wf-item-del { color: var(--c-line-3); }
+
+.wf-wb-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--c-line-2); flex-wrap: wrap;
+}
+.wf-chips { display: inline-flex; gap: 4px; background: var(--c-rail); padding: 3px; border-radius: var(--r-ctrl); }
+.wf-chip {
+    border: 0; background: transparent; color: var(--c-ink-3); font-size: 13px; font-weight: 500;
+    padding: 5px 11px; border-radius: 6px; cursor: pointer;
+}
+.wf-chip.active { background: var(--c-ink-2); color: var(--c-surface); }
+
+.wf-toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 9px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-surface);
+}
+.wf-toolbar .wf-fill { flex: 1 1 auto; }
+.wf-bind-bar, .wf-format-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-rail);
+    font-size: 12px; color: var(--c-ink-2);
+}
+.wf-paper-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 7px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-bg);
+    font-size: 12px; color: var(--c-muted-2);
+}
+.wf-paper-bar .wf-fill { flex: 1 1 auto; }
+.wf-seg-group {
+    display: inline-flex; border: 1px solid var(--c-line-3); border-radius: 6px;
+    overflow: hidden; background: var(--c-surface);
+}
+.wf-seg-btn {
+    border: 0; border-right: 1px solid var(--c-line-2); background: transparent; color: var(--c-ink-3);
+    padding: 3px 8px; font-size: 12px; cursor: pointer;
+}
+.wf-seg-btn:last-child { border-right: 0; }
+.wf-seg-btn.active { background: var(--c-ink-2); color: var(--c-surface); }
+
+.wf-stage { overflow: auto; padding: 18px 16px; background: var(--c-rail); min-height: 520px; max-height: 70vh; }
+.wf-empty { text-align: center; padding: 64px 20px; color: var(--c-muted-2); }
+.wf-a4-paper {
+    width: 794px; margin: 0 auto; background: var(--c-surface); color: var(--c-ink);
+    border: 1px solid var(--c-line-3); border-radius: 4px; padding: 34px 38px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); font-family: "SimSun", "宋体", serif;
+    transition: width 0.15s ease, padding 0.15s ease;
+}
+.wf-a4-paper.is-landscape { width: 1123px; }
+.wf-a4-paper.margin-narrow { padding: 20px 24px; }
+.wf-a4-paper.margin-normal { padding: 34px 38px; }
+.wf-a4-paper.margin-wide { padding: 48px 54px; }
+
+.wf-doc-para { margin: 0 0 8px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.wf-doc-para.is-inline-editable {
+    border: 1px dashed transparent; border-radius: 4px; padding: 2px 4px; cursor: text; outline: none;
+}
+.wf-doc-para.is-inline-editable:hover { border-color: var(--c-line-3); background: var(--c-bg); }
+.wf-doc-para.is-inline-editable:focus { border-color: var(--c-ink-2); background: var(--c-surface); }
+.wf-doc-para.is-fmt-selectable { cursor: pointer; border: 1px dashed transparent; border-radius: 4px; padding: 2px 4px; }
+.wf-doc-para.is-fmt-selectable:hover { border-color: var(--c-ink-3); background: var(--c-hover); }
+.wf-doc-para.is-selected-fmt { border: 2px solid var(--c-ink-2) !important; background: var(--c-rail) !important; }
+
+.wf-doc-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 8px 0 12px; }
+.wf-doc-table td {
+    border: 1px solid var(--c-ink); padding: 4px 5px; font-size: 12px; line-height: 1.45;
+    vertical-align: middle; word-break: break-word; position: relative;
+}
+.wf-doc-table td.is-editable { background: var(--c-bg); }
+.wf-doc-table td.is-cell-text-editable { cursor: text; }
+.wf-doc-table td.is-cell-text-editable:focus-within {
+    outline: 2px solid var(--c-ink-2); outline-offset: -2px; background: var(--c-surface); z-index: 2;
+}
+.wf-a4-paper.is-fmt-mode .wf-doc-table td { cursor: pointer; }
+.wf-a4-paper.is-fmt-mode .wf-doc-table td:hover { background: var(--c-hover); }
+.wf-doc-table td.is-selected-fmt,
+.wf-doc-table td.is-selected-bind {
+    outline: 2px solid var(--c-ink-2) !important; outline-offset: -2px;
+    background: var(--c-rail) !important; z-index: 3;
+}
+.wf-cell-editable {
+    width: 100%; min-height: 20px; outline: none; white-space: pre-wrap; word-break: break-word;
+    font-family: inherit; font-size: inherit; font-weight: inherit; color: var(--c-ink);
+    text-align: inherit;
+}
+.wf-cb-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: transparent; cursor: pointer; font-size: 15px; line-height: 1;
+    padding: 0 2px; color: var(--c-ink); vertical-align: middle; user-select: none;
+}
+.wf-cb-btn.checked { font-weight: 700; }
+.wf-bind-chip {
+    position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1.2;
+    padding: 0 4px; border-radius: 3px; background: var(--c-ink-2); color: var(--c-surface);
+    font-family: sans-serif; pointer-events: none;
+}
+.wf-doc-table td .wf-col-resizer {
+    position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
+    cursor: col-resize; z-index: 5;
+}
+.wf-doc-table td .wf-col-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+.wf-doc-table td .wf-row-resizer {
+    position: absolute; left: 0; bottom: -4px; width: 100%; height: 8px;
+    cursor: row-resize; z-index: 4;
+}
+.wf-doc-table td .wf-row-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+body.wf-resizing-col, body.wf-resizing-col * { cursor: col-resize !important; user-select: none !important; }
+body.wf-resizing-row, body.wf-resizing-row * { cursor: row-resize !important; user-select: none !important; }
+
+.wf-print-overlay {
+    position: fixed; inset: 0; background: rgba(10, 10, 10, 0.45); z-index: 1060;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.wf-print-dialog {
+    background: var(--c-surface); border-radius: var(--r-card); width: 100%; max-width: 920px;
+    max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.wf-print-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--c-line-2);
+}
+.wf-print-body { padding: 16px; overflow: auto; background: var(--c-rail); }
+.wf-print-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 10px 16px; border-top: 1px solid var(--c-line-2); background: var(--c-surface);
+}
+@media print {
+    .main-sidebar, .main-header, .content-header, .sc-page-head, .sc-chips, .wf-sider,
+    .wf-wb-head, .wf-toolbar, .wf-bind-bar, .wf-format-bar, .wf-paper-bar,
+    .wf-col-resizer, .wf-row-resizer, .wf-bind-chip, .wf-print-overlay { display: none !important; }
+    .content-wrapper, .content, .sc-civil-page { margin: 0 !important; padding: 0 !important; background: var(--c-surface) !important; }
+    .wf-layout { display: block; }
+    .wf-card { border: 0; }
+    .wf-stage { padding: 0; background: var(--c-surface); max-height: none; overflow: visible; }
+    .wf-a4-paper { border: 0; box-shadow: none; padding: 0; width: 100% !important; }
+    .wf-doc-para.is-inline-editable { border: 0; background: transparent; padding: 0; }
+    .wf-doc-table td.is-editable { background: transparent; }
+}
+</style>
+
+<div class="sc-civil-page wf-page" id="wfPageRoot">
+    
+<header class="sc-page-head">
+  <div class="sc-page-head__title">
+    <h2 class="sc-page-head__name">报表审批</h2>
+    <p class="sc-page-head__meta">民政对象 · 报表（支持上传任意 .docx 审批表/公示表，全文本直接编辑、自动回填、版式微调与原版导出）</p>
+  </div>
+  
+  <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--primary" id="wfBtnUploadDocx">＋ 上传 .docx 模板</button>
+        <input type="file" id="wfDocxInput" accept=".docx" class="d-none">
+    </div>
+  
+</header>
+
+    
+<nav class="sc-chips sc-chips--grid" aria-label="模块内导航">
+  <div class="sc-chips__grid" style="grid-template-columns: 72px repeat(6, max-content);"><span class="sc-chips__label" style="grid-column:1">对象查询</span>
+    <a class="sc-chip" href="/dibao/#tab=dibao" title="低保人员查询">低保查询</a>
+    <a class="sc-chip" href="/disabled/#tab=disabled" title="残疾人查询">残疾查询</a>
+    <a class="sc-chip" href="/care/#tab=care" title="关爱对象">关爱对象</a>
+    <a class="sc-chip" href="/welfare/#tab=welfare" title="公益岗查询">公益岗查询</a>
+    <a class="sc-chip" href="/resident/vulnerable#tab=vulnerable" title="弱势群体台账">弱势群体查询</a>
+    <a class="sc-chip" href="/youshu/#tab=youshu" title="优抚对象（因伤病残涉核退役军人优待补贴）">优抚对象</a><span class="sc-chips__label" style="grid-column:1">报表</span>
+    <a class="sc-chip" href="/report/stats-table#tab=stats" title="一老一小统计表">一老一小统计表</a>
+    <a class="sc-chip" href="/report/roster#tab=roster" title="民政对象花名册">民政对象总花名册</a>
+    <a class="sc-chip is-active" href="/word-form/#tab=word-form" title="报表审批（通用 Word 表单）">报表审批</a>
+  </div>
+</nav>
+
+
+
+    <div class="wf-layout">
+        <aside class="wf-card wf-sider">
+            <div class="wf-sider-head">
+                <strong>审批表模板</strong>
+                <span class="text-muted small" id="wfTplCount">0 个</span>
+            </div>
+            <div id="wfTplList"></div>
+
+            <div class="wf-sider-sub">
+                <span>已保存填报记录</span>
+                <span class="text-muted small" id="wfRecCount">0 条</span>
+            </div>
+            <div id="wfRecList"></div>
+        </aside>
+
+        <section class="wf-card">
+            <div class="wf-wb-head">
+                <div class="wf-chips" id="wfModeChips">
+                    <button type="button" class="wf-chip active" data-mode="fill">填报模式（全文本可编辑）</button>
+                    <button type="button" class="wf-chip" data-mode="format">版式微调（行高 / 列宽 / 文字）</button>
+                    <button type="button" class="wf-chip" data-mode="bind">模板绑定（自动回填字段）</button>
+                </div>
+                <span class="text-muted small" id="wfStats">请上传或选择左侧审批表模板</span>
+            </div>
+
+            <div class="wf-toolbar" id="wfFillToolbar">
+                <input type="text" class="form-control form-control-sm" id="wfResidentQuery" style="width:140px" placeholder="搜居民姓名...">
+                <select class="form-select form-select-sm" id="wfResidentSelect" style="width:200px" aria-label="选择回填居民"></select>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnAutoFill">一键自动回填</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClearFill">清空手填</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnAddRow">＋ 末行增行</button>
+                <span class="wf-fill"></span>
+                <button type="button" class="btn btn-outline-dark btn-sm" id="wfBtnSaveRecord">保存记录</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" id="wfBtnExportDocx">导出原版 .docx</button>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnPrintPreview">A4 打印预览</button>
+            </div>
+
+            <div class="wf-format-bar d-none" id="wfFormatBar">
+                <strong id="wfFmtLabel">点击段落或单元格调格式 · 拖拽边框调行高/列宽</strong>
+                <span>字体</span>
+                <select class="form-select form-select-sm" id="wfFmtFontFamily" style="width:96px" aria-label="字体">
+                    <option value="SimSun, '宋体', serif">宋体</option>
+                    <option value="FangSong, '仿宋', serif">仿宋</option>
+                    <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                    <option value="SimHei, '黑体', sans-serif">黑体</option>
+                </select>
+                <span>字号</span>
+                <input type="number" class="form-control form-control-sm" id="wfFmtFontPx" min="10" max="32" step="1" value="12" style="width:62px" aria-label="字号">
+                <label class="d-inline-flex align-items-center gap-1 mb-0" style="cursor:pointer">
+                    <input type="checkbox" id="wfFmtBoldChk"> 加粗
+                </label>
+                <span>水平</span>
+                <span class="wf-seg-group" id="wfFmtHAlign">
+                    <button type="button" class="wf-seg-btn" data-val="left">左</button>
+                    <button type="button" class="wf-seg-btn active" data-val="center">中</button>
+                    <button type="button" class="wf-seg-btn" data-val="right">右</button>
+                </span>
+                <span>垂直</span>
+                <span class="wf-seg-group" id="wfFmtVAlign">
+                    <button type="button" class="wf-seg-btn" data-val="top">顶</button>
+                    <button type="button" class="wf-seg-btn active" data-val="middle">中</button>
+                    <button type="button" class="wf-seg-btn" data-val="bottom">底</button>
+                </span>
+                <span>行高(px)</span>
+                <input type="number" class="form-control form-control-sm" id="wfFmtRowHeight" min="20" max="240" step="2" value="34" style="width:64px" aria-label="行高">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnRowAll">全表统一行高</button>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnSaveTplSchema">存为模板默认版式</button>
+            </div>
+
+            <div class="wf-bind-bar d-none" id="wfBindBar">
+                <strong id="wfBindLabel">请点击下方任意单元格配置自动回填字段</strong>
+                <label class="d-inline-flex align-items-center gap-1 mb-0" style="cursor:pointer">
+                    <input type="checkbox" id="wfBindEditableChk"> 允许填写
+                </label>
+                <select class="form-select form-select-sm" id="wfBindFieldSelect" style="width:200px" aria-label="绑定系统字段">
+                    
+                    <option value="">（不绑定 · 纯自定义手填）</option>
+                    
+                    <option value="name">居民姓名</option>
+                    
+                    <option value="gender">性别</option>
+                    
+                    <option value="birth_date">出生日期</option>
+                    
+                    <option value="age">年龄</option>
+                    
+                    <option value="id_card">身份证号</option>
+                    
+                    <option value="phone">联系电话</option>
+                    
+                    <option value="nation">民族</option>
+                    
+                    <option value="marital_status">婚姻状况</option>
+                    
+                    <option value="household_address">户籍地址</option>
+                    
+                    <option value="address">居住地址</option>
+                    
+                    <option value="village_group">所在组</option>
+                    
+                    <option value="family_size">家庭人口</option>
+                    
+                    <option value="disability_type">残疾类别</option>
+                    
+                    <option value="disability_level">残疾等级</option>
+                    
+                    <option value="disability_no">残疾人证号</option>
+                    
+                    <option value="dibao_no">低保证号/救助类别</option>
+                    
+                    <option value="bank_card">银行/社保卡账号</option>
+                    
+                    <option value="bank_name">开户银行名称</option>
+                    
+                    <option value="bank_holder">开户人姓名</option>
+                    
+                    <option value="guardian_name">监护人姓名</option>
+                    
+                    <option value="guardian_relation">监护人与申请人关系</option>
+                    
+                    <option value="guardian_phone">监护人联系电话</option>
+                    
+                    <option value="guardian_address">监护人地址</option>
+                    
+                </select>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnSaveBind">应用并保存模板</button>
+            </div>
+
+            <div class="wf-paper-bar" id="wfPaperBar">
+                <span>固定纸张</span>
+                <select class="form-select form-select-sm" id="wfPaperOrient" style="width:210px" aria-label="A4方向">
+                    <option value="portrait">A4 纵向（固定 210mm · 794px）</option>
+                    <option value="landscape">A4 横向（固定 297mm · 1123px）</option>
+                </select>
+                <span>页边距</span>
+                <select class="form-select form-select-sm" id="wfPaperMargin" style="width:130px" aria-label="页边距">
+                    <option value="narrow">窄边距（10mm）</option>
+                    <option value="normal" selected>标准边距（15mm）</option>
+                    <option value="wide">宽松边距（20mm）</option>
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnFitA4">适配 A4 单页宽</button>
+                <span class="wf-fill"></span>
+                <span id="wfPaperHint">A4 纵向 210mm · 严格适配单页宽</span>
+            </div>
+
+            <div class="wf-stage">
+                <div class="wf-a4-paper margin-normal" id="wfCanvas">
+                    <div class="wf-empty">请点击右上角「＋ 上传 .docx 模板」导入任意 Word 审批表或公示表</div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="wf-print-overlay d-none" id="wfPrintOverlay">
+    <div class="wf-print-dialog">
+        <div class="wf-print-head">
+            <strong>A4 套打预览（与导出的原版 Word 排版一致）</strong>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClosePrint">关闭</button>
+        </div>
+        <div class="wf-print-body">
+            <div class="wf-a4-paper" id="wfPrintPaper"></div>
+        </div>
+        <div class="wf-print-foot">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClosePrint2">返回编辑</button>
+            <button type="button" class="btn btn-dark btn-sm" id="wfBtnDoPrint">调用浏览器打印</button>
+        </div>
+    </div>
+</div>
+
+            </div>
+        </main>
+    </div>
+    
+
+    <script src="/static/lib/jquery.min.js"></script>
+    <script src="/static/lib/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/crud.js"></script>
+    
+<script src="/static/js/civil_pages.js"></script>
+<script src="/static/js/pages/word_form.js"></script>
+
+    <!-- 壳层运行时（011：原 base.html 内联脚本块外移；置于 extra_js 之后，与原位置时序一致） -->
+    <script src="/static/js/spa.js"></script>
+    <!-- 壳层交互（057a：折叠 + localStorage + Ctrl K + 提示条关闭）；禁止并入 spa.js（ADR-022 §一-4） -->
+    <script src="/static/js/shell.js"></script>
+    <script src="/static/lib/driver.js.iife.js"></script>
+    <script src="/static/js/tour_registry.js"></script>
+
+<!-- Profile Modal -->
+<div class="modal fade" id="profileModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm"><div class="modal-content" style="border-radius:16px;">
+        <div class="modal-header" style="border-radius:16px 16px 0 0;"><h6 class="modal-title"><i class="bi bi-person-circle me-2"></i>个人中心</h6>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body text-center py-4">
+            <i class="bi bi-person-circle" style="font-size:4rem;color:var(--color-primary);"></i>
+            <h5 class="mt-2">admin</h5>
+            <p class="text-muted mb-0"><span class="sc-badge sc-badge--info">超级管理员</span></p>
+            <hr>
+            <div class="text-start small">
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">用户名</span><span>admin</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">姓名</span><span>-</span></div>
+                <div class="d-flex justify-content-between mb-1"><span class="text-muted">角色</span><span>超级管理员</span></div>
+                <div class="d-flex justify-content-between"><span class="text-muted">上次登录</span><span>__DATETIME__</span></div>
+            </div>
+        </div>
+        <div class="modal-footer justify-content-center">
+            <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">关闭</button>
+            <a href="/auth/logout" class="sc-btn sc-btn--danger"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+        </div>
+    </div></div>
+</div>
+</body>
+</html>

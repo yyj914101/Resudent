@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}操作日志 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}操作日志{% endblock %}
+{% block content %}
+{% from 'components/_macros/settings_shell.html' import settings_head_actions %}
+<div class="sc-settings-page" data-sc-settings="list">
+{% call settings_head_actions('操作日志', '列显隐（F9） · 结果徽章：成功/失败 · 支持导出 CSV') %}
+    <a class="sc-btn sc-btn--secondary" id="exportBtn" href="{{ url_for('log.api_export') }}"><i class="bi bi-file-earmark-excel"></i> 导出</a>
+{% endcall %}
+
+<section class="sc-card">
+    <form class="sc-toolbar" id="searchForm">
+        <input type="text" class="sc-input" name="user_name" placeholder="操作人" style="width:120px">
+        <input type="text" class="sc-input" name="module" placeholder="模块" style="width:120px">
+        <select class="sc-select" name="action" style="width:130px">
+            <option value="">全部操作</option>
+            <option value="add">新增</option>
+            <option value="edit">编辑</option>
+            <option value="delete">删除</option>
+            <option value="export">导出</option>
+            <option value="import">导入</option>
+            <option value="done">完成</option>
+            <option value="batch_done">批量完成</option>
+            <option value="batch_delete">批量删除</option>
+            <option value="toggle">状态切换</option>
+            <option value="reset_password">重置密码</option>
+            <option value="copy">复制</option>
+            <option value="backup">备份</option>
+            <option value="restore">还原</option>
+            <option value="settings">设置</option>
+            <option value="generate">生成</option>
+        </select>
+        <input type="date" class="sc-input" name="date_from" style="width:150px">
+        <input type="date" class="sc-input" name="date_to" style="width:150px">
+        <button type="submit" class="sc-btn sc-btn--secondary"><i class="bi bi-search"></i> 搜索</button>
+    </form>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table">
+            <thead>
+                <tr>
+                    <th class="sc-table__th" style="width:110px">操作人</th>
+                    <th class="sc-table__th" style="width:110px">模块</th>
+                    <th class="sc-table__th" style="width:110px">操作类型</th>
+                    <th class="sc-table__th">摘要</th>
+                    <th class="sc-table__th" style="width:80px">结果</th>
+                    <th class="sc-table__th" style="width:150px">时间</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="pageStat">共 0 条 · 每页 20 条</span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/log_list.js') }}"></script>
+{% endblock %}

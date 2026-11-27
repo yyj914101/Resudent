@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% from 'components/_macros/civil_shell.html' import page_head, civil_tabs %}
+{% block title %}报表审批 - 村级村务综合管理系统{% endblock %}
+{% block page_title %}报表审批{% endblock %}
+{% block extra_css %}
+<link href="{{ url_for('static', filename='css/pages/civil_pages.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/pages/workflow_shared.css') }}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+<style id="wfDynamicPageStyle">@page { size: A4 portrait; margin: 15mm; }</style>
+<style>
+.wf-page { color: var(--c-ink-3); }
+.wf-layout { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 992px) { .wf-layout { grid-template-columns: 1fr; } }
+
+.wf-card {
+    background: var(--c-surface); border: 1px solid var(--c-line-3);
+    border-radius: var(--r-card); overflow: hidden;
+}
+.wf-sider { padding: 10px; }
+.wf-sider-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 2px 4px 8px; margin-bottom: 6px; border-bottom: 1px solid var(--c-line-2);
+}
+.wf-sider-head strong { font-size: 14px; color: var(--c-ink); }
+.wf-sider-sub {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 12px 2px 6px; padding-top: 10px; border-top: 1px solid var(--c-line-2);
+    font-size: 12px; font-weight: 600; color: var(--c-ink-2);
+}
+.wf-item-btn {
+    width: 100%; text-align: left; border: 1px solid transparent; background: transparent;
+    border-radius: var(--r-ctrl); padding: 7px 9px; margin: 2px 0; cursor: pointer;
+    display: flex; flex-direction: column; gap: 2px; color: var(--c-ink-3); position: relative;
+}
+.wf-item-btn:hover { background: var(--c-hover); }
+.wf-item-btn.active { background: var(--c-ink-2); color: var(--c-surface); }
+.wf-item-btn__name { font-size: 13px; font-weight: 600; padding-right: 22px; }
+.wf-item-btn__meta { font-size: 11px; color: var(--c-muted-2); }
+.wf-item-btn.active .wf-item-btn__meta { color: var(--c-line-3); }
+.wf-item-del {
+    position: absolute; top: 6px; right: 6px; border: 0; background: transparent;
+    color: var(--c-muted-2); font-size: 12px; padding: 1px 4px; border-radius: 4px; cursor: pointer;
+}
+.wf-item-del:hover { background: var(--c-hover); color: var(--c-ink); }
+.wf-item-btn.active .wf-item-del { color: var(--c-line-3); }
+
+.wf-wb-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--c-line-2); flex-wrap: wrap;
+}
+.wf-chips { display: inline-flex; gap: 4px; background: var(--c-rail); padding: 3px; border-radius: var(--r-ctrl); }
+.wf-chip {
+    border: 0; background: transparent; color: var(--c-ink-3); font-size: 13px; font-weight: 500;
+    padding: 5px 11px; border-radius: 6px; cursor: pointer;
+}
+.wf-chip.active { background: var(--c-ink-2); color: var(--c-surface); }
+
+.wf-toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 9px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-surface);
+}
+.wf-toolbar .wf-fill { flex: 1 1 auto; }
+.wf-bind-bar, .wf-format-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 8px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-rail);
+    font-size: 12px; color: var(--c-ink-2);
+}
+.wf-paper-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 7px 14px; border-bottom: 1px solid var(--c-line-2); background: var(--c-bg);
+    font-size: 12px; color: var(--c-muted-2);
+}
+.wf-paper-bar .wf-fill { flex: 1 1 auto; }
+.wf-seg-group {
+    display: inline-flex; border: 1px solid var(--c-line-3); border-radius: 6px;
+    overflow: hidden; background: var(--c-surface);
+}
+.wf-seg-btn {
+    border: 0; border-right: 1px solid var(--c-line-2); background: transparent; color: var(--c-ink-3);
+    padding: 3px 8px; font-size: 12px; cursor: pointer;
+}
+.wf-seg-btn:last-child { border-right: 0; }
+.wf-seg-btn.active { background: var(--c-ink-2); color: var(--c-surface); }
+
+.wf-stage { overflow: auto; padding: 18px 16px; background: var(--c-rail); min-height: 520px; max-height: 70vh; }
+.wf-empty { text-align: center; padding: 64px 20px; color: var(--c-muted-2); }
+.wf-a4-paper {
+    width: 794px; margin: 0 auto; background: var(--c-surface); color: var(--c-ink);
+    border: 1px solid var(--c-line-3); border-radius: 4px; padding: 34px 38px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); font-family: "SimSun", "宋体", serif;
+    transition: width 0.15s ease, padding 0.15s ease;
+}
+.wf-a4-paper.is-landscape { width: 1123px; }
+.wf-a4-paper.margin-narrow { padding: 20px 24px; }
+.wf-a4-paper.margin-normal { padding: 34px 38px; }
+.wf-a4-paper.margin-wide { padding: 48px 54px; }
+
+.wf-doc-para { margin: 0 0 8px; line-height: 1.65; white-space: pre-wrap; word-break: break-word; }
+.wf-doc-para.is-inline-editable {
+    border: 1px dashed transparent; border-radius: 4px; padding: 2px 4px; cursor: text; outline: none;
+}
+.wf-doc-para.is-inline-editable:hover { border-color: var(--c-line-3); background: var(--c-bg); }
+.wf-doc-para.is-inline-editable:focus { border-color: var(--c-ink-2); background: var(--c-surface); }
+.wf-doc-para.is-fmt-selectable { cursor: pointer; border: 1px dashed transparent; border-radius: 4px; padding: 2px 4px; }
+.wf-doc-para.is-fmt-selectable:hover { border-color: var(--c-ink-3); background: var(--c-hover); }
+.wf-doc-para.is-selected-fmt { border: 2px solid var(--c-ink-2) !important; background: var(--c-rail) !important; }
+
+.wf-doc-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 8px 0 12px; }
+.wf-doc-table td {
+    border: 1px solid var(--c-ink); padding: 4px 5px; font-size: 12px; line-height: 1.45;
+    vertical-align: middle; word-break: break-word; position: relative;
+}
+.wf-doc-table td.is-editable { background: var(--c-bg); }
+.wf-doc-table td.is-cell-text-editable { cursor: text; }
+.wf-doc-table td.is-cell-text-editable:focus-within {
+    outline: 2px solid var(--c-ink-2); outline-offset: -2px; background: var(--c-surface); z-index: 2;
+}
+.wf-a4-paper.is-fmt-mode .wf-doc-table td { cursor: pointer; }
+.wf-a4-paper.is-fmt-mode .wf-doc-table td:hover { background: var(--c-hover); }
+.wf-doc-table td.is-selected-fmt,
+.wf-doc-table td.is-selected-bind {
+    outline: 2px solid var(--c-ink-2) !important; outline-offset: -2px;
+    background: var(--c-rail) !important; z-index: 3;
+}
+.wf-cell-editable {
+    width: 100%; min-height: 20px; outline: none; white-space: pre-wrap; word-break: break-word;
+    font-family: inherit; font-size: inherit; font-weight: inherit; color: var(--c-ink);
+    text-align: inherit;
+}
+.wf-cb-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 0; background: transparent; cursor: pointer; font-size: 15px; line-height: 1;
+    padding: 0 2px; color: var(--c-ink); vertical-align: middle; user-select: none;
+}
+.wf-cb-btn.checked { font-weight: 700; }
+.wf-bind-chip {
+    position: absolute; top: 1px; right: 2px; font-size: 9px; line-height: 1.2;
+    padding: 0 4px; border-radius: 3px; background: var(--c-ink-2); color: var(--c-surface);
+    font-family: sans-serif; pointer-events: none;
+}
+.wf-doc-table td .wf-col-resizer {
+    position: absolute; top: 0; right: -4px; width: 8px; height: 100%;
+    cursor: col-resize; z-index: 5;
+}
+.wf-doc-table td .wf-col-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+.wf-doc-table td .wf-row-resizer {
+    position: absolute; left: 0; bottom: -4px; width: 100%; height: 8px;
+    cursor: row-resize; z-index: 4;
+}
+.wf-doc-table td .wf-row-resizer:hover { background: var(--c-ink-2); opacity: 0.35; }
+body.wf-resizing-col, body.wf-resizing-col * { cursor: col-resize !important; user-select: none !important; }
+body.wf-resizing-row, body.wf-resizing-row * { cursor: row-resize !important; user-select: none !important; }
+
+.wf-print-overlay {
+    position: fixed; inset: 0; background: rgba(10, 10, 10, 0.45); z-index: 1060;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.wf-print-dialog {
+    background: var(--c-surface); border-radius: var(--r-card); width: 100%; max-width: 920px;
+    max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;
+}
+.wf-print-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid var(--c-line-2);
+}
+.wf-print-body { padding: 16px; overflow: auto; background: var(--c-rail); }
+.wf-print-foot {
+    display: flex; justify-content: flex-end; gap: 8px;
+    padding: 10px 16px; border-top: 1px solid var(--c-line-2); background: var(--c-surface);
+}
+@media print {
+    .main-sidebar, .main-header, .content-header, .sc-page-head, .sc-chips, .wf-sider,
+    .wf-wb-head, .wf-toolbar, .wf-bind-bar, .wf-format-bar, .wf-paper-bar,
+    .wf-col-resizer, .wf-row-resizer, .wf-bind-chip, .wf-print-overlay { display: none !important; }
+    .content-wrapper, .content, .sc-civil-page { margin: 0 !important; padding: 0 !important; background: var(--c-surface) !important; }
+    .wf-layout { display: block; }
+    .wf-card { border: 0; }
+    .wf-stage { padding: 0; background: var(--c-surface); max-height: none; overflow: visible; }
+    .wf-a4-paper { border: 0; box-shadow: none; padding: 0; width: 100% !important; }
+    .wf-doc-para.is-inline-editable { border: 0; background: transparent; padding: 0; }
+    .wf-doc-table td.is-editable { background: transparent; }
+}
+</style>
+
+<div class="sc-civil-page wf-page" id="wfPageRoot">
+    {% call page_head('报表审批', '民政对象 · 报表（支持上传任意 .docx 审批表/公示表，全文本直接编辑、自动回填、版式微调与原版导出）') %}
+        <button type="button" class="sc-btn sc-btn--primary" id="wfBtnUploadDocx">＋ 上传 .docx 模板</button>
+        <input type="file" id="wfDocxInput" accept=".docx" class="d-none">
+    {% endcall %}
+    {{ civil_tabs('word-form') }}
+
+    <div class="wf-layout">
+        <aside class="wf-card wf-sider">
+            <div class="wf-sider-head">
+                <strong>审批表模板</strong>
+                <span class="text-muted small" id="wfTplCount">0 个</span>
+            </div>
+            <div id="wfTplList"></div>
+
+            <div class="wf-sider-sub">
+                <span>已保存填报记录</span>
+                <span class="text-muted small" id="wfRecCount">0 条</span>
+            </div>
+            <div id="wfRecList"></div>
+        </aside>
+
+        <section class="wf-card">
+            <div class="wf-wb-head">
+                <div class="wf-chips" id="wfModeChips">
+                    <button type="button" class="wf-chip active" data-mode="fill">填报模式（全文本可编辑）</button>
+                    <button type="button" class="wf-chip" data-mode="format">版式微调（行高 / 列宽 / 文字）</button>
+                    <button type="button" class="wf-chip" data-mode="bind">模板绑定（自动回填字段）</button>
+                </div>
+                <span class="text-muted small" id="wfStats">请上传或选择左侧审批表模板</span>
+            </div>
+
+            <div class="wf-toolbar" id="wfFillToolbar">
+                <input type="text" class="form-control form-control-sm" id="wfResidentQuery" style="width:140px" placeholder="搜居民姓名...">
+                <select class="form-select form-select-sm" id="wfResidentSelect" style="width:200px" aria-label="选择回填居民"></select>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnAutoFill">一键自动回填</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClearFill">清空手填</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnAddRow">＋ 末行增行</button>
+                <span class="wf-fill"></span>
+                <button type="button" class="btn btn-outline-dark btn-sm" id="wfBtnSaveRecord">保存记录</button>
+                <button type="button" class="btn btn-outline-dark btn-sm" id="wfBtnExportDocx">导出原版 .docx</button>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnPrintPreview">A4 打印预览</button>
+            </div>
+
+            <div class="wf-format-bar d-none" id="wfFormatBar">
+                <strong id="wfFmtLabel">点击段落或单元格调格式 · 拖拽边框调行高/列宽</strong>
+                <span>字体</span>
+                <select class="form-select form-select-sm" id="wfFmtFontFamily" style="width:96px" aria-label="字体">
+                    <option value="SimSun, '宋体', serif">宋体</option>
+                    <option value="FangSong, '仿宋', serif">仿宋</option>
+                    <option value="'Microsoft YaHei', sans-serif">微软雅黑</option>
+                    <option value="SimHei, '黑体', sans-serif">黑体</option>
+                </select>
+                <span>字号</span>
+                <input type="number" class="form-control form-control-sm" id="wfFmtFontPx" min="10" max="32" step="1" value="12" style="width:62px" aria-label="字号">
+                <label class="d-inline-flex align-items-center gap-1 mb-0" style="cursor:pointer">
+                    <input type="checkbox" id="wfFmtBoldChk"> 加粗
+                </label>
+                <span>水平</span>
+                <span class="wf-seg-group" id="wfFmtHAlign">
+                    <button type="button" class="wf-seg-btn" data-val="left">左</button>
+                    <button type="button" class="wf-seg-btn active" data-val="center">中</button>
+                    <button type="button" class="wf-seg-btn" data-val="right">右</button>
+                </span>
+                <span>垂直</span>
+                <span class="wf-seg-group" id="wfFmtVAlign">
+                    <button type="button" class="wf-seg-btn" data-val="top">顶</button>
+                    <button type="button" class="wf-seg-btn active" data-val="middle">中</button>
+                    <button type="button" class="wf-seg-btn" data-val="bottom">底</button>
+                </span>
+                <span>行高(px)</span>
+                <input type="number" class="form-control form-control-sm" id="wfFmtRowHeight" min="20" max="240" step="2" value="34" style="width:64px" aria-label="行高">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnRowAll">全表统一行高</button>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnSaveTplSchema">存为模板默认版式</button>
+            </div>
+
+            <div class="wf-bind-bar d-none" id="wfBindBar">
+                <strong id="wfBindLabel">请点击下方任意单元格配置自动回填字段</strong>
+                <label class="d-inline-flex align-items-center gap-1 mb-0" style="cursor:pointer">
+                    <input type="checkbox" id="wfBindEditableChk"> 允许填写
+                </label>
+                <select class="form-select form-select-sm" id="wfBindFieldSelect" style="width:200px" aria-label="绑定系统字段">
+                    {% for fkey, flabel in field_options %}
+                    <option value="{{ fkey }}">{{ flabel }}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="btn btn-dark btn-sm" id="wfBtnSaveBind">应用并保存模板</button>
+            </div>
+
+            <div class="wf-paper-bar" id="wfPaperBar">
+                <span>固定纸张</span>
+                <select class="form-select form-select-sm" id="wfPaperOrient" style="width:210px" aria-label="A4方向">
+                    <option value="portrait">A4 纵向（固定 210mm · 794px）</option>
+                    <option value="landscape">A4 横向（固定 297mm · 1123px）</option>
+                </select>
+                <span>页边距</span>
+                <select class="form-select form-select-sm" id="wfPaperMargin" style="width:130px" aria-label="页边距">
+                    <option value="narrow">窄边距（10mm）</option>
+                    <option value="normal" selected>标准边距（15mm）</option>
+                    <option value="wide">宽松边距（20mm）</option>
+                </select>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnFitA4">适配 A4 单页宽</button>
+                <span class="wf-fill"></span>
+                <span id="wfPaperHint">A4 纵向 210mm · 严格适配单页宽</span>
+            </div>
+
+            <div class="wf-stage">
+                <div class="wf-a4-paper margin-normal" id="wfCanvas">
+                    <div class="wf-empty">请点击右上角「＋ 上传 .docx 模板」导入任意 Word 审批表或公示表</div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="wf-print-overlay d-none" id="wfPrintOverlay">
+    <div class="wf-print-dialog">
+        <div class="wf-print-head">
+            <strong>A4 套打预览（与导出的原版 Word 排版一致）</strong>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClosePrint">关闭</button>
+        </div>
+        <div class="wf-print-body">
+            <div class="wf-a4-paper" id="wfPrintPaper"></div>
+        </div>
+        <div class="wf-print-foot">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="wfBtnClosePrint2">返回编辑</button>
+            <button type="button" class="btn btn-dark btn-sm" id="wfBtnDoPrint">调用浏览器打印</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/civil_pages.js') }}"></script>
+<script src="{{ url_for('static', filename='js/pages/word_form.js') }}"></script>
+{% endblock %}

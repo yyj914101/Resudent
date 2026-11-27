@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ config.title }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/bootstrap-icons.min.css') }}">
+<script src="{{ url_for('static', filename='lib/chart.umd.min.js') }}"></script>
+<style>
+:root{--brand:#1877C9;--bg:#F4F7FA;--panel:#ffffff;--line:#e5e9ef;--muted:#6c757d;--text:#212529;--blue:#1877C9;--cyan:#17A2B8;--violet:#7C6FE8;--orange:#F0A020;--red:#DC3545}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;overflow-x:hidden;background:var(--bg);color:var(--text);font-family:"Microsoft YaHei",Arial,sans-serif}
+body{display:flex;flex-direction:column;min-height:100vh;padding:24px 36px 20px}
+.top{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:16px}
+.brand{display:flex;align-items:center;min-width:0;gap:16px}.brand>div:last-child{min-width:0}
+.brand-mark{width:52px;height:52px;flex:0 0 52px;border:1px solid rgba(24,119,201,.35);border-radius:10px;display:grid;place-items:center;color:var(--brand);font-size:27px;background:#fff}
+.eyebrow{font-size:12px;color:var(--brand);letter-spacing:2px}.title{margin:3px 0 0;overflow:hidden;font-size:28px;font-weight:600;letter-spacing:1px;text-overflow:ellipsis;white-space:nowrap}
+.sub{overflow:hidden;font-size:14px;color:var(--muted);margin-top:4px;text-overflow:ellipsis;white-space:nowrap}
+.meta{flex:0 0 auto;text-align:right;color:var(--muted);font-size:14px}.clock{font-size:24px;color:var(--text);font-variant-numeric:tabular-nums}
+.status{margin-top:5px}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cyan);margin-right:6px}.dot.bad{background:var(--red)}
+.kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:12px;margin:20px 0}
+.kpi,.panel{min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 3px rgba(24,119,201,.05)}
+.kpi{padding:14px 16px;min-height:110px;position:relative;overflow:hidden}
+.kpi:before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent,var(--blue))}
+.kpi-label{overflow:hidden;font-size:13px;color:var(--muted);text-overflow:ellipsis;white-space:nowrap}
+.kpi-value{font-size:34px;margin-top:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--accent,var(--text))}
+.kpi-foot{overflow:hidden;font-size:11px;color:var(--muted);margin-top:4px;text-overflow:ellipsis;white-space:nowrap}
+.screen-overview-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;align-items:stretch;flex:1 1 auto;min-height:340px}
+.screen-overview-grid .panel{display:flex;min-height:340px;min-width:0;flex-direction:column;overflow:hidden;padding:16px}
+.panel h2{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px;font-size:16px;font-weight:600}
+.panel-note{flex:0 0 auto;color:var(--muted);font-size:12px;font-weight:400;white-space:nowrap}
+.group-viz{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(150px,.65fr);gap:14px;align-items:stretch;flex:1 1 auto;min-height:0}
+.group-viz .chart{height:100%;min-height:245px;min-width:0}
+.viz-summary{height:100%;min-height:245px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:7px;padding-right:2px}
+.summary-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;align-items:center;min-width:0;padding:6px 7px;border:1px solid var(--line);border-radius:6px;background:#fafbfd}
+.summary-name{overflow:hidden;color:var(--text);font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.summary-value{color:var(--brand);font-family:Consolas,"Microsoft YaHei",sans-serif;font-size:16px;font-weight:600;white-space:nowrap}
+.summary-detail{grid-column:1/-1;color:var(--muted);font-size:11px;line-height:1.25}
+.summary-empty{display:grid;place-items:center;height:100%;color:var(--muted);font-size:13px;text-align:center}
+.insight-viz{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);min-height:0;gap:17px;flex:1 1 auto}
+.insight-block{min-width:0}.insight-block h3{margin:0 0 10px;color:var(--text);font-size:14px;font-weight:600}
+.insight-list{display:grid;gap:7px}.insight-row{display:grid;gap:4px;min-width:0}
+.insight-line{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;color:var(--muted);font-size:12px}
+.insight-line span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.insight-line strong{color:var(--text);font-family:Consolas,"Microsoft YaHei",sans-serif;font-size:13px;font-weight:600;white-space:nowrap}
+.insight-sub{color:var(--muted);font-family:Consolas,"Microsoft YaHei",sans-serif;font-size:10px}
+.insight-track{height:5px;overflow:hidden;border-radius:3px;background:#e9edf2}.insight-fill{height:100%;width:0;border-radius:inherit;background:var(--insight-color,var(--brand));transition:width .5s}
+.property-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:15px;padding-top:12px;border-top:1px solid var(--line)}
+.property-highlight{display:grid;gap:3px;min-width:0}.property-highlight span{color:var(--muted);font-size:11px}.property-highlight strong{color:var(--orange);font-family:Consolas,"Microsoft YaHei",sans-serif;font-size:20px;font-weight:600;white-space:nowrap}.property-highlight small{color:var(--muted);font-size:10px;white-space:nowrap}
+.screen-progress-panel{margin-top:14px;padding:16px;min-height:0;overflow:hidden}
+.progress-content{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(190px,.7fr) minmax(0,1fr);min-width:0;gap:22px;align-items:center}
+.metrics{display:grid;gap:14px}.metric-row{display:grid;gap:5px}
+.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted)}.metric-head strong{color:var(--text);font-size:14px}
+.track{height:7px;overflow:hidden;border-radius:4px;background:#e9edf2}.bar{height:100%;width:0;border-radius:inherit;background:var(--accent,var(--brand));transition:width .5s}
+.screen-todo{min-width:0;min-height:0;padding:0 18px;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.screen-todo-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:var(--text);font-size:13px;font-weight:600}.screen-todo-count{flex:0 0 auto;color:var(--muted);font-size:11px;font-weight:400}
+.screen-todo-viewport{height:82px;overflow:hidden;position:relative}.screen-todo-track{display:grid;gap:8px;min-width:0}.screen-todo-track.is-scrolling{animation:screen-todo-scroll 24s linear infinite}@keyframes screen-todo-scroll{from{transform:translateY(0)}to{transform:translateY(calc(-50% - 4px))}}
+.screen-todo-sequence{display:grid;gap:8px;min-width:0}.screen-todo-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fafbfd}.screen-todo-name{min-width:0;overflow:hidden;color:var(--text);font-size:12px;text-overflow:ellipsis;white-space:nowrap}.screen-todo-category{max-width:84px;overflow:hidden;color:var(--brand);font-size:11px;text-overflow:ellipsis;white-space:nowrap}.screen-todo-item.is-overdue .screen-todo-category{color:var(--red)}.screen-todo-item.is-today .screen-todo-category{color:var(--orange)}.screen-todo-empty{display:grid;place-items:center;height:82px;color:var(--muted);font-size:12px;text-align:center}
+.targets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.target{display:grid;gap:2px;justify-items:center;text-align:center}.target b{color:var(--brand);font-family:Consolas,"Microsoft YaHei",sans-serif;font-size:20px;font-weight:600;white-space:nowrap}.target span{color:var(--muted);font-size:11px;white-space:nowrap}
+.foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.screen-fullscreen-button{position:fixed;top:16px;right:18px;z-index:1000;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:112px;height:40px;padding:0 14px;border:1px solid rgba(24,119,201,.5);border-radius:6px;background:#fff;color:var(--brand);font:500 14px "Microsoft YaHei",Arial,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.12);cursor:pointer}.screen-fullscreen-button:hover,.screen-fullscreen-button:focus-visible{border-color:var(--brand);background:#f0f6fc;outline:none}.screen-fullscreen-button[hidden]{display:none}
+html.is-screen-fullscreen,html.is-screen-fullscreen *{cursor:none!important}
+@media(max-width:1300px){.screen-overview-grid{grid-template-columns:1fr}.screen-overview-grid .panel{min-height:300px}}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.progress-content{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}.screen-todo{grid-column:1/-1;order:3;padding:10px 0 0;border-top:1px solid var(--line);border-left:0;border-right:0}}
+@media(max-width:800px){.group-viz{grid-template-columns:1fr}.viz-summary{height:auto;max-height:none}.progress-content{grid-template-columns:1fr}.insight-viz{grid-template-columns:1fr 1fr}}
+@media(max-width:575px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.group-viz .chart{height:210px}.insight-viz{grid-template-columns:1fr}.property-highlights{gap:6px}.targets{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style></head>
+<body>
+<button type="button" class="screen-fullscreen-button" id="screenFullscreenButton" title="进入全屏" aria-label="进入全屏" hidden><i class="bi bi-arrows-fullscreen" aria-hidden="true"></i><span>进入全屏</span></button>
+<header class="top"><div class="brand"><div class="brand-mark"><i class="bi bi-bar-chart-line-fill"></i></div><div><div class="eyebrow">村居智慧管理 · 实时数据驾驶舱</div><div class="title">{{ config.title }}</div><div class="sub">{{ config.village_name or '村级人口、民生与乡村治理实时汇总' }}</div></div></div><div class="meta"><div class="clock" id="clock">--</div><div class="status"><span class="dot" id="statusDot"></span><span id="statusText">正在连接</span></div></div></header>
+<section class="kpis">
+<article class="kpi" style="--accent:#1877C9"><div class="kpi-label">常住人口</div><div class="kpi-value" id="population">--</div><div class="kpi-foot" id="gender">男 -- / 女 --</div></article>
+<article class="kpi" style="--accent:#1877C9"><div class="kpi-label">家庭户数</div><div class="kpi-value" id="households">--</div><div class="kpi-foot">在册有效家庭户</div></article>
+<article class="kpi" style="--accent:#7C6FE8"><div class="kpi-label">党员人数</div><div class="kpi-value" id="party">--</div><div class="kpi-foot">中共党员</div></article>
+<article class="kpi" style="--accent:#17A2B8"><div class="kpi-label">低保对象</div><div class="kpi-value" id="dibao">--</div><div class="kpi-foot">重点服务对象</div></article>
+<article class="kpi" style="--accent:#17A2B8"><div class="kpi-label">残疾人员</div><div class="kpi-value" id="disabled">--</div><div class="kpi-foot">重点服务对象</div></article>
+<article class="kpi" style="--accent:#F0A020"><div class="kpi-label">高龄老人</div><div class="kpi-value" id="elderly">--</div><div class="kpi-foot">80 岁及以上</div></article>
+<article class="kpi" style="--accent:#17A2B8"><div class="kpi-label">特困供养户</div><div class="kpi-value" id="specialSupport">--</div><div class="kpi-foot">帮扶台账口径</div></article>
+<article class="kpi" style="--accent:#DC3545"><div class="kpi-label">本月死亡人数</div><div class="kpi-value" id="deaths">--</div><div class="kpi-foot">按实际死亡日期去重</div></article>
+</section>
+<main class="grid screen-overview-grid">
+<section class="panel panel-group"><h2><span>各村民组人口分布</span><span class="panel-note" id="groupTotal">合计 -- 人</span></h2><div class="group-viz"><div class="chart"><canvas id="groupChart"></canvas></div><div class="viz-summary" id="groupSummary" aria-live="polite"><div class="summary-empty">正在加载各组数据</div></div></div></section>
+<section class="panel panel-insights"><h2><span>人口结构与帮扶对象</span><span class="panel-note">实时汇总</span></h2><div class="insight-viz"><div class="insight-block"><h3>户口属性</h3><div class="insight-list" id="propertyList"><div class="summary-empty">正在加载</div></div></div><div class="insight-block"><h3>民族分布</h3><div class="insight-list" id="nationList"><div class="summary-empty">正在加载</div></div></div></div><div class="property-highlights"><div class="property-highlight"><span>脱贫户</span><strong id="povertyHouseholds">--</strong><small id="povertyPeople">--</small></div><div class="property-highlight"><span>监测户</span><strong id="monitorHouseholds">--</strong><small id="monitorPeople">--</small></div><div class="property-highlight"><span>特困供养户（户属性登记）</span><strong id="supportHouseholds">--</strong><small id="supportPeople">--</small></div></div></section>
+</main>
+<section class="panel screen-progress-panel"><h2><span>民生与治理进度</span><span class="panel-note">业务办理情况</span></h2><div class="progress-content"><div class="metrics"><div class="metric-row"><div class="metric-head"><span>居民医保缴费率</span><strong id="medicalText">--</strong></div><div class="track"><div class="bar" id="medicalBar" style="--accent:#1877C9"></div></div></div><div class="metric-row"><div class="metric-head"><span>矛盾纠纷办结率</span><strong id="mediationText">--</strong></div><div class="track"><div class="bar" id="mediationBar" style="--accent:#17A2B8"></div></div></div></div><div class="screen-todo"><div class="screen-todo-head"><span>待办提醒</span><span class="screen-todo-count" id="todoCount">--</span></div><div class="screen-todo-viewport"><div class="screen-todo-track" id="todoTrack"><div class="screen-todo-empty">正在加载</div></div></div></div><div class="targets"><div class="target"><b id="support">--</b><span>特困供养</span></div><div class="target"><b id="welfare">--</b><span>公益岗位</span></div><div class="target"><b id="subsidy">--</b><span>年度地力补贴（元）</span></div></div></div></section>
+<footer class="foot"><span>{{ config.work_start }}-{{ config.work_end }} 工作时间每 {{ config.refresh_seconds }} 秒刷新</span><span id="updated">数据更新时间：--</span></footer>
+<script>
+(function(){
+    var token={{ token|tojson }};
+    var refresh={{ config.refresh_seconds|int }}*1000;
+    var workStart={{ config.work_start|tojson }};
+    var workEnd={{ config.work_end|tojson }};
+    var groupChart;
+    var fullscreenButton=document.getElementById('screenFullscreenButton');
+    var fullscreenAttempted=false;
+
+    function fullscreenElement(){return document.fullscreenElement||document.webkitFullscreenElement||document.msFullscreenElement||null;}
+    function fullscreenRequester(){var root=document.documentElement;return root.requestFullscreen||root.webkitRequestFullscreen||root.msRequestFullscreen||null;}
+    function showFullscreenButton(show){if(fullscreenButton)fullscreenButton.hidden=!show;document.body.classList.toggle('has-fullscreen-fallback',!!show);}
+    function syncFullscreenState(){var active=!!fullscreenElement();document.documentElement.classList.toggle('is-screen-fullscreen',active);showFullscreenButton(!active&&(fullscreenAttempted||!fullscreenRequester()));if(groupChart)setTimeout(function(){groupChart.resize();},0);}
+    function requestScreenFullscreen(){var requester=fullscreenRequester();fullscreenAttempted=true;if(!requester){syncFullscreenState();return;}try{var result=requester.call(document.documentElement);if(result&&typeof result.then==='function'){result.then(syncFullscreenState).catch(function(){showFullscreenButton(true);});}else{setTimeout(function(){if(!fullscreenElement())showFullscreenButton(true);syncFullscreenState();},500);}}catch(error){showFullscreenButton(true);}}
+    function enableFullscreenEntry(){if(!fullscreenRequester())showFullscreenButton(true);function firstPageClick(){document.removeEventListener('click',firstPageClick);requestScreenFullscreen();}document.addEventListener('click',firstPageClick);fullscreenButton.addEventListener('click',function(event){event.stopPropagation();requestScreenFullscreen();});document.addEventListener('fullscreenchange',syncFullscreenState);document.addEventListener('webkitfullscreenchange',syncFullscreenState);document.addEventListener('MSFullscreenChange',syncFullscreenState);document.addEventListener('fullscreenerror',function(){showFullscreenButton(true);});document.addEventListener('webkitfullscreenerror',function(){showFullscreenButton(true);});}
+
+    function text(id,value){var element=document.getElementById(id);if(element)element.textContent=value==null?'--':value;}
+    function money(value){var number=Number(value);if(!isFinite(number))return '0.00';return number.toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});}
+    function rate(id,bar,value){var number=Math.max(0,Math.min(100,Number(value)||0));text(id,number.toFixed(1)+'%');var element=document.getElementById(bar);if(element)element.style.width=number+'%';}
+    function renderTodos(items,total){
+        var track=document.getElementById('todoTrack');if(!track)return;
+        track.innerHTML='';text('todoCount',total==null?(items.length+' 项'):(Number(total)||0)+' 项');
+        if(!items.length){var empty=document.createElement('div');empty.className='screen-todo-empty';empty.textContent='暂无待办提醒';track.appendChild(empty);track.classList.remove('is-scrolling');return;}
+        function sequence(){var wrapper=document.createElement('div');wrapper.className='screen-todo-sequence';items.forEach(function(item){var row=document.createElement('div');row.className='screen-todo-item';if(item.reminder_status)row.classList.add('is-'+item.reminder_status);var name=document.createElement('span');name.className='screen-todo-name';name.textContent=item.scope||'待办事项';var category=document.createElement('span');category.className='screen-todo-category';category.textContent=item.category||'待办事项';row.appendChild(name);row.appendChild(category);wrapper.appendChild(row);});return wrapper;}
+        track.appendChild(sequence());if(items.length>1)track.appendChild(sequence());track.classList.toggle('is-scrolling',items.length>1);
+    }
+    function inWorkTime(){function minutes(value){var match=/^(\d{1,2}):(\d{2})$/.exec(String(value||''));return match?Number(match[1])*60+Number(match[2]):NaN;}var now=new Date(),current=now.getHours()*60+now.getMinutes(),start=minutes(workStart),end=minutes(workEnd);if(isNaN(start)||isNaN(end))return true;return start===end||((start<end)?(current>=start&&current<end):(current>=start||current<end));}
+    function compactGroups(groups,limit){var sorted=(groups||[]).slice().sort(function(a,b){return (Number(b.population)||0)-(Number(a.population)||0);});if(sorted.length<=limit)return sorted;var visible=sorted.slice(0,limit-1),rest=sorted.slice(limit-1);visible.push(rest.reduce(function(total,item){total.population+=(Number(item.population)||0);total.households+=(Number(item.households)||0);total.male+=(Number(item.male)||0);total.female+=(Number(item.female)||0);return total;},{name:'其他 '+rest.length+' 组',population:0,households:0,male:0,female:0}));return visible;}
+    function renderGroupSummary(groups,totalPopulation){
+        var summary=document.getElementById('groupSummary');if(!summary)return;summary.innerHTML='';
+        var total=Number(totalPopulation)||groups.reduce(function(sum,item){return sum+(Number(item.population)||0);},0);text('groupTotal','合计 '+total+' 人');
+        if(!groups.length){summary.innerHTML='<div class="summary-empty">暂无村民组数据</div>';return;}
+        compactGroups(groups,8).forEach(function(item){var row=document.createElement('div');row.className='summary-row';var name=document.createElement('span');name.className='summary-name';name.textContent=item.name||'未分组';var value=document.createElement('strong');value.className='summary-value';value.textContent=(Number(item.population)||0)+' 人';var detail=document.createElement('span');detail.className='summary-detail';detail.textContent=(Number(item.households)||0)+' 户 · 男 '+(Number(item.male)||0)+' / 女 '+(Number(item.female)||0);row.appendChild(name);row.appendChild(value);row.appendChild(detail);summary.appendChild(row);});
+    }
+    function renderInsightList(id,entries,unit){
+        var list=document.getElementById(id);if(!list)return;list.innerHTML='';
+        var sorted=(entries||[]).filter(function(item){return (Number(item.count)||0)>0;}).slice().sort(function(a,b){return (Number(b.count)||0)-(Number(a.count)||0);});
+        if(!sorted.length){list.innerHTML='<div class="summary-empty">暂无数据</div>';return;}
+        if(sorted.length>4){var visible=sorted.slice(0,3),rest=sorted.slice(3),hasPeople=rest.some(function(item){return item.people_count!=null;});visible.push(rest.reduce(function(total,item){total.count+=(Number(item.count)||0);total.pct+=(Number(item.pct)||0);total.people_count+=(Number(item.people_count)||0);return total;},{name:'其他 '+rest.length+' 项',count:0,pct:0,people_count:hasPeople?0:null}));sorted=visible;}
+        var max=sorted.reduce(function(value,item){return Math.max(value,Number(item.count)||0);},0)||1;
+        sorted.forEach(function(item){var count=Number(item.count)||0,pct=Number(item.pct)||0;var row=document.createElement('div');row.className='insight-row';var line=document.createElement('div');line.className='insight-line';var name=document.createElement('span');name.textContent=item.name||'未分类';var value=document.createElement('strong');value.textContent=count+' '+unit;line.appendChild(name);line.appendChild(value);var sub=document.createElement('span');sub.className='insight-sub';sub.textContent=(item.people_count!=null?((Number(item.people_count)||0)+' 人 · '):'')+pct.toFixed(1)+'%';var track=document.createElement('div');track.className='insight-track';var fill=document.createElement('div');fill.className='insight-fill';fill.style.width=(count/max*100)+'%';track.appendChild(fill);row.appendChild(line);row.appendChild(sub);row.appendChild(track);list.appendChild(row);});
+    }
+    function findProperty(stats,names){var keys=Object.keys(stats||{});for(var i=0;i<names.length;i++){for(var j=0;j<keys.length;j++){if(keys[j]===names[i]||keys[j].indexOf(names[i])>=0)return stats[keys[j]]||{};}}return {};}
+    function renderInsights(data){var properties=data.household_prop_stats||{};var propertyEntries=Object.keys(properties).map(function(name){var item=properties[name]||{};return {name:name,count:item.count,pct:item.pct,people_count:item.people_count};});renderInsightList('propertyList',propertyEntries,'户');renderInsightList('nationList',data.nation_stats||[],'人');var poverty=findProperty(properties,['脱贫户']);var monitor=findProperty(properties,['监测户']);var support=findProperty(properties,['特困供养户','特困供养']);text('povertyHouseholds',(Number(poverty.count)||0)+' 户');text('povertyPeople',(Number(poverty.people_count)||0)+' 人');text('monitorHouseholds',(Number(monitor.count)||0)+' 户');text('monitorPeople',(Number(monitor.people_count)||0)+' 人');text('supportHouseholds',(Number(support.count)||0)+' 户');text('supportPeople',(Number(support.people_count)||0)+' 人');}
+    var groupValueLabels={id:'groupValueLabels',afterDatasetsDraw:function(chart){var context=chart.ctx,meta=chart.getDatasetMeta(0),values=chart.data.datasets[0].data;context.save();context.font='600 13px "Microsoft YaHei", sans-serif';context.textBaseline='middle';meta.data.forEach(function(bar,index){var value=Number(values[index])||0;var x=bar.x+8;var align='left';if(x>chart.chartArea.right-34){x=bar.x-8;align='right';}context.textAlign=align;context.fillStyle='#333';context.fillText(value+'人',x,bar.y);});context.restore();}};
+    function draw(data){
+        text('population',data.total_population);text('households',data.total_households);text('party',data.party_count);text('gender','男 '+data.male_count+' / 女 '+data.female_count);text('dibao',data.dibao_count);text('disabled',data.disabled_count);text('elderly',data.elderly_count);text('specialSupport',data.special_support_count);text('deaths',data.current_month_death_count);text('support',data.special_support_count);text('welfare',data.welfare_count);text('subsidy',money(data.total_subsidy));renderTodos(data.screen_todos||[],data.todo_count);
+        rate('medicalText','medicalBar',data.medical_paid_rate);rate('mediationText','mediationBar',data.closure_rate);
+        var groups=data.group_stats||[],chartGroups=compactGroups(groups,9);renderGroupSummary(groups,data.total_population);renderInsights(data);
+        if(groupChart)groupChart.destroy();
+        groupChart=new Chart(document.getElementById('groupChart'),{type:'bar',data:{labels:chartGroups.map(function(item){return item.name;}),datasets:[{data:chartGroups.map(function(item){return item.population;}),backgroundColor:'#1877C9',borderRadius:4,barPercentage:.72,categoryPercentage:.82}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:38}},plugins:{legend:{display:false},tooltip:{callbacks:{label:function(context){return ' '+context.raw+' 人';}}}},scales:{x:{beginAtZero:true,ticks:{color:'#6c757d',precision:0,font:{size:12}},grid:{color:'rgba(108,117,125,.15)'}},y:{ticks:{color:'#212529',font:{size:13}},grid:{display:false}}}},plugins:[groupValueLabels]});
+    }
+    function update(){fetch('/screen/api/overview?token='+encodeURIComponent(token),{cache:'no-store'}).then(function(response){if(!response.ok)throw new Error();return response.json();}).then(function(response){if(!response.success)throw new Error();draw(response.data);text('updated','数据更新时间：'+String(response.updated_at||'').replace('T',' '));text('statusText','数据连接正常');document.getElementById('statusDot').classList.remove('bad');}).catch(function(){text('statusText','数据连接异常');document.getElementById('statusDot').classList.add('bad');});}
+    function clock(){var now=new Date();text('clock',now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0'));}
+    function scheduledUpdate(){if(inWorkTime())update();else{text('statusText','非工作时间');document.getElementById('statusDot').classList.remove('bad');}}
+    window.addEventListener('load',enableFullscreenEntry,{once:true});
+    clock();setInterval(clock,1000);if(inWorkTime())update();else text('statusText','非工作时间');setInterval(scheduledUpdate,Math.max(30000,refresh));
+})();
+</script></body></html>

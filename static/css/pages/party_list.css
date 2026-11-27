@@ -1,0 +1,938 @@
+/* 2026-11-19 换壳：外观改由 party_list_v2.css .pw-overview 承接（ADR-022 白卡）；
+   本类名仅作 test_party_roster_layout 的结构锚点保留，几何规则清空。 */
+.party-page-header {
+    margin: 0;
+}
+.party-page-header-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+.party-page-brand {
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+    gap: 10px;
+}
+.party-page-emblem {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+}
+.party-page-title {
+    margin: 0 0 3px;
+    color: #202733;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+.party-page-description {
+    color: #5f6b7a;
+    font-size: 13px;
+    line-height: 1.65;
+}
+.party-page-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+/* 2026-11-19 换壳：面板几何随 .pw-overview 的 16px 纵向节奏，旧分隔线作废 */
+.party-summary-panel {
+    display: grid;
+    gap: 16px;
+}
+.party-summary-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 7px;
+}
+.party-summary-heading strong {
+    color: #364152;
+    font-size: 13px;
+}
+.party-summary-note {
+    color: #7b8794;
+    font-size: 12px;
+}
+.party-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(92px, 1fr));
+    gap: 7px;
+}
+.party-summary-item {
+    min-height: 54px;
+    padding: 7px 9px;
+    background: #f7f9fc;
+    border: 1px solid #dfe5ec;
+    border-radius: 4px;
+}
+.party-summary-item.is-primary {
+    background: #f3f7fb;
+    border-color: #b9cadc;
+}
+.party-summary-item.is-alert {
+    background: #fff8f1;
+    border-color: #ead1b3;
+}
+.party-summary-value {
+    display: block;
+    color: #1f4f7a;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.party-summary-item.is-alert .party-summary-value {
+    color: #9a4e11;
+}
+.party-summary-label {
+    display: block;
+    margin-top: 3px;
+    color: #657180;
+    font-size: 12px;
+    white-space: nowrap;
+}
+.party-branch-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 7px 9px;
+    background: #fafbfc;
+    border: 1px solid #e2e7ed;
+    border-radius: 4px;
+}
+.party-branch-summary-label {
+    flex: 0 0 auto;
+    color: #465363;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.party-branch-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    min-width: 0;
+}
+.party-branch-chip {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    padding: 2px 8px;
+    color: #44515f;
+    background: #fff;
+    border: 1px solid #d9e0e7;
+    border-radius: 4px;
+    font-size: 12px;
+}
+/* 2026-11-19 换壳：计数胶囊配色随 .pw-branches 新壳（深底白字），旧红字作废 */
+.party-branch-chip strong {
+    margin-left: 5px;
+    font-size: 13px;
+}
+@media (max-width: 1199.98px) {
+    .party-summary-grid {
+        grid-template-columns: repeat(4, minmax(100px, 1fr));
+    }
+}
+@media (max-width: 991.98px) {
+    .party-page-header-row {
+        flex-direction: column;
+    }
+    .party-page-actions {
+        justify-content: flex-start;
+    }
+}
+@media (max-width: 768px) {
+    .party-branch-summary {
+        flex-direction: column;
+    }
+    .party-summary-grid {
+        grid-template-columns: repeat(2, minmax(110px, 1fr));
+    }
+    .party-branch-summary-label {
+        line-height: 1.4;
+    }
+}
+/* 992~1199.98 区间：.party-page-actions 固定 565px 会把品牌区压到 100px 以内
+   （复刻 exe 时一并继承的原生缺陷：1024 宽下页头高 1087px、标题折 2 行、说明竖排 751px）。
+   该区间改为两行堆叠 + 按钮左对齐，与 768 断点的降级形态保持一致。 */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .party-page-header-row {
+        flex-wrap: wrap;
+    }
+    .party-page-brand {
+        flex: 1 1 100%;
+    }
+    .party-page-actions {
+        justify-content: flex-start;
+        margin-top: 8px;
+    }
+}
+
+.party-list-card table {
+    min-width: 1280px;
+    table-layout: fixed;
+}
+.party-list-card th,
+.party-list-card td {
+    white-space: nowrap;
+    padding: 6px 8px;
+    line-height: 1.35;
+}
+.party-list-card .col-index { width: 36px; text-align: center; }
+.party-list-card .col-name { width: 64px; }
+.party-list-card .col-id-card { width: 150px; }
+.party-list-card .col-gender,
+.party-list-card .col-nation,
+.party-list-card .col-education { width: 48px; text-align: center; }
+.party-list-card .col-age,
+.party-list-card .col-party-age { width: 44px; text-align: center; }
+.party-list-card .col-date { width: 92px; text-align: center; }
+.party-list-card .col-type { width: 82px; text-align: center; }
+.party-list-card .col-phone { width: 112px; }
+.party-list-card .col-branch { width: 220px; }
+.party-list-card .col-address { width: 160px; }
+.party-list-card .col-fee { width: 58px; text-align: center; }
+.party-list-card .col-action { width: 52px; text-align: center; }
+/* 069 换壳：行内操作改用 sc-btn--text（保留 btn-fee/btn-auto/btn-del JS 钩子类） */
+.party-list-card #tb .sc-btn--text {
+    height: auto;
+    padding: 0;
+    font-size: 12px;
+    line-height: 1.4;
+}
+.party-list-card #tb .sc-btn--text.is-danger { color: var(--c-danger); }
+.party-list-card .party-name {
+    display: inline-block;
+    min-width: 3em;
+    white-space: nowrap;
+    word-break: keep-all;
+    color: #333;
+    font-size: 13px;
+    font-weight: normal;
+}
+/* 069 换壳：分页区沿用 components.css sc-pagination 主题；本页分页含
+   「上一页/下一页」文字链与跳转下拉（JS 产出），按需放宽定宽并保留跳转控件样式 */
+.party-list-card #pg {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.party-list-card #pg .page-link {
+    width: auto;
+    min-width: 30px;
+    padding: 0 10px;
+}
+.party-list-card #pg .page-select {
+    min-width: 64px;
+    height: 30px;
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-badge);
+    color: var(--c-ink-2);
+    padding: 4px 26px 4px 10px;
+    background-color: var(--c-surface);
+}
+.party-lookup-group {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    gap: 6px;
+}
+.party-detail .info-label,
+.party-detail small {
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: normal;
+    margin-right: 4px;
+}
+.party-detail .info-value {
+    color: #333;
+    font-size: 14px;
+    font-weight: normal;
+}
+.party-detail .table {
+    font-size: 14px !important;
+}
+.party-detail .table th,
+.party-detail .table td {
+    font-size: 14px;
+    font-weight: normal;
+}
+.party-detail .family-situation-input {
+    min-width: 180px;
+}
+
+/* ══════════ 党员详情弹窗 v2（ADR-022 视觉基线 v4.0 · 全令牌引用） ══════════
+   结构：pd-shell（头部 / 可滚主体 / 底栏 / 行内抽屉）
+   铁律：本壳挂在 .modal-content 上（BS5 在该层恢复 pointer-events: auto），
+   严禁用自定义壳替代 .modal-content —— tests/test_detail_v2_modal_guard.py 口径。 */
+#dtModal .modal-dialog {
+    max-width: 1040px;
+}
+.pd-shell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: min(92vh, 920px);
+    padding: 0;
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-card);
+    background: var(--c-surface);
+    overflow: hidden;
+}
+/* —— 头部：姓名 + 党籍徽章组 + 工具栏 —— */
+.pd-head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-4);
+    padding: var(--sp-4) var(--sp-6);
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-line-3);
+}
+.pd-head__row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+.pd-head__name {
+    margin: 0;
+    color: var(--c-ink);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+.pd-head__badges {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+.pd-head__branch {
+    margin-top: var(--sp-1);
+    color: var(--c-muted);
+    font-size: 12px;
+}
+.pd-head__branch strong {
+    color: var(--c-ink-3);
+    font-weight: 500;
+}
+.pd-head__tools {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+}
+.pd-head__vline {
+    width: 1px;
+    height: 20px;
+    margin: 0 2px;
+    background: var(--c-line-3);
+}
+/* —— 按钮（§5.1：主=中性黑 / 次=描边 / 幽灵） —— */
+.pd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid transparent;
+    border-radius: var(--r-ctrl);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+}
+.pd-btn i {
+    font-size: 13px;
+}
+.pd-btn--primary {
+    background: var(--c-ink-2);
+    color: var(--c-surface);
+}
+.pd-btn--primary:hover {
+    background: var(--c-ink);
+    color: var(--c-surface);
+}
+.pd-btn--secondary {
+    background: var(--c-surface);
+    color: var(--c-ink-3);
+    border-color: var(--c-line-3);
+}
+.pd-btn--secondary:hover {
+    background: var(--c-hover);
+    color: var(--c-ink);
+}
+.pd-btn--sm {
+    height: 24px;
+    padding: 0 9px;
+}
+.pd-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-ctrl);
+    background: transparent;
+    color: var(--c-ink-4);
+    cursor: pointer;
+}
+.pd-close:hover {
+    background: var(--c-hover);
+    color: var(--c-ink);
+}
+/* —— 语义徽章（独立状态令牌，四色仅作分类） —— */
+.pd-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-badge);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+.pd-badge--num {
+    font-family: var(--ff-num);
+    font-variant-numeric: tabular-nums;
+}
+.pd-badge--success {
+    background: var(--c-cat-1-weak);
+    color: var(--c-success);
+}
+.pd-badge--primary {
+    background: var(--c-badge-primary-bg);
+    color: var(--c-badge-primary-fg);
+}
+.pd-badge--info {
+    background: var(--c-badge-info-bg);
+    color: var(--c-badge-info-fg);
+}
+.pd-badge--neutral {
+    background: var(--c-hover);
+    color: var(--c-ink-5);
+}
+.pd-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--r-full);
+    background: var(--c-success);
+}
+/* —— 主体滚动区 —— */
+.pd-body {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--sp-4);
+    padding: var(--sp-5) var(--sp-6);
+    background: var(--c-bg);
+    overflow-y: auto;
+}
+/* —— 分节卡片 + 语义分类色条/序号胶囊 —— */
+.pd-card {
+    padding: var(--sp-4) var(--sp-5);
+    background: var(--c-surface);
+    border: var(--card-border, 1px solid var(--c-line));
+    border-radius: var(--r-card);
+}
+.pd-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--c-line-2);
+}
+.pd-card__titlewrap {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--sp-2);
+}
+.pd-card__title {
+    margin: 0;
+    color: var(--c-ink);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+.pd-card__hint {
+    color: var(--c-faint);
+    font-size: 11px;
+}
+.pd-card__meta {
+    color: var(--c-muted);
+    font-size: 11px;
+    white-space: nowrap;
+}
+.pd-card__meta strong {
+    color: var(--c-ink-3);
+    font-weight: 500;
+}
+.pd-ghost-act {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px var(--sp-2);
+    border: 0;
+    border-radius: var(--r-ctrl);
+    background: transparent;
+    color: var(--c-ink-5);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.pd-ghost-act:hover {
+    background: var(--c-hover);
+    color: var(--c-ink);
+}
+.pd-catbar {
+    width: 3px;
+    height: 14px;
+    flex: 0 0 auto;
+    border-radius: var(--r-full);
+}
+.pd-catbar--1 { background: var(--c-cat-1); }
+.pd-catbar--2 { background: var(--c-cat-2); }
+.pd-catbar--3 { background: var(--c-cat-3); }
+.pd-catbar--4 { background: var(--c-cat-4); }
+.pd-catindex {
+    padding: 1px 6px;
+    border-radius: var(--r-badge);
+    font-family: var(--ff-num);
+    font-size: 11px;
+    font-weight: 600;
+}
+.pd-catindex--1 { background: var(--c-cat-1-weak); color: var(--c-cat-1); }
+.pd-catindex--2 { background: var(--c-cat-2-weak); color: var(--c-cat-2); }
+.pd-catindex--3 { background: var(--c-cat-3-weak); color: var(--c-cat-3); }
+.pd-catindex--4 { background: var(--c-cat-4-weak); color: var(--c-cat-4); }
+/* —— 四列只读栅格（§2.2：gap-x 24 / gap-y 14，标签上值下） —— */
+.pd-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px var(--sp-6);
+}
+.pd-field--span2 {
+    grid-column: span 2;
+}
+.pd-label {
+    display: block;
+    margin-bottom: var(--sp-1);
+    color: var(--c-muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+.pd-value {
+    display: flex;
+    align-items: center;
+    min-height: 24px;
+    gap: 6px;
+    color: var(--c-ink);
+    font-size: 14px;
+}
+.pd-strong {
+    font-weight: 600;
+}
+.pd-num {
+    font-family: var(--ff-num);
+    font-variant-numeric: tabular-nums;
+}
+.pd-sep,
+.pd-arrow {
+    color: var(--c-line-3);
+}
+.pd-muted {
+    color: var(--c-muted);
+}
+.pd-faint {
+    color: var(--c-faint);
+}
+.pd-copy {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--c-muted);
+    cursor: pointer;
+}
+.pd-copy:hover {
+    background: var(--c-hover);
+    color: var(--c-ink-3);
+}
+/* —— 灰底卡槽（地址 / 家庭摘要，内部靠右行内操作） —— */
+.pd-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    min-height: 28px;
+    padding: 0 10px;
+    background: var(--c-side);
+    border: 1px solid var(--c-line-2);
+    border-radius: var(--r-ctrl);
+    font-size: 12px;
+}
+.pd-slot__text {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--sp-2);
+    color: var(--c-ink);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pd-slot__note {
+    color: var(--c-muted);
+    font-weight: 400;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.pd-slot__note strong {
+    color: var(--c-ink-3);
+    font-weight: 400;
+}
+.pd-slot__act {
+    flex: 0 0 auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--c-ink-2);
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.pd-slot__act:hover {
+    text-decoration: underline;
+    color: var(--c-ink);
+}
+/* —— 分栏页签导轨（§4.3） —— */
+.pd-tabs-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-3);
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--c-line-2);
+}
+.pd-rail {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    padding: 3px;
+    background: var(--c-hover);
+    border-radius: var(--r-ctrl);
+}
+.pd-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px var(--sp-3);
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--c-muted);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.pd-tab:hover {
+    color: var(--c-ink);
+}
+.pd-tab.is-active {
+    background: var(--c-surface);
+    color: var(--c-ink);
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(10, 10, 10, 0.06);
+}
+.pd-tab .pd-catbar {
+    height: 10px;
+}
+.pd-tab__count {
+    padding: 1px 6px;
+    border-radius: var(--r-full);
+    background: var(--c-hover);
+    color: var(--c-muted);
+    font-family: var(--ff-num);
+    font-size: 11px;
+}
+.pd-tab.is-active .pd-tab__count {
+    color: var(--c-ink);
+}
+.pd-tabs-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.pd-plus {
+    font-weight: 700;
+    line-height: 1;
+}
+/* —— 面板显隐：默认单页签；.pd-all（全量平铺）全展开并露出分区标题 —— */
+.pd-panel {
+    display: none;
+}
+.pd-panel.is-active {
+    display: block;
+}
+.pd-body.pd-all .pd-panel {
+    display: block;
+}
+.pd-panel-title {
+    display: none;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: var(--sp-4) 0 var(--sp-2);
+}
+.pd-panel-title .pd-catbar {
+    height: 14px;
+}
+.pd-body.pd-all .pd-panel-title {
+    display: flex;
+}
+.pd-panel:first-child .pd-panel-title,
+.pd-panel-title.is-first {
+    margin-top: 0;
+}
+.pd-panel-title__text {
+    color: var(--c-ink);
+    font-size: 12px;
+    font-weight: 700;
+}
+/* —— 子表（表头 rail / 行分割 line-2 / hover side） —— */
+.pd-tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--c-line);
+    border-radius: var(--r-ctrl);
+}
+.pd-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.pd-table th {
+    padding: var(--sp-2) var(--sp-3);
+    background: var(--c-rail);
+    color: var(--c-muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: left;
+    border-bottom: 1px solid var(--c-line-3);
+    white-space: nowrap;
+}
+.pd-table td {
+    padding: 10px var(--sp-3);
+    border-bottom: 1px solid var(--c-line-2);
+    color: var(--c-ink);
+    font-size: 13px;
+}
+.pd-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.pd-table tbody tr:hover td {
+    background: var(--c-side);
+}
+.pd-cell-muted {
+    color: var(--c-muted);
+}
+.pd-cell-right {
+    text-align: right;
+}
+.pd-empty {
+    padding: var(--sp-6) var(--sp-3);
+    text-align: center;
+}
+.pd-empty__text {
+    display: block;
+    margin-bottom: var(--sp-1);
+    color: var(--c-muted);
+    font-size: 12px;
+}
+.pd-text-act {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--c-ink-5);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+}
+.pd-text-act:hover {
+    text-decoration: underline;
+    color: var(--c-ink);
+}
+.pd-text-act--danger {
+    color: var(--c-danger);
+}
+.pd-text-act--danger:hover {
+    color: var(--c-danger);
+}
+/* —— 底栏（§4.4：side 底 + 顶边框） —— */
+.pd-foot {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-6);
+    background: var(--c-side);
+    border-top: 1px solid var(--c-line-3);
+}
+.pd-foot__status {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    color: var(--c-muted);
+    font-size: 12px;
+}
+.pd-foot__ok {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.pd-foot__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--r-full);
+    background: var(--c-success);
+}
+.pd-foot__dot--muted {
+    background: var(--c-faint);
+}
+.pd-foot__sep {
+    color: var(--c-line-3);
+}
+.pd-foot__num {
+    font-family: var(--ff-num);
+    font-variant-numeric: tabular-nums;
+}
+.pd-foot__actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 10px;
+}
+/* —— 行内抽屉（§5.2 读写分离：就近编辑不破坏只读主视图） —— */
+.pd-drawer-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: flex-end;
+    background: rgba(10, 10, 10, 0.25);
+}
+.pd-drawer-backdrop[hidden] {
+    display: none;
+}
+.pd-drawer {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 448px;
+    padding: var(--sp-6);
+    background: var(--c-surface);
+    border-left: 1px solid var(--c-line-3);
+    overflow-y: auto;
+}
+.pd-drawer__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--c-line-3);
+}
+.pd-drawer__title {
+    margin: 0;
+    color: var(--c-ink);
+    font-size: 14px;
+    font-weight: 700;
+}
+.pd-drawer__content {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+.pd-drawer__foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--c-line-3);
+}
+/* —— 抽屉表单控件：统一 32px 高，焦点黑边（§5.2） —— */
+.pd-input {
+    width: 100%;
+    height: 32px;
+    padding: 0 var(--sp-3);
+    background: var(--c-surface);
+    border: 1px solid var(--c-line-3);
+    border-radius: var(--r-ctrl);
+    color: var(--c-ink);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+textarea.pd-input {
+    height: auto;
+    padding: 6px var(--sp-3);
+    line-height: 1.6;
+    resize: vertical;
+}
+.pd-input:focus {
+    border-color: var(--c-ink-2);
+}
+.pd-input::placeholder {
+    color: var(--c-faint);
+}
+.pd-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background: var(--c-side);
+}
+.pd-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-3);
+}
+/* —— 响应式降级 —— */
+@media (max-width: 991.98px) {
+    .pd-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .pd-field--span2 {
+        grid-column: span 2;
+    }
+    .pd-head {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .pd-foot {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

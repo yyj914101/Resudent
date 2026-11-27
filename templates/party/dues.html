@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}党费缴纳{% endblock %}
+
+{# 062 P5 v4.0：标题由页头承担（同 P1–P4 口径） #}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+{% from 'components/_macros/module_tabs.html' import module_tabs %}
+
+{{ module_tabs('org', 'dues') }}
+
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">党费缴纳</h2>
+        <p class="sc-page-head__meta">按年度维护党员月缴台账；点击月份格录入当月收入与实缴，支持批量设置收入标准。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnExport"><i class="bi bi-download"></i> 导出</button>
+    </div>
+</header>
+
+{# 18 列年度矩阵：两行表头（标题行 + 列头行），月份列为固定台账列（列选择器不可隐藏） #}
+<section class="sc-card">
+    <div class="sc-toolbar">
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchName">姓名</label>
+            <input type="text" class="sc-input" id="searchName" placeholder="输入党员姓名" style="width:120px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchIdCard">身份证号</label>
+            <input type="text" class="sc-input" id="searchIdCard" placeholder="输入身份证号" style="width:200px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchYear">年度缴费</label>
+            <input type="number" class="sc-input" id="searchYear" min="1900" max="2100" step="1" value="{{ now().year }}" style="width:90px">
+        </div>
+        <div class="sc-field">
+            <label class="sc-field__label" for="searchStatus">缴纳状态</label>
+            <select class="sc-select" id="searchStatus" style="width:100px">
+                <option value="">全部</option>
+                <option value="normal">正常</option>
+                <option value="arrears">欠缴</option>
+                <option value="overdue">超期</option>
+            </select>
+        </div>
+        <button type="button" class="sc-btn sc-btn--primary" id="btnSearch"><i class="bi bi-search"></i> 查询</button>
+        <button type="button" class="sc-btn sc-btn--secondary" id="btnReset"><i class="bi bi-arrow-counterclockwise"></i> 重置</button>
+        <span id="duesColHost" style="margin-left:auto"></span>
+    </div>
+
+    <div id="statsBar" style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3);padding:var(--sp-4);border-bottom:1px solid var(--c-line-2)">
+        <div class="sc-card" style="padding:var(--sp-3)">
+            <div class="sc-pagination__stat">年度应缴总额</div>
+            <div style="margin-top:4px;font-size:20px;font-weight:600;color:var(--c-ink)"><span id="statAnnualCalc">0.00</span> 元</div>
+        </div>
+        <div class="sc-card" style="padding:var(--sp-3)">
+            <div class="sc-pagination__stat">年度已缴总额</div>
+            <div style="margin-top:4px;font-size:20px;font-weight:600;color:var(--c-success)"><span id="statAnnualPaid">0.00</span> 元</div>
+        </div>
+        <div class="sc-card" style="padding:var(--sp-3)">
+            <div class="sc-pagination__stat">年度欠缴总额</div>
+            <div style="margin-top:4px;font-size:20px;font-weight:600;color:var(--c-danger)"><span id="statAnnualArrears">0.00</span> 元</div>
+        </div>
+    </div>
+
+    <div style="padding:var(--sp-3) var(--sp-4);font-size:12px;color:var(--c-muted);border-bottom:1px solid var(--c-line-2)">
+        <i class="bi bi-info-circle me-1"></i>
+        点击月份状态格可录入该月党费。党费标准：≤3000元0.5%，3000-5000元1%，5000-10000元1.5%，&gt;10000元2%（上限1000元）。
+    </div>
+
+    <div class="sc-table-wrap">
+        <table class="sc-table sc-table--dense" id="duesTable" style="min-width:1120px">
+            <thead>
+                <tr><th colspan="18" class="sc-table__th" style="height:40px;text-align:center;font-size:13px;"><span id="titleYear">{{ now().year }}</span>年度党费缴纳台账</th></tr>
+                <tr style="position:sticky;top:0;z-index:2;">
+                    <th class="sc-table__th" style="width:40px;text-align:center;">#</th>
+                    <th class="sc-table__th" style="width:90px;">姓名</th>
+                    <th class="sc-table__th" style="min-width:70px;">党支部</th>
+                    <th class="sc-table__th sc-table__th--num" style="width:70px;">平均月收入</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">1月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">2月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">3月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">4月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">5月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">6月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">7月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">8月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">9月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">10月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">11月</th>
+                    <th class="sc-table__th" style="width:52px;text-align:center;">12月</th>
+                    <th class="sc-table__th" style="width:80px;text-align:center;">年欠缴</th>
+                    <th class="sc-table__th" style="width:80px;text-align:center;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="duesTbody">
+                <tr><td colspan="18" class="text-center text-muted py-4">
+                    <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;"></i>加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="sc-pagination">
+        <span class="sc-pagination__stat" id="footerInfo"></span>
+        <ul class="sc-pagination__pager" id="pagination"></ul>
+    </div>
+</section>
+
+{# 单月编辑弹窗 #}
+<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <form id="editForm">
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title" id="editModalTitle">编辑党费</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body">
+                    <input type="hidden" name="member_id" id="editMemberId">
+                    <input type="hidden" name="fee_month" id="editMonth">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editName">党员姓名</label>
+                        <input type="text" class="sc-input" id="editName" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editMonthLabel">缴纳月份</label>
+                        <input type="text" class="sc-input" id="editMonthLabel" readonly>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editIncome">税后月收入</label>
+                        <input type="number" class="sc-input" id="editIncome" min="0" step="0.01" placeholder="输入税后月收入">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editCalculated">月应缴党费</label>
+                        <div class="sc-input" style="display:flex;align-items:center;background:var(--c-rail);color:var(--c-ink-2);font-weight:600;" id="editCalculated">0.00 元</div>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editPaid">本月实缴</label>
+                        <input type="number" class="sc-input" id="editPaid" min="0" step="0.01" placeholder="输入实缴金额">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="editArrears">本月欠缴</label>
+                        <div class="sc-input" style="display:flex;align-items:center;background:var(--c-warning-bg);color:var(--c-warning);font-weight:600;" id="editArrears">0.00 元</div>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="sc-btn sc-btn--primary" id="btnSaveDues"><i class="bi bi-check-lg"></i> 保存</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# 054-A#7：批量设置收入标准弹窗 #}
+<div class="modal fade" id="batchIncomeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="sc-modal" role="dialog" aria-modal="true">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title">批量设置收入标准</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body">
+                <input type="hidden" id="batchMemberId">
+                <div class="sc-field">
+                    <label class="sc-field__label" for="batchMemberName">党员</label>
+                    <input type="text" class="sc-input" id="batchMemberName" readonly>
+                </div>
+                <div class="sc-field">
+                    <label class="sc-field__label" for="batchStartMonth">起始月份</label>
+                    <select class="sc-select" id="batchStartMonth">
+                        <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+                        <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+                        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+                        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+                    </select>
+                </div>
+                <div class="sc-field">
+                    <label class="sc-field__label" for="batchIncome">月收入</label>
+                    <input type="number" class="sc-input" id="batchIncome" min="0" step="0.01" placeholder="税后月收入">
+                </div>
+                <p class="sc-field__hint" style="margin-top:8px">将从起始月到 12 月批量填入收入标准并自动计算应缴党费（已存在记录仅覆盖收入与应缴，不动实缴）。</p>
+            </div>
+            <div class="sc-modal__divider"></div>
+            <footer class="sc-modal__footer">
+                <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="sc-btn sc-btn--primary" id="btnBatchIncomeSave"><i class="bi bi-check-lg"></i> 批量设置</button>
+            </footer>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/pages/party_dues.js') }}"></script>
+{% endblock %}

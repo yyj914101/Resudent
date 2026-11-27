@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}{{ table.name }} · 结构修改{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block content %}
+<header class="sc-page-head">
+    <div class="sc-page-head__title">
+        <h2 class="sc-page-head__name">结构修改 · {{ table.name }}</h2>
+        <p class="sc-page-head__meta">改表 = 改元数据，不新增/变更物理数据表；改类型与删字段需确认并自动备份。</p>
+    </div>
+    <div class="sc-page-head__actions">
+        <a class="sc-btn sc-btn--secondary" href="/dynatable/t/{{ table.code }}"><i class="bi bi-arrow-left"></i> 返回数据</a>
+    </div>
+</header>
+
+<section class="sc-card">
+    <div class="sc-table-wrap">
+        <table class="sc-table" id="fieldTable">
+            <thead class="sc-table__head">
+                <tr>
+                    <th class="sc-table__th" style="width:56px">序号</th>
+                    <th class="sc-table__th" style="width:90px">字段标识</th>
+                    <th class="sc-table__th" style="width:180px">列名</th>
+                    <th class="sc-table__th" style="width:120px">类型</th>
+                    <th class="sc-table__th" style="width:130px">敏感级别</th>
+                    <th class="sc-table__th" style="width:170px">字典分类</th>
+                    <th class="sc-table__th" style="width:70px">必填</th>
+                    <th class="sc-table__th" style="width:210px">操作</th>
+                </tr>
+            </thead>
+            <tbody id="fieldBody">
+                {% for f in fields %}
+                <tr data-fid="{{ f.id }}" data-code="{{ f.code }}">
+                    <td>{{ loop.index }}</td>
+                    <td><code>{{ f.code }}</code></td>
+                    <td><input type="text" class="sc-input" data-role="name" value="{{ f.display_name }}"></td>
+                    <td>
+                        <select class="sc-select" data-role="type">
+                            {% for t in ['text', 'number', 'date', 'enum'] %}
+                            <option value="{{ t }}" {% if f.data_type == t %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="sc-select" data-role="sens">
+                            {% for s in ['none', 'identity', 'amount'] %}
+                            <option value="{{ s }}" {% if f.sensitivity == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <select class="sc-select" data-role="cat">
+                            <option value="">（非枚举）</option>
+                            {% for c in dict_categories %}
+                            <option value="{{ c.code }}" {% if f.dict_category_code == c.code %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="checkbox" data-role="required" {% if f.is_required %}checked{% endif %}></td>
+                    <td>
+                        <div class="sc-row-actions">
+                            <button type="button" class="sc-btn sc-btn--text" data-act="save">保存</button>
+                            <button type="button" class="sc-btn sc-btn--text" data-act="up">上移</button>
+                            <button type="button" class="sc-btn sc-btn--text" data-act="down">下移</button>
+                            <button type="button" class="sc-btn sc-btn--text is-danger" data-act="delete">删除</button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="sc-card">
+    <h3 class="sc-page-head__name" style="font-size:15px;margin-bottom:8px">新增字段</h3>
+    <div class="sc-row-actions">
+        <input type="text" class="sc-input" id="newName" placeholder="列名" style="width:180px">
+        <select class="sc-select" id="newType" style="width:120px">
+            <option value="text">text</option>
+            <option value="number">number</option>
+            <option value="date">date</option>
+            <option value="enum">enum</option>
+        </select>
+        <select class="sc-select" id="newSens" style="width:130px">
+            <option value="none">none</option>
+            <option value="identity">identity</option>
+            <option value="amount">amount</option>
+        </select>
+        <select class="sc-select" id="newCat" style="width:170px">
+            <option value="">（非枚举）</option>
+            {% for c in dict_categories %}
+            <option value="{{ c.code }}">{{ c.name }}</option>
+            {% endfor %}
+        </select>
+        <label class="sc-check"><input type="checkbox" id="newRequired"> 必填</label>
+        <button type="button" class="sc-btn sc-btn--primary" id="addFieldBtn"><i class="bi bi-plus-circle"></i> 添加字段</button>
+    </div>
+    <p class="sc-field__hint" id="structMsg" style="margin-top:10px"></p>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.__ST_STRUCT__ = {
+        code: {{ table.code | tojson }},
+        fields: {{ fields | tojson }}
+    };
+</script>
+<script src="{{ url_for('static', filename='js/pages/dynatable_structure.js') }}"></script>
+{% endblock %}

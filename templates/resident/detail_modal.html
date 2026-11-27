@@ -1,0 +1,142 @@
+<!-- 062 P4 v4.0：户详情弹窗（外层 .modal.fade 供 BS 5 JS 驱动，内层 sc-modal） -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="sc-modal" role="dialog" aria-modal="true" style="width:100%;max-height:calc(100vh - 3.5rem);overflow:auto">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="detailModalTitle">户信息</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="detailModalBody">
+                <div class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 成员详情子弹窗 -->
+<div class="modal fade" id="memberDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="sc-modal" role="dialog" aria-modal="true" style="width:100%;max-height:calc(100vh - 3.5rem);overflow:auto">
+            <header class="sc-modal__header">
+                <h3 class="sc-modal__title" id="memberDetailTitle">居民信息</h3>
+                <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+            </header>
+            <div class="sc-modal__divider"></div>
+            <div class="sc-modal__body" id="memberDetailBody">
+                <div class="text-center py-4"><div class="spinner-border text-info"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增家庭成员子弹窗（由户详情弹窗内打开） -->
+<div class="modal fade" id="addMemberModal" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog sc-modal-dialog">
+        <div class="sc-modal sc-modal--lg" role="dialog" aria-modal="true" style="width:100%;max-height:calc(100vh - 3.5rem);overflow:auto">
+            <form id="addMemberForm" novalidate>
+                <header class="sc-modal__header">
+                    <h3 class="sc-modal__title">新增家庭成员</h3>
+                    <button type="button" class="sc-icon-btn" data-bs-dismiss="modal" aria-label="关闭"><i class="bi bi-x-lg"></i></button>
+                </header>
+                <div class="sc-modal__divider"></div>
+                <div class="sc-modal__body sc-modal__body--grid">
+                    <input type="hidden" name="household_code" value="">
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_name">姓名<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="name" id="am_name" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_id_card">身份证号<span class="sc-field__required">*</span></label>
+                        <input type="text" class="sc-input" name="id_card" id="am_id_card" required>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_gender">性别<span class="sc-field__required">*</span></label>
+                        <select class="sc-select" name="gender" id="am_gender" required>
+                            <option value="">请选择</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_birth_date">出生日期</label>
+                        <input type="date" class="sc-input" name="birth_date" id="am_birth_date">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_relationship">与户主关系<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="relationship" id="am_relationship" data-dict="与户主关系" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_village_group">所在组</label>
+                        <select class="sc-select dict-sm" name="village_group" id="am_village_group" data-dict="所在组">
+                            <option value="">留空默认户主所在组</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_nation">民族<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="nation" id="am_nation" data-dict="民族" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_phone">电话号码</label>
+                        <input type="text" class="sc-input" name="phone" id="am_phone">
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_politics_status">政治面貌<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="politics_status" id="am_politics_status" data-dict="政治面貌" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_education">学历<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="education" id="am_education" data-dict="学历" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_health_status">健康状态<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="health_status" id="am_health_status" data-dict="健康状态" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_marital_status">婚姻状况</label>
+                        <select class="sc-select dict-sm" name="marital_status" id="am_marital_status" data-dict="婚姻状况">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_military_status">兵役状况<span class="sc-field__required">*</span></label>
+                        <select class="sc-select dict-sm" name="military_status" id="am_military_status" data-dict="兵役状况" required>
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_bank_name">开户行</label>
+                        <select class="sc-select dict-sm" name="bank_name" id="am_bank_name" data-dict="开户行">
+                            <option value="">请选择</option>
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label class="sc-field__label" for="am_bank_card">银行帐号</label>
+                        <input type="text" class="sc-input" name="bank_card" id="am_bank_card">
+                    </div>
+                    <div class="sc-field sc-field--full sc-field--top">
+                        <label class="sc-field__label" for="am_remark">备注</label>
+                        <textarea class="sc-textarea" name="remark" id="am_remark" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="sc-modal__divider"></div>
+                <footer class="sc-modal__footer">
+                    <button type="button" class="sc-btn sc-btn--secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="sc-btn sc-btn--primary" id="btnAddMemberSubmit"><i class="bi bi-check-lg"></i> 确认新增</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/pages/resident_detail_modal.js') }}"></script>
